@@ -2,6 +2,9 @@
 
 import React, { memo } from "react"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   ChatCircleText,
   Question,
@@ -16,9 +19,7 @@ import {
   Headset,
   CreditCard,
 } from "@phosphor-icons/react"
-import type {
-  WorkflowNodeType,
-} from "@/modules/whatsapp/workflow/workflow.schema"
+import type { WorkflowNodeType } from "@/modules/whatsapp/workflow/workflow.schema"
 
 export type WorkflowCustomNodeData = {
   id: string
@@ -109,6 +110,9 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
   data,
   selected,
 }: NodeProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).console.whatsappWorkflows.inspector
   const nodeData = data as unknown as WorkflowCustomNodeData
   const type = nodeData.type || "send_message"
   const details = nodeTypeDetails[type] || nodeTypeDetails.send_message
@@ -222,8 +226,8 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
               "transition-opacity group-hover:opacity-100 " +
               "hover:bg-destructive/10 hover:text-destructive"
             }
-            title="Delete node"
-            aria-label="Delete node"
+            title={t.deleteNodeAria}
+            aria-label={t.deleteNodeAria}
           >
             <Trash className="h-3 w-3" />
           </button>
@@ -240,7 +244,7 @@ export const WorkflowNodeComponent = memo(function WorkflowNodeComponent({
           >
             <Robot className="h-3 w-3 shrink-0" weight="fill" />
             <span className="truncate">
-              Template: {String(nodeData.config.agentProfileName)}
+              {t.templatePrefix} {String(nodeData.config.agentProfileName)}
             </span>
           </div>
         )}

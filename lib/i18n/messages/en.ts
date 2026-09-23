@@ -750,6 +750,10 @@ export const enMessages: AppMessages = {
         targetPort: "Target Port:",
         replicas: "Replicas:",
         active: "active",
+        repositoryExample: "acme/laravel-shop",
+        branchExample: "main",
+        commitMessageExample: "feat: optimize product loading speed",
+        targetPortExample: "80 / 8080 (TCP)",
       },
       operateTraffic: {
         canvasTitle: "Cluster Traffic Routing Canvas",
@@ -890,6 +894,7 @@ export const enMessages: AppMessages = {
             "Enter any public or private GitHub repository URL. The system automatically detects whether credentials are required.",
           repoUrlLabel: "Repository URL",
           branchLabel: "Branch",
+          branchPlaceholder: "main",
           rootDirLabel: "Root Directory",
           inspectingVisibility: "Inspecting Visibility…",
           detectingPermissions:
@@ -1126,6 +1131,7 @@ export const enMessages: AppMessages = {
         badge5xxDetected: "5xx Detected",
         badgeHigh4xx: "High 4xx",
         badge0Percent5xx: "0% 5xx Errors",
+        errorRateSummary: "5xx • {fourXxPercent}% 4xx",
         serverAndClientErrorPercentages: "Server and client error percentages",
         avgLatency: "Avg Latency",
         endToEndBadge: "End-to-End",
@@ -2722,6 +2728,7 @@ export const enMessages: AppMessages = {
         conversationsCardDesc: "Active chats across connected devices",
         deviceHealthTitle: "Device Health",
         deviceHealthDesc: "Connection status & sync quality",
+        connectNow: "Connect WhatsApp Now",
       },
       contacts: {
         heading: "Contacts",
@@ -2758,8 +2765,11 @@ export const enMessages: AppMessages = {
           "Are you sure you want to delete {name}? This action cannot be undone.",
         phoneNumber: "Phone Number",
         phoneNumberRequired: "Phone number is required.",
+        phoneNumberPlaceholder: "+1234567890",
         name: "Name",
+        namePlaceholder: "John Doe",
         email: "Email",
+        emailPlaceholder: "john@example.com",
         audience: "Audience (optional)",
         status: "Status",
         activeStatus: "Active",
@@ -2851,8 +2861,11 @@ export const enMessages: AppMessages = {
         statusTitle: "Status",
         statusTooltip:
           "Device activation status in your workspace. Inactive devices cannot send or receive messages.",
+        healthTitle: "Health",
         healthTooltip:
           "Real-time socket heartbeat connection to WhatsApp Cloud API and quality rating.",
+        diagnose: "[ 🔍 Diagnose Issue ]",
+        searchPlaceholder: "Search devices by name or phone...",
         nameApproved: "Approved",
         namePending: "Pending Review",
         nameDeclined: "Declined",
@@ -3017,6 +3030,7 @@ export const enMessages: AppMessages = {
         direction: "Direction",
         directionInbox: "Inbox",
         directionOutbox: "Outbox",
+        typeLabel: "Type:",
         statusDelivered: "Delivered",
         statusRead: "Read",
         labels: "Labels",
@@ -3185,6 +3199,29 @@ export const enMessages: AppMessages = {
           updatedAt: "Updated",
           noRecipients: "No recipients match this filter.",
           loadError: "Unable to load broadcast",
+          templateId: "Template ID",
+        },
+        preflight: {
+          title: "Broadcast preflight",
+          description:
+            "Review recipients, estimated cost versus balance, and template variables.",
+          checking: "Checking broadcast…",
+          recipients: "Recipients: {count}",
+          costBalance:
+            "Estimated cost versus balance will be verified before dispatch.",
+          templateVariables: "Template variables:",
+          complete: "Complete",
+          incomplete: "Incomplete",
+          cancel: "Cancel",
+          send: "Send broadcast",
+        },
+        newCampaign: {
+          staticTemplate: "static",
+          textHeader: "• header",
+          buttons: "• btn",
+          online: "Online",
+          coveredMessages: "{count} {unit} (Rp 0)",
+          unitPrice: "(@Rp {price})",
         },
         status: {
           draft: "Draft",
@@ -3349,6 +3386,7 @@ export const enMessages: AppMessages = {
           receivedAt: "Received Time",
           activityType: "Activity Type",
           actor: "Actor",
+          platformSupport: "Platform Support",
           ipAddress: "IP Address",
           duration: "Duration",
           waMessageId: "WA Message ID",
@@ -3542,6 +3580,15 @@ export const enMessages: AppMessages = {
         retry: "Retry",
         noTransactions: "No ledger transactions found",
         adjustFiltersPrompt: "Try adjusting your filters or date range.",
+        creditsUnit: "credits",
+        deductedLabel: "deducted,",
+        refundedLabel: "refunded",
+        messagesBilledToSaldo: "messages billed to Saldo",
+        quotaPlus: "quota +",
+        quotaPlusRp: "quota + Rp",
+        balanceLabel: "balance",
+        paygSaldoBadge: "PAYG Saldo",
+        packageQuotaBadge: "Package Quota",
         thDate: "Date",
         thOrganization: "Organization",
         thDeviceRecipient: "Device / Recipient",
@@ -3626,6 +3673,20 @@ export const enMessages: AppMessages = {
         quotaTitle: "Message Quotas",
         usedLabel: "Used",
         remainingLabel: "Remaining",
+        loading: {
+          inboundCount: "Inbound Count",
+          outboundCount: "Outbound Count",
+          monthlyQuotaUsed: "Monthly Quota Used",
+          remainingQuota: "Remaining Quota",
+          projectedCost: "Projected Cost",
+          balance: "Balance",
+        },
+        payg: {
+          fullyCoveredByAllowance: "Fully covered by allowance",
+          zeroCovered: "Rp 0 ({reason})",
+          amount: "PAYG: Rp {amount}",
+          zero: "PAYG: Rp 0",
+        },
       },
       credentials: {
         heading: "Credentials",
@@ -3936,6 +3997,11 @@ export const enMessages: AppMessages = {
       heading: "Support Tickets",
       description: "Manage support requests and track their progress.",
       createTicket: "Create Ticket",
+      queueTitle: "Ticket Queue",
+      openTicket: "Open Ticket",
+      searchPlaceholder: "Filter by Ticket ID or Subject...",
+      emptyMessage: "No support tickets match your filters.",
+      loadError: "Unable to load support tickets.",
       ticketId: "Ticket ID",
       subject: "Subject",
       status: "Status",
@@ -3965,7 +4031,6 @@ export const enMessages: AppMessages = {
       close: "Close Ticket",
       reopen: "Reopen",
       titleColumn: "Title",
-      searchPlaceholder: "Filter by Ticket ID or Title...",
       filterAllStatus: "All status",
       filterAllDepartments: "All departments",
       filterAllPriority: "All priority",
@@ -4002,6 +4067,8 @@ export const enMessages: AppMessages = {
       possibleCredentialTitle: "Possible credential detected",
       possibleCredentialBody:
         "Looks like a credential. Move it to Secure details.",
+      possibleCredentialDetailedBody:
+        "The {field} field looks like a credential ({patterns}). Move it to the Secure details (encrypted) tab.",
       categorization: "Categorization",
       serviceOptional: "Service (optional)",
       selectDepartment: "Select department",
@@ -4101,6 +4168,13 @@ export const enMessages: AppMessages = {
       filters: {
         searchPlaceholder: "Search cronjobs...",
         allCategories: "All Categories",
+        categoryFilterAria: "Filter by category",
+        categoryBilling: "Billing",
+        categoryWhatsApp: "WhatsApp",
+        categoryVpn: "VPN",
+        categorySystem: "System",
+        jobFilterAria: "Filter by cron job",
+        statusFilterAria: "Filter by execution status",
         allStatuses: "All Statuses",
         allJobs: "All Jobs",
         statusSuccess: "Success",
@@ -4311,6 +4385,7 @@ export const enMessages: AppMessages = {
         description: "Paste a repo URL or pick a template.",
         reset: "Reset deploy wizard",
         phaseNavigation: "Deploy wizard phases",
+        phaseCompletedAria: "Completed",
         errors: {
           accountsRequest:
             "Unable to load GitHub accounts. Request failed with {status}.",
@@ -4445,6 +4520,7 @@ export const enMessages: AppMessages = {
           language: "Language",
           languageSelector: "Language selector",
           selectLanguage: "Select language",
+          goLanguage: "Go",
           framework: "Framework",
           frameworkSelector: "Framework selector",
           selectFramework: "Select framework",
@@ -4454,6 +4530,7 @@ export const enMessages: AppMessages = {
           enginePlaceholder: "e.g. node",
           engineVersion: "Engine version",
           buildCommand: "Build command",
+          buildCommandPlaceholder: "bun run build",
           useDockerfileInstead: "Use Dockerfile instead",
           settingsNeedAttention: "Build settings need attention",
           back: "Back",
@@ -4554,6 +4631,8 @@ export const enMessages: AppMessages = {
             "No database attached — add PostgreSQL or Redis after deploy",
           notDetected: "Not detected",
           dockerfile: "Dockerfile",
+          cpuUnit: "CPU",
+          memoryUnit: "MiB",
         },
         environment: {
           validationHeading: "Environment settings need attention",
@@ -4630,6 +4709,9 @@ export const enMessages: AppMessages = {
           planSuffix: "plan.",
         },
         monitor: {
+          title: "Deploy & Monitor",
+          description:
+            "Watch deployment progress and inspect logs in real-time.",
           yourApp: "Your app",
           currentStatus: "Current status:",
           attempt: "Attempt {attempt}",
@@ -4839,6 +4921,8 @@ export const enMessages: AppMessages = {
         tableCreated: "Created",
         tableAction: "Action",
         replicas: "replicas",
+        cpuSummary: "{value}m CPU",
+        memorySummary: "{value}Mi RAM",
         loading: "Loading stacks…",
         empty: "No stacks found.",
         loadFailed: "Failed to load stacks",
@@ -5062,7 +5146,12 @@ export const enMessages: AppMessages = {
           keyPlaceholder: "Key",
           valuePlaceholder: "Value",
           operator: "Operator",
+          operatorEqual: "Equal",
+          operatorExists: "Exists",
           effect: "Effect",
+          effectNoSchedule: "NoSchedule",
+          effectPreferNoSchedule: "PreferNoSchedule",
+          effectNoExecute: "NoExecute",
           trueValue: "True",
           falseValue: "False",
           tolerations: "Tolerations",
@@ -5138,6 +5227,7 @@ export const enMessages: AppMessages = {
           testPassed: "Test passed",
           testFailed: "Test failed",
           notTested: "Not tested",
+          testDuration: "({duration} ms)",
           failedToLoadRegions: "Failed to load regions",
           failedToLoadCluster: "Unable to load cluster.",
           failedToLoadEndpoint: "Unable to load edge endpoint.",
@@ -5201,6 +5291,7 @@ export const enMessages: AppMessages = {
           "Monitor real deployment status, events, and logs for your apps.",
         loadingApps: "Loading your applications\u2026",
         loadingAppState: "Loading application state\u2026",
+        selectAppHint: "Select an application to view its settings.",
         noApps: "No applications yet",
         noAppsDescription:
           "Deploy a private repository from the Deploy page to start monitoring real status, events, and logs here.",
@@ -5261,11 +5352,13 @@ export const enMessages: AppMessages = {
         heading: "Application Logs",
         description:
           "View live and historical log output for your application.",
+        selectPrompt: "Select an application to view its logs.",
       },
       metrics: {
         heading: "Application Metrics",
         description:
           "Monitor CPU, memory, and network metrics for your application.",
+        selectPrompt: "Select an application to view its metrics.",
       },
       events: {
         heading: "Deploy Events",
@@ -5336,6 +5429,7 @@ export const enMessages: AppMessages = {
           deploymentDetails: "Deployment details",
           noLogs: "No log output available for this step.",
           failedToLoadLogs: "Failed to load logs",
+          stepsAriaLabel: "Deployment step timeline",
         },
         monitor: {
           statusTitle: "Deployment status",
@@ -5375,6 +5469,9 @@ export const enMessages: AppMessages = {
           timeoutFailedTip:
             "Build timeout: The build process exceeded the maximum allocated duration.",
           retryDeploy: "Retry Deploy",
+          toggleAutoscrollTitle: "Toggle autoscroll",
+          copyLogTitle: "Copy log to clipboard",
+          streamWarningPrefix: "[Warning] Stream connection issue:",
         },
       },
       settings: {
@@ -5466,6 +5563,8 @@ export const enMessages: AppMessages = {
           ipResolutionBody2Prefix:
             "Trusting forwarded headers lets the application read the client's ",
           ipResolutionBody2Suffix: " value.",
+          trustProxyHeaderExample: "TRUST_PROXIES=*",
+          ipResolutionHeaderExample: "X-Forwarded-For",
           trustActive:
             "Trust proxies is active. Real client IPs will be available to application code.",
           trustInactive:
@@ -5476,9 +5575,15 @@ export const enMessages: AppMessages = {
           sslStatusIssuing: "Issuing (Let's Encrypt)...",
           sslStatusAuto: "Automatic (Let's Encrypt)",
           dnsStatusVerified: "Verified",
+          verifiedLabel: "verified",
+          ipRestrictionSuffix: "IP Restriction",
         },
       },
       marketplace: {
+        card: {
+          officialVerified: "Official Verified",
+          deploy: "Deploy",
+        },
         launchDrawer: {
           deployHeading: "Deploy",
           official: "Official",
@@ -5713,6 +5818,7 @@ export const enMessages: AppMessages = {
       unifiedStudioBanner:
         "Canvas workflow editing is now unified under AI Studio " +
         "(/console/ai/agents/[id]/canvas).",
+      aiStudioButton: "AI Studio",
       createNewButton: "Create workflow",
       loadingList: "Loading workflows...",
       emptyState: {
@@ -5837,6 +5943,9 @@ export const enMessages: AppMessages = {
         httpUrlLabel: "Request URL",
         httpVariableLabel: "Save response as",
         deleteNodeButton: "Delete step",
+        deleteNodeAria: "Delete node",
+        deleteEdgeAria: "Delete edge",
+        templatePrefix: "Template:",
         doneEditingButton: "Done editing",
       },
       simulator: {
@@ -6096,7 +6205,9 @@ export const enMessages: AppMessages = {
         monthlyTraffic: "Monthly traffic",
         topCpuProcesses: "Top CPU processes",
         topMemoryProcesses: "Top memory processes",
+        processUsage: "pid {pid} · CPU {cpu}% · MEM {memory}%",
         metricsUnavailable: "Metrics unavailable.",
+        hintUsageOverTotal: "usage / total",
         noVnstatData: "No vnStat data.",
         noProcessData: "No process data.",
         openvpnUsersTitle: "OpenVPN users",
@@ -6325,6 +6436,7 @@ export const enMessages: AppMessages = {
       daysOption7: "7 Days",
       daysOption14: "14 Days",
       daysOption30: "30 Days",
+      expiryPlaceholder: "Days",
       cancel: "Cancel",
       sendInvite: "Send Invitation",
       sending: "Sending...",
@@ -6389,6 +6501,10 @@ export const enMessages: AppMessages = {
       thCode: "Code",
       thCountry: "Country",
       thActiveClusters: "Active Clusters",
+      moreOptionsAria: "More options",
+      activeStatus: "Active Status",
+      inactiveRegionsHint:
+        "Inactive regions cannot be selected for new clusters or packages.",
       thStatus: "Status",
       thActions: "Actions",
       edit: "Edit",
@@ -6651,6 +6767,8 @@ export const enMessages: AppMessages = {
         noSlotsFallback: "No additional parameter slots",
         nameLabel: "Action Name (Tool Name)",
         namePlaceholder: "E.g., Check Lab Results",
+        parameterNamePlaceholder: "nama_parameter",
+        sampleReceiptNumber: "KW-12345",
         descriptionLabel: "When Triggered? (Tool Description for AI)",
         descriptionPlaceholder:
           "E.g., When the patient asks about test status or lab results",
@@ -6768,6 +6886,22 @@ export const enMessages: AppMessages = {
         previewTitle: "Live Website Preview",
         previewMockSite: "Customer Store / Clinic Website",
         previewMockSub: "Simulated widget view on your website",
+        livePreviewBadge: "Live Preview",
+        domainCount: "{count} domain",
+        navHome: "Home",
+        navCatalog: "Catalog",
+        navContact: "Contact",
+        promoSpecial: "Special Offer",
+        welcomeHeading: "Welcome to Our Official Website",
+        welcomeDescription:
+          "Shop trusted products with 24/7 AI assistant service.",
+        onlineStatus: "Online",
+        closePreviewAria: "Close chat preview",
+        previewInputPlaceholder: "Type a message...",
+        togglePreviewAria: "Toggle widget launcher preview",
+        defaultStoreName: "Official Store",
+        defaultAssistantName: "AI Assistant",
+        defaultWelcomeMessage: "Hello! How can we help you?",
         snippetTitle: "1-Click Embed Snippet",
         snippetSubtitle:
           "Copy and paste this code before the closing </body> tag on " +
@@ -6936,6 +7070,7 @@ export const enMessages: AppMessages = {
   pWhatsappTemplatesTemplateForm: {
     sectionGeneralConfigTitle: "1. General Configuration",
     namePlaceholderExample: "e.g. Order Status Update",
+    slugPlaceholderExample: "order_status_update",
     categoryFieldLabel: "Category",
     categoryUtilityOption: "Utility",
     categoryMarketingOption: "Marketing",
@@ -7223,6 +7358,7 @@ export const enMessages: AppMessages = {
     sshKeyLabel: "SSH Key",
     selectSshKeyPlaceholder: "Select SSH key",
     sshUserLabel: "SSH User",
+    sshUserPlaceholder: "root",
     locationLabel: "Location (for map pin)",
     searchLocationPlaceholder: "Search city… Jakarta, Singapore",
     searchLocationAriaLabel: "Search location",
@@ -7561,6 +7697,8 @@ export const enMessages: AppMessages = {
       "Upload or paste a catalog export JSON to safely migrate configurations into",
     uploadJsonFileLabel: "Upload JSON File",
     orPasteJsonContentLabel: "Or Paste JSON Content",
+    jsonPlaceholderExample:
+      '{ "schemaVersion": "2026-08.1", "catalogCode": "WHATSAPP", ... }',
     jsonErrorTitle: "JSON Error",
     sourceLabel: "Source:",
     productsLabel: "Products",
@@ -7733,8 +7871,11 @@ export const enMessages: AppMessages = {
     liveOption: "Live",
     sandboxOption: "Sandbox",
     wabaIdLabel: "WhatsApp Business Account ID",
+    wabaIdPlaceholder: "WABA-xxxxxxxxxxxx",
     phoneIdLabel: "WhatsApp Phone ID",
+    phoneIdPlaceholder: "Phone-xxxxxxxxxxxx",
     applicationIdLabel: "WhatsApp Application ID",
+    applicationIdPlaceholder: "App-xxxxxxxxxxxx",
     callbackUrlLabel: "Callback URL",
     cancelButton: "Cancel",
   },
@@ -7957,6 +8098,7 @@ export const enMessages: AppMessages = {
     buildDeployDescription:
       "Configure how your application is built and deployed.",
     buildCommandLabel: "Build Command",
+    buildCommandPlaceholder: "npm run build",
     buildCommandHint:
       "Custom build command. Leave empty to use auto-detected defaults.",
     rootDirectoryLabel: "Root Directory",
@@ -8729,12 +8871,14 @@ export const enMessages: AppMessages = {
     dialogDescriptionPrefix:
       "Add an SSH private key for automated VPN server provisioning and health checks.",
     dialogDescriptionSuffix: "Keys are stored securely.",
+    generationCommand: "ssh-keygen -t ed25519",
     fingerprint: "Fingerprint",
     name: "Name",
     namePlaceholder: "e.g. Production Deployment Key",
     noSshKeysYet:
       "No SSH keys found. Add one to enable automated server management.",
     privateKeyLabel: "Private Key (PEM format)",
+    privateKeyPlaceholder: "-----BEGIN OPENSSH PRIVATE KEY-----",
     saving: "Saving...",
     usedBy: "Used By",
   },
@@ -9556,6 +9700,17 @@ export const enMessages: AppMessages = {
     pricingMetadataTitle: "Pricing metadata",
     productIsActiveLabel: "Product is active",
   },
+  pPortalBillingCatalogBasicsTab: {
+    productCodeLabel: "Product code",
+    productNameLabel: "Product name *",
+    descriptionLabel: "Description",
+    descriptionPlaceholder: "Describe this product and what it includes...",
+    activeLabel: "Active",
+    defaultCurrencyLabel: "Default currency",
+    enabledCurrenciesLabel: "Enabled currencies",
+    enabledCurrenciesHint:
+      "Each enabled currency creates a required price row for every enabled term.",
+  },
   pPortalBillingCatalogPublishTab: {
     checkAddonsValidated: "Add-ons validated",
     checkBasicsConfigured: "Product basics configured",
@@ -9902,6 +10057,25 @@ export const enMessages: AppMessages = {
       description:
         "Review thread history, reply, upload attachments, and close the ticket.",
     },
+    docs: {
+      heading: "Documentation",
+      description:
+        "Browse and search through platform and organization documentation.",
+      searchPlaceholder: "Search documentation...",
+      lastUpdated: "Last updated:",
+      globalLabel: "Global",
+      noSearchResults: "No documentation found matching your search.",
+      noDocumentation: "No documentation available.",
+    },
+    docsDetail: {
+      errorTitle: "Error",
+      backToDocs: "Back to Docs",
+      purpose: "Purpose",
+      howTo: "How-To",
+      notes: "Notes",
+      lastUpdated: "Last updated:",
+      unknownUpdatedAt: "Unknown",
+    },
   },
   pAuthPages: {
     login: {
@@ -9940,6 +10114,23 @@ export const enMessages: AppMessages = {
     paginationAriaLabel: "Document Pagination",
     previous: "PREVIOUS",
     next: "NEXT",
+    searchTrigger: "Search docs...",
+    searchPlaceholder: "Search across all guides, APIs, and features...",
+    searchHintPrefix: "Type to search across documentation or press",
+    searchHintSuffix: "to close.",
+    noResultsPrefix: "No documents found matching “",
+    searchInputPlaceholder:
+      "Search documentation, guides, API parameters... (⌘K)",
+    languageEnglish: "English",
+    languageIndonesian: "Bahasa Indonesia",
+    diagramViewer: "Diagram Viewer",
+    zoomIn: "Zoom In",
+    zoomOut: "Zoom Out",
+    resetScale: "Reset Scale",
+    resetZoom: "Reset Zoom",
+    expandDiagram: "Expand Diagram Modal",
+    openapiReference: "OpenAPI Reference",
+    consoleLabel: "Console",
   },
   pSecurityArtifactsTab: {
     tabRegistry: "Image Registry & Rollback",
@@ -10399,5 +10590,402 @@ export const enMessages: AppMessages = {
     searchPlaceholder: "Search organizations...",
     previous: "Previous",
     next: "Next",
+  },
+  pDeployAiFeedEnvValuesDialog: {
+    autoGenerated: "Generated automatically",
+    cancelLabel: "Cancel",
+    description: "Provide values required by this plan.",
+    title: "Environment values",
+  },
+  pDeployAiFeedFeedShell: {
+    brand: "App Hosting",
+    newDeployment: "New deployment",
+    title: "AI deployment assistant",
+  },
+  pDeployAiFeedManualSettingsDialog: {
+    cancelLabel: "Cancel",
+    description: "Tell us how to build and run this app.",
+    dockerfilePathLabel: "Dockerfile path",
+    portLabel: "Port *",
+    selectPlaceholder: "Select",
+    title: "Build settings",
+    useDockerfile: "Use a Dockerfile",
+  },
+  pDeployAiFeedResourceSizeDialog: {
+    cancelLabel: "Cancel",
+    largerThanRecommended: "Larger than recommended",
+    otherOptions: "Other options",
+    recommended: "Recommended",
+    title: "Choose resources",
+    useThis: "Use this",
+  },
+  pDeployAiFeedSourceComposer: {
+    submitAriaLabel: "Submit repository URL",
+  },
+  pDeployClusterTelemetrySparkline: {
+    emptyState: "No telemetry data",
+  },
+  pDeployConfidenceBadge: {
+    detectionNotStarted: "Detection not started",
+    looksGood: "Looks good!",
+    needHelp: "Need your help",
+    verifySettings: "Please verify settings",
+  },
+  pDeployOperateLogColumnPicker: {
+    columnsLabel: "Columns",
+    resetLabel: "Reset",
+    resetTitle: "Reset to default columns",
+    searchHint: "Select JSON attributes to display as dynamic table columns.",
+    searchPlaceholder: "Search fields (e.g. status, pod)...",
+    title: "Customize table columns",
+  },
+  pDeployOperateTroubleshooter: {
+    closeAriaLabel: "Close operations FAQ",
+    closeLabel: "Close",
+    description: "Self-serve answers to operations and troubleshooting",
+    emptyState:
+      'No matches for search terms. Try keywords like "SSL", "Cloudflare", "metrics", "replica", or "private".',
+    goToSetting: "Go to Setting",
+    searchPlaceholder: "Search troubleshooting questions...",
+    title: "Application Operations FAQ",
+  },
+  pDeployOperateTrafficAudienceCard: {
+    browserDescription: "Top 5 browser clients",
+    browserTitle: "Browser",
+    deviceDescription: "Top 5 device classes",
+    deviceTitle: "Devices",
+    emptyState: "No data yet",
+    osDescription: "Top 5 operating systems",
+    osTitle: "Operating System",
+  },
+  pDeployOperateTrafficRequestQualityCard: {
+    description: "HTTP status mix for this period (including static assets)",
+    emptyState: "Detailed status data is not available for this period",
+    reqUnit: "req",
+    title: "Request Quality",
+  },
+  pDeployPodMultiSeriesSparkline: {
+    chartAriaLabel: "Pod telemetry line chart",
+    emptyState: "No telemetry data available",
+  },
+  pDeployRepositorySummaryBar: {
+    branch: "Branch",
+    notSelected: "Not selected",
+    owner: "Owner",
+    repository: "Repository",
+    root: "Root",
+  },
+  pDeployResourcePlanSelector: {
+    recommendedLabel: "Recommended for this site",
+  },
+  pDeploySecurityArtifactsTabSection: {
+    loadingLabel: "Loading security scan and container artifacts...",
+  },
+  sharedComponents: {
+    markdownEditor: {
+      writeTab: "Write",
+      previewTab: "Preview",
+      bold: "Bold",
+      italic: "Italic",
+      code: "Code",
+      link: "Link",
+      bulletList: "Bullet List",
+    },
+    adminTopupForm: {
+      title: "Admin Top Up",
+      description: "Credit balance directly to this organization",
+      amountLabel: "Amount (IDR)",
+      amountPlaceholder: "Enter amount",
+      reasonLabel: "Reason",
+      reasonPlaceholder: "Reason for topup",
+    },
+    dataTable: {
+      columns: "Columns",
+      toggleColumns: "Toggle columns",
+      page: "Page",
+      of: "of",
+      previous: "Previous",
+      next: "Next",
+    },
+    verifyEmailForm: {
+      heading: "Verify your email",
+      sentToPrefix: "Enter the code sent to",
+      emailFallback: "your email",
+      codeLabel: "Verification code",
+      codePlaceholder: "Enter the code",
+      needNewCode: "Need a new code?",
+      backToLogin: "Back to login",
+    },
+    uiSidebar: {
+      mobileTitle: "Sidebar",
+      mobileDescription: "Displays the mobile sidebar.",
+      toggle: "Toggle Sidebar",
+    },
+    metaAppSelector: {
+      label: "MetaApp",
+      loading: "Loading Meta Apps…",
+      empty: "No active Meta Apps available.",
+      metaAppId: "Meta App ID:",
+      callbackPath: "Callback path:",
+    },
+    notFound: {
+      title: "Page not found",
+      description:
+        "This {surface} page does not exist or is no longer available.",
+      goBack: "Go back",
+      returnTo: "Return to",
+    },
+    memberBillingTable: {
+      activeSuffix: "active",
+      viewBilling: "View Billing",
+      searchPlaceholder: "Search members...",
+      emptyMessage: "No members found.",
+    },
+    invoiceActions: {
+      voidAction: "Void",
+      voidTitle: "Void Invoice",
+      voidDescription:
+        "Are you sure you want to void this invoice? This action cannot be undone. The invoice will be marked as void and no longer valid for payment.",
+      cancel: "Cancel",
+    },
+    compactBalanceBadge: {
+      openTopUp: "Open Quick Top-Up",
+      quickTopUp: "Quick Top-Up",
+      quickTopUpButton: "Quick Top-Up button",
+    },
+    pricingVariantsTable: {
+      deactivate: "Deactivate",
+      searchPlaceholder: "Search pricing variants...",
+      emptyMessage: "No pricing variants found.",
+    },
+    orgSelector: {
+      loading: "Loading orgs...",
+      empty: "No organizations",
+      selectPlaceholder: "Select organization",
+    },
+    errorBoundary: {
+      message: "Something went wrong. Please try again.",
+      retry: "Try again",
+    },
+    breadcrumb: {
+      ariaLabel: "Breadcrumb",
+      more: "More",
+    },
+    cdnAsset: {
+      loadFailed: "Failed to load media",
+      download: "Download",
+    },
+    dialog: {
+      close: "Close",
+    },
+    sheet: {
+      close: "Close",
+    },
+    adjustmentTable: {
+      searchPlaceholder: "Search adjustments...",
+      emptyMessage: "No adjustments found.",
+    },
+    authPageShell: {
+      headlinePrefix: "Access your",
+      headlineSuffix: "workspace",
+    },
+    themeToggle: {
+      label: "Toggle theme",
+    },
+    navProjects: {
+      label: "Projects",
+    },
+    navMain: {
+      toggle: "Toggle",
+    },
+    navSecondary: {
+      toggle: "Toggle",
+    },
+    resourceSlider: {
+      estimatePrefix: "Est.",
+    },
+  },
+  pPortalBillingOrgTabsInvoicesTab: {
+    thInvoice: "Invoice #",
+    thIssued: "Issued",
+    thDue: "Due",
+    thAmount: "Amount",
+    thStatus: "Status",
+    thActions: "Actions",
+    loadFailed: "Failed to load invoices:",
+    searchPlaceholder: "Search invoices...",
+  },
+  pPortalWhatsappCatalogsCatalogIdPageClient: {
+    notFound: "Catalog not found.",
+    back: "Back",
+    metaIdLabel: "Meta ID:",
+    productsCount: "{count} products",
+    productsTitle: "Products",
+    productsDesc:
+      "Products cached from Meta Commerce Manager. Click sync to refresh.",
+    noProductsYet: "No products synced yet.",
+    syncNow: "Sync Now",
+  },
+  pPortalWhatsappTemplatesNewPageClient: {
+    loadingDuplicate: "Loading template to duplicate...",
+    backToTemplates: "Back to Templates",
+    noActiveDevicesTitle: "No Active WhatsApp Devices",
+    noActiveDevicesDesc:
+      "You need at least one active WhatsApp device to create templates.",
+    connectDevice: "Connect a device",
+    detailsTitle: "Template Details",
+    detailsDesc:
+      "Configure the template name, category, and language variants.",
+  },
+  pPortalBillingOrgTabsBalanceTab: {
+    balanceTitle: "Balance",
+    currencyLabel: "Currency:",
+    statusLabel: "| Status:",
+    lowBalanceWarning:
+      "Balance is running low. Top up to avoid service interruption.",
+    recentInvoices: "Recent Invoices",
+    noInvoices: "No invoices found.",
+  },
+  pPortalWhatsappWebhookLogsPageClient: {
+    title: "Webhook Logs",
+    description:
+      "View and inspect incoming WhatsApp webhook events across all devices.",
+    eventLogTitle: "Event Log",
+    eventLogDesc: "Webhook events for all devices",
+    noDevicesOrgs: "No devices or organizations found.",
+  },
+  pPortalWhatsappEventsPageClient: {
+    title: "Webhook Events",
+    description:
+      "View and inspect incoming WhatsApp webhook events across all devices and organizations.",
+    eventLogTitle: "Event Log",
+    eventLogDesc: "Webhook events across all devices and organizations.",
+    noDevicesOrgs: "No devices or organizations found.",
+  },
+  pPortalOrgsOverviewTab: {
+    voucherLogsTitle: "Voucher Generation Logs",
+    loading: "Loading...",
+    loadVoucherFailed: "Failed to load voucher logs:",
+    noVoucherLogs: "No voucher generation logs for this organization.",
+    claimedSuffix: "claimed",
+  },
+  pPortalWhatsappDevicesNewStepOrganization: {
+    heading: "Organization & Phone",
+    organizationLabel: "Organization",
+    phoneLabel: "Phone Number",
+    phoneHint: "E.164 international format with country code",
+  },
+  pPortalAppTemplatesIdPageClient: {
+    loading: "Loading template editor...",
+    notFound: "Template not found.",
+    backToTemplates: "Back to templates",
+  },
+  pPortalBillingOverviewAllOrgsInvoicesFeed: {
+    loadFailed: "Failed to load invoices:",
+    title: "Recent Invoices (All Organizations)",
+    noInvoices: "No invoices found.",
+  },
+  pPortalBillingOverviewPlatformUsageTrend: {
+    loadFailed: "Failed to load usage trend:",
+    title: "Platform Usage Trend (30 days)",
+    noData: "No usage data available.",
+  },
+  pPortalBillingOrgTabsSettingsTab: {
+    title: "Billing Settings",
+    description:
+      "Billing settings for this organization will be available here once the admin settings configuration is implemented.",
+    organizationIdLabel: "Organization ID:",
+  },
+  pPortalBillingOrgTabsAdjustmentsTab: {
+    loadFailed: "Failed to load adjustments:",
+    title: "Adjustments",
+    newAdjustment: "New Adjustment",
+  },
+  pPortalBillingOrgTabsAlertsTab: {
+    title: "Billing Alerts",
+    description:
+      "Alert preferences for this organization will be available here once the admin alerts configuration is implemented.",
+    organizationIdLabel: "Organization ID:",
+  },
+  pPortalWhatsappTemplatesIdPageClient: {
+    backToTemplates: "Back to Templates",
+    viewDevice: "View Device →",
+    editTemplate: "Edit Template",
+  },
+  pPortalWhatsappDevicesNewDeviceCreateWizard: {
+    previous: "Previous",
+    next: "Next",
+  },
+  pPortalVpnProvisioningAuditModal: {
+    title: "Provisioning Audit Log",
+    close: "Close",
+  },
+  pPortalBillingOverviewPlatformStatsCards: {
+    loadFailed: "Failed to load stats:",
+  },
+  pPortalBillingOrgTabsSubscriptionsTab: {
+    loadFailed: "Failed to load subscriptions:",
+  },
+  pPortalWhatsappDevicesDevicesUi: {
+    noDevices: "No devices found",
+  },
+  pPortalOrgsOrgOverviewStatsCards: {
+    loadFailed: "Failed to load stats:",
+  },
+  pPortalVpnProvisioningTimeline: {
+    noAuditEvents: "No audit events yet",
+  },
+  pPortalOrgsOrgOverviewDashboard: {
+    loadFailed: "Failed to load organization:",
+    notFound: "Organization not found.",
+  },
+  pHomeServices: {
+    headingStart: "Everything you need to",
+    headingHighlight: "ship & scale",
+    learnMore: "Learn more",
+  },
+  pHomeTestimonials: {
+    headingStart: "Infrastructure engineered for",
+    headingHighlight: "mission-critical workloads",
+  },
+  pPortalSettingsEmailsEmailsView: {
+    subjectLabel: "Subject:",
+  },
+  pWhatsappTemplatesTemplateCodeSnippetDialog: {
+    goTabLabel: "Go",
+  },
+  pBillingProvisioningAdaptersWhatsAppProvisionAdapter: {
+    title: "WhatsApp provisioning",
+    description:
+      "Set monthly message quotas and device capabilities for this plan.",
+    quotaOutLabel: "Quota out (messages/month)",
+    quotaInLabel: "Quota in (messages/month)",
+    maxDevicesLabel: "Max devices",
+    broadcastLabel: "Broadcast messaging",
+    broadcastDescription: "Allow this plan to send broadcast campaigns.",
+  },
+  pBillingProvisioningAdaptersVpnProvisionAdapter: {
+    title: "VPN provisioning",
+    description: "Choose the active servers that should provision this plan.",
+    loadingServers: "Loading VPN servers...",
+    noServers: "No active VPN servers are available.",
+    allowCustomUsername: "Allow custom username",
+  },
+  pDocsDocumentationForm: {
+    pathLabel: "Path",
+    titleLabel: "Title",
+    titlePlaceholder: "Console Overview",
+    purposeLabel: "Purpose",
+    purposePlaceholder: "Describe the purpose of this page.",
+    howToLabel: "How To (one step per line)",
+    notesLabel: "Notes (optional, one item per line)",
+  },
+  pStorageDropzone: {
+    uploading: "Uploading to S3...",
+    confirming: "Verifying and confirming upload...",
+    retry: "Retry",
+  },
+  pTenantsSettingsHeader: {
+    forOrganization: "for",
   },
 }

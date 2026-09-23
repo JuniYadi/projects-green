@@ -83,6 +83,8 @@ const domainsMessages: DomainsPanelMessages = {
   ipResolutionBody2Prefix:
     "Trusting forwarded headers lets the application read the client's ",
   ipResolutionBody2Suffix: " value.",
+  trustProxyHeaderExample: "TRUST_PROXIES=*",
+  ipResolutionHeaderExample: "X-Forwarded-For",
   trustActive:
     "Trust proxies is active. Real client IPs will be available to application code.",
   trustInactive:
@@ -93,6 +95,8 @@ const domainsMessages: DomainsPanelMessages = {
   sslStatusIssuing: "Issuing (Let's Encrypt)...",
   sslStatusAuto: "Automatic (Let's Encrypt)",
   dnsStatusVerified: "Verified",
+  verifiedLabel: "verified",
+  ipRestrictionSuffix: "IP Restriction",
 }
 
 const sampleDomain: TenantDomainDTO = {

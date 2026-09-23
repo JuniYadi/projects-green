@@ -6,6 +6,9 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { ChartBar } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { TrafficRequestQuality } from "../../opensearch/opensearch-traffic.types"
 
 export interface TrafficRequestQualityCardProps {
@@ -42,6 +45,10 @@ const STATUS_ROWS = [
 export function TrafficRequestQualityCard({
   requestQuality,
 }: TrafficRequestQualityCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).pDeployOperateTrafficRequestQualityCard
+  const numLocale = locale === "en" ? "en-US" : "id-ID"
   return (
     <Card className="border-border bg-card">
       <CardHeader className="pb-3">
@@ -49,10 +56,10 @@ export function TrafficRequestQualityCard({
           <ChartBar size={18} className="text-muted-foreground" />
           <div>
             <CardTitle className="text-sm font-semibold text-foreground">
-              Kualitas Permintaan
+              {t.title}
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Komposisi status HTTP periode ini (termasuk aset statis)
+              {t.description}
             </CardDescription>
           </div>
         </div>
@@ -60,7 +67,7 @@ export function TrafficRequestQualityCard({
       <CardContent>
         {!requestQuality.hasBreakdown ? (
           <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-            Data rinci status belum tersedia untuk periode ini
+            {t.emptyState}
           </div>
         ) : (
           <div className="space-y-3">
@@ -78,7 +85,7 @@ export function TrafficRequestQualityCard({
                         {pct}%
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        ({count.toLocaleString("id-ID")} req)
+                        ({count.toLocaleString(numLocale)} {t.reqUnit})
                       </span>
                     </div>
                   </div>

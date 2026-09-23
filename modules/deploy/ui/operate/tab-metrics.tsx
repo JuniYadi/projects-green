@@ -44,7 +44,10 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const POD_COLORS = ["#10b981", "#38bdf8", "#a855f7", "#f59e0b", "#f43f5e"]
 
-function formatUptime(seconds?: number, justStartedText = "Just started"): string {
+function formatUptime(
+  seconds?: number,
+  justStartedText = "Just started"
+): string {
   if (!seconds || seconds <= 0) return justStartedText
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
@@ -540,7 +543,8 @@ export function TabMetrics({
                   {messages.networkIngress}
                 </span>
                 <span className="font-mono text-xs font-semibold text-foreground">
-                  {networkHistory[networkHistory.length - 1]} {messages.rpsBadge}{" "}
+                  {networkHistory[networkHistory.length - 1]}{" "}
+                  {messages.rpsBadge}{" "}
                   <span className="text-purple-400">{messages.normal}</span>
                 </span>
               </div>
@@ -635,7 +639,9 @@ function ResourceAdvisoryCard({
   memoryUsageValue: number
   memoryLimitValue: number
   memoryPercent: number
-  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
+  messages: ReturnType<
+    typeof getMessages
+  >["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -690,7 +696,9 @@ function LatencyPercentilesCard({
 }: {
   currentMetrics: RangeMetrics
   timeRange: string
-  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
+  messages: ReturnType<
+    typeof getMessages
+  >["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -781,7 +789,9 @@ function HttpStatusDistributionCard({
   messages,
 }: {
   currentMetrics: RangeMetrics
-  messages: ReturnType<typeof getMessages>["console"]["deploy"]["operateMetrics"]
+  messages: ReturnType<
+    typeof getMessages
+  >["console"]["deploy"]["operateMetrics"]
 }) {
   return (
     <Card
@@ -903,9 +913,8 @@ function PodObservabilityView({
   memLimitValue: number
   locale?: string
 }) {
-  const messages = getMessages(
-    resolveLocaleOrDefault(locale)
-  ).console.deploy.operateMetrics
+  const messages = getMessages(resolveLocaleOrDefault(locale)).console.deploy
+    .operateMetrics
 
   const [mountTime] = useState(() => Date.now())
   const [selectedPod, setSelectedPod] = useState<string>("all")
@@ -1208,7 +1217,10 @@ function PodObservabilityView({
           <div className="mt-2 flex items-baseline gap-2 text-2xl font-bold tracking-tight text-foreground">
             <span>{telemetry?.ingress?.errorRate5xxPercent ?? 0}%</span>
             <span className="text-xs font-medium text-muted-foreground">
-              5xx &bull; {telemetry?.ingress?.errorRate4xxPercent ?? 0}% 4xx
+              {messages.errorRateSummary.replace(
+                "{fourXxPercent}",
+                String(telemetry?.ingress?.errorRate4xxPercent ?? 0)
+              )}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
@@ -1248,18 +1260,29 @@ function PodObservabilityView({
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
               {activePods.length}{" "}
-              {activePods.length === 1 ? messages.replicaCount.replace("{count}", "1") : messages.replicasCount.replace("{count}", String(activePods.length))}
+              {activePods.length === 1
+                ? messages.replicaCount.replace("{count}", "1")
+                : messages.replicasCount.replace(
+                    "{count}",
+                    String(activePods.length)
+                  )}
             </span>
           </div>
           <div className="mt-2 text-2xl font-bold tracking-tight text-foreground">
             {cpuPercent}%
             <span className="text-xs font-normal text-muted-foreground">
               {" "}
-              {messages.cpuMemSaturation.replace("{cpuPercent}", String(cpuPercent)).replace("{memPercent}", String(memPercent))}
+              {messages.cpuMemSaturation
+                .replace("{cpuPercent}", String(cpuPercent))
+                .replace("{memPercent}", String(memPercent))}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {messages.saturationSubtext.replace("{usedCores}", totalCpuCores.toFixed(3)).replace("{limitCores}", String(cpuLimitCores)).replace("{usedMem}", formatBytes(totalMemBytes)).replace("{limitMem}", String(ramLimitMB))}
+            {messages.saturationSubtext
+              .replace("{usedCores}", totalCpuCores.toFixed(3))
+              .replace("{limitCores}", String(cpuLimitCores))
+              .replace("{usedMem}", formatBytes(totalMemBytes))
+              .replace("{limitMem}", String(ramLimitMB))}
           </p>
         </Card>
       </div>
@@ -1332,23 +1355,31 @@ function PodObservabilityView({
           <CardHeader className="space-y-1 pb-2">
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Cpu size={14} className="text-primary" /> {messages.cpuUsagePerPod}
+                <Cpu size={14} className="text-primary" />{" "}
+                {messages.cpuUsagePerPod}
               </span>
               <span className="text-xs font-bold text-foreground">
-                {messages.allocatedBadge.replace("{percent}", String(cpuPercent))}
+                {messages.allocatedBadge.replace(
+                  "{percent}",
+                  String(cpuPercent)
+                )}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
               {totalCpuCores.toFixed(3)} vCPU
               <span className="text-xs font-normal text-muted-foreground">
                 {" "}
-                / {messages.limitLabel.replace("{limit}", String(cpuLimitCores))}
+                /{" "}
+                {messages.limitLabel.replace("{limit}", String(cpuLimitCores))}
               </span>
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
               {activePods.length}{" "}
-              {activePods.length === 1 ? messages.replicaLine : messages.replicaLines}{" "}
-              &bull; {messages.limitVCpu.replace("{limit}", String(cpuLimitCores))}
+              {activePods.length === 1
+                ? messages.replicaLine
+                : messages.replicaLines}{" "}
+              &bull;{" "}
+              {messages.limitVCpu.replace("{limit}", String(cpuLimitCores))}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -1371,7 +1402,10 @@ function PodObservabilityView({
                 {messages.ramWorkingSetPerPod}
               </span>
               <span className="text-xs font-bold text-foreground">
-                {messages.allocatedBadge.replace("{percent}", String(memPercent))}
+                {messages.allocatedBadge.replace(
+                  "{percent}",
+                  String(memPercent)
+                )}
               </span>
             </div>
             <CardTitle className="text-lg font-bold tracking-tight">
@@ -1383,7 +1417,9 @@ function PodObservabilityView({
             </CardTitle>
             <CardDescription className="text-[11px] text-muted-foreground">
               {activePods.length}{" "}
-              {activePods.length === 1 ? messages.replicaLine : messages.replicaLines}{" "}
+              {activePods.length === 1
+                ? messages.replicaLine
+                : messages.replicaLines}{" "}
               &bull; {messages.limitMb.replace("{limit}", String(ramLimitMB))}
             </CardDescription>
           </CardHeader>
@@ -1498,9 +1534,7 @@ function PodObservabilityView({
                   <th className="px-3.5 py-2.5">
                     {messages.cpuConsumptionCol}
                   </th>
-                  <th className="px-3.5 py-2.5">
-                    {messages.ramWorkingSetCol}
-                  </th>
+                  <th className="px-3.5 py-2.5">{messages.ramWorkingSetCol}</th>
                   <th className="px-3.5 py-2.5 text-right">
                     {messages.restartsCol}
                   </th>

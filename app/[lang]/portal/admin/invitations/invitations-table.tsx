@@ -299,7 +299,10 @@ export function InvitationsTable() {
       {
         id: "organization",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={messages.thOrganization} />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.thOrganization}
+          />
         ),
         cell: ({ row }) => {
           const orgId = row.original.organizationId
@@ -434,7 +437,9 @@ export function InvitationsTable() {
             <SelectContent>
               <SelectItem value="all">{messages.allStatuses}</SelectItem>
               <SelectItem value="pending">{messages.statusPending}</SelectItem>
-              <SelectItem value="accepted">{messages.statusAccepted}</SelectItem>
+              <SelectItem value="accepted">
+                {messages.statusAccepted}
+              </SelectItem>
               <SelectItem value="expired">{messages.statusExpired}</SelectItem>
               <SelectItem value="revoked">{messages.statusRevoked}</SelectItem>
             </SelectContent>
@@ -499,9 +504,7 @@ export function InvitationsTable() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{messages.sendTitle}</DialogTitle>
-            <DialogDescription>
-              {messages.sendDesc}
-            </DialogDescription>
+            <DialogDescription>{messages.sendDesc}</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSendInvite} className="space-y-4 pt-2">
@@ -554,7 +557,9 @@ export function InvitationsTable() {
                     <SelectValue placeholder={messages.selectRolePlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="member">{messages.roleMember}</SelectItem>
+                    <SelectItem value="member">
+                      {messages.roleMember}
+                    </SelectItem>
                     <SelectItem value="admin">{messages.roleAdmin}</SelectItem>
                   </SelectContent>
                 </Select>
@@ -569,7 +574,7 @@ export function InvitationsTable() {
                   onValueChange={setInviteExpiresDays}
                 >
                   <SelectTrigger id="invite-expires" className="w-full text-sm">
-                    <SelectValue placeholder="Days" />
+                    <SelectValue placeholder={messages.expiryPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="7">{messages.daysOption7}</SelectItem>
@@ -605,9 +610,7 @@ export function InvitationsTable() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{messages.revokeTitle}</DialogTitle>
-            <DialogDescription>
-              {messages.revokeDesc}
-            </DialogDescription>
+            <DialogDescription>{messages.revokeDesc}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-2">
             <Button

@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   parseCsvRecipients,
@@ -131,6 +132,7 @@ export default function NewWhatsAppBroadcastPage() {
   const router = useRouter()
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
+  const t = getMessages(locale).console.whatsapp.broadcasts
   const basePath = localizePathname({
     pathname: "/console/whatsapp/broadcasts",
     locale,
@@ -852,7 +854,9 @@ export default function NewWhatsAppBroadcastPage() {
                                       {varCount === 1 ? "var" : "vars"}
                                     </span>
                                   ) : (
-                                    <span className="opacity-60">static</span>
+                                    <span className="opacity-60">
+                                      {t.newCampaign.staticTemplate}
+                                    </span>
                                   )}
                                   {hasMedia && primaryLang?.headerType ? (
                                     <span className="font-medium text-amber-600 dark:text-amber-400">
@@ -860,12 +864,12 @@ export default function NewWhatsAppBroadcastPage() {
                                     </span>
                                   ) : hasHeaderTxt ? (
                                     <span className="text-amber-600 dark:text-amber-400">
-                                      • header
+                                      {t.newCampaign.textHeader}
                                     </span>
                                   ) : null}
                                   {hasBtns ? (
                                     <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                      • btn
+                                      {t.newCampaign.buttons}
                                     </span>
                                   ) : null}
                                 </div>
@@ -1296,7 +1300,7 @@ export default function NewWhatsAppBroadcastPage() {
                         {selectedDevice?.phoneNumber || "WhatsApp Business"}
                       </p>
                       <p className="text-[10px] leading-none text-white/80">
-                        Online
+                        {t.newCampaign.online}
                       </p>
                     </div>
                   </div>
@@ -1509,11 +1513,21 @@ export default function NewWhatsAppBroadcastPage() {
                         : "Covered by Free Quota"}
                     </span>
                     <span className="font-medium text-foreground">
-                      {(
-                        capacity.coveredByQuota ??
-                        Math.min(totalRecipients, capacity.quotaRemaining ?? 0)
-                      ).toLocaleString()}{" "}
-                      {locale === "id" ? "pesan" : "messages"} (Rp 0)
+                      {t.newCampaign.coveredMessages
+                        .replace(
+                          "{count}",
+                          (
+                            capacity.coveredByQuota ??
+                            Math.min(
+                              totalRecipients,
+                              capacity.quotaRemaining ?? 0
+                            )
+                          ).toLocaleString()
+                        )
+                        .replace(
+                          "{unit}",
+                          locale === "id" ? "pesan" : "messages"
+                        )}
                     </span>
                   </div>
 
@@ -1544,7 +1558,10 @@ export default function NewWhatsAppBroadcastPage() {
                           {(capacity.unitPrice ?? 0) > 0 && (
                             <span className="text-[11px] font-normal text-muted-foreground">
                               {" "}
-                              (@Rp {(capacity.unitPrice ?? 0).toLocaleString()})
+                              {t.newCampaign.unitPrice.replace(
+                                "{price}",
+                                (capacity.unitPrice ?? 0).toLocaleString()
+                              )}
                             </span>
                           )}
                         </span>

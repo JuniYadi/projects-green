@@ -1,4 +1,9 @@
+"use client"
+
 import React from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -76,6 +81,9 @@ export function TemplateCard({
   onDeploy,
   isDeploying = false,
 }: TemplateCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).console.app.marketplace.card
   const resourceSummary = formatResourceSummary(template.blueprint)
 
   return (
@@ -98,8 +106,8 @@ export function TemplateCard({
                 </h3>
                 {template.isOfficial && (
                   <span
-                    title="Official Verified"
-                    aria-label="Official Verified"
+                    title={t.officialVerified}
+                    aria-label={t.officialVerified}
                     className="inline-flex shrink-0 items-center text-emerald-500"
                   >
                     <CheckCircle className="size-3.5 fill-emerald-500/20 text-emerald-500" />
@@ -136,7 +144,7 @@ export function TemplateCard({
           size="sm"
         >
           <RocketLaunchIcon className="size-3.5" />
-          <span>Deploy</span>
+          <span>{t.deploy}</span>
         </Button>
       </div>
     </Card>

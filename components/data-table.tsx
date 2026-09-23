@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { useMessages } from "@/components/use-messages"
 import {
   Select,
   SelectContent,
@@ -113,6 +114,7 @@ export function DataTable<TData>({
   onRowSelectionChange,
   getRowId,
 }: DataTableProps<TData>) {
+  const t = useMessages().sharedComponents.dataTable
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [sorting, setSorting] = React.useState<SortingState>(initialSorting)
   const [internalColumnFilters, setInternalColumnFilters] =
@@ -247,12 +249,12 @@ export function DataTable<TData>({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="ml-auto">
-                Columns
+                {t.columns}
                 <CaretDownIcon />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+              <DropdownMenuLabel>{t.toggleColumns}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {table
                 .getAllColumns()
@@ -326,7 +328,7 @@ export function DataTable<TData>({
           </p>
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {t.page} {table.getState().pagination.pageIndex + 1} {t.of}{" "}
               {table.getPageCount()}
             </p>
             <Button
@@ -335,7 +337,7 @@ export function DataTable<TData>({
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              Previous
+              {t.previous}
             </Button>
             <Button
               variant="outline"
@@ -343,7 +345,7 @@ export function DataTable<TData>({
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              Next
+              {t.next}
             </Button>
           </div>
         </div>

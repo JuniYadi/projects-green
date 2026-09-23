@@ -20,9 +20,7 @@ import {
 import { eden } from "@/lib/eden"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import {
-  WORKFLOW_TEMPLATES,
-} from "@/modules/whatsapp/workflow/workflow-templates"
+import { WORKFLOW_TEMPLATES } from "@/modules/whatsapp/workflow/workflow-templates"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -115,7 +113,7 @@ export default function WhatsappWorkflowsPage() {
           className="shrink-0 text-xs"
         >
           <Link href={`/${lang}/console/ai/agents`}>
-            <span>AI Studio</span>
+            <span>{t.aiStudioButton}</span>
           </Link>
         </Button>
       </div>
@@ -340,9 +338,7 @@ export default function WhatsappWorkflowsPage() {
                     size="sm"
                     className="w-full justify-between text-xs"
                   >
-                    <Link
-                      href={`/${lang}/console/ai/agents/${wf.id}/canvas`}
-                    >
+                    <Link href={`/${lang}/console/ai/agents/${wf.id}/canvas`}>
                       <span>{t.card.openCanvas}</span>
                       <ArrowRight size={14} />
                     </Link>

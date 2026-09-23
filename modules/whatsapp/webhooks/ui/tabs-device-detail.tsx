@@ -1,5 +1,8 @@
 "use client"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -275,9 +278,13 @@ export function TabsDeviceDetail({
 
       <Tabs value={defaultTab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">
+            <WhatsAppText id="s430" />
+          </TabsTrigger>
           {metaWebhook !== undefined && (
-            <TabsTrigger value="meta-webhook">Meta Webhook</TabsTrigger>
+            <TabsTrigger value="meta-webhook">
+              <WhatsAppText id="s431" />
+            </TabsTrigger>
           )}
           <TabsTrigger value="templates">
             <WhatsAppText id="s214" />
@@ -286,7 +293,9 @@ export function TabsDeviceDetail({
           <TabsTrigger value="webhook-log">
             <WhatsAppText id="s215" />
           </TabsTrigger>
-          <TabsTrigger value="webhooks">Webhooks</TabsTrigger>
+          <TabsTrigger value="webhooks">
+            <WhatsAppText id="s432" />
+          </TabsTrigger>
           <TabsTrigger value="audit-logs">
             <WhatsAppText id="s216" />
           </TabsTrigger>
@@ -340,7 +349,9 @@ export function TabsDeviceDetail({
         <TabsContent value="webhooks" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Outgoing Webhooks</CardTitle>
+              <CardTitle>
+                <WhatsAppText id="s433" />
+              </CardTitle>
               <CardDescription>
                 <WhatsAppText id="s221" />
               </CardDescription>
@@ -534,7 +545,9 @@ function WebhooksTab({
           <TableHeader>
             <TableRow>
               <TableHead>URL</TableHead>
-              <TableHead>Auth</TableHead>
+              <TableHead>
+                <WhatsAppText id="s434" />
+              </TableHead>
               <TableHead>
                 <WhatsAppText id="s302" />
               </TableHead>
@@ -568,7 +581,7 @@ function WebhooksTab({
                       href={`/portal/whatsapp/webhooks/${wh.id}`}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      Detail
+                      <WhatsAppText id="s445" />
                     </Link>
                   </Button>
                 </TableCell>
@@ -658,7 +671,7 @@ function TemplateTabContent({ deviceId }: { deviceId: string }) {
       loading={loading}
       error={error}
       onRetry={() => void reload()}
-      emptyMessage="No templates synced to this device"
+      emptyMessage={getWhatsAppText("s435")}
     />
   )
 }

@@ -248,7 +248,10 @@ export function CatalogExportImport({
                 id="catalog-json-textarea"
                 rows={5}
                 className="w-full rounded-md border border-input bg-background p-2 font-mono text-xs focus:ring-2 focus:ring-ring focus:outline-none"
-                placeholder='{ "schemaVersion": "2026-08.1", "catalogCode": "WHATSAPP", ... }'
+                placeholder={
+                  messages.pBillingAdminCatalogCatalogExportImport
+                    .jsonPlaceholderExample
+                }
                 value={jsonText}
                 onChange={(e) => {
                   setJsonText(e.target.value)

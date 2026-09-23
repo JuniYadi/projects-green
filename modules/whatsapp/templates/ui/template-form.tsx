@@ -684,7 +684,10 @@ export function TemplateForm({
                       setSlugManuallyEdited(true)
                       setSlug(formatTemplateSlug(e.target.value))
                     }}
-                    placeholder="order_status_update"
+                    placeholder={
+                      messages.pWhatsappTemplatesTemplateForm
+                        .slugPlaceholderExample
+                    }
                     disabled={approvedTemplateLocked}
                     className="font-mono text-sm"
                   />

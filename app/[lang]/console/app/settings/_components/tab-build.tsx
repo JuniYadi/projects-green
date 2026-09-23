@@ -127,7 +127,9 @@ export function TabBuild({
             id="build-command"
             value={buildCommand}
             onChange={(e) => setBuildCommand(e.target.value)}
-            placeholder="npm run build"
+            placeholder={
+              messages.pConsoleSettingsTabBuild.buildCommandPlaceholder
+            }
             className="h-9 text-xs"
           />
           <p className="text-[11px] text-muted-foreground">

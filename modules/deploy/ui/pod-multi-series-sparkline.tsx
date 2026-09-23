@@ -1,7 +1,10 @@
 "use client"
 
 import { useId } from "react"
+import { useParams } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type PodSeries = {
   id: string
@@ -31,6 +34,10 @@ export function PodMultiSeriesSparkline({
 }: PodMultiSeriesSparklineProps) {
   const rawId = useId()
   const componentId = `pod-sparkline-${rawId.replace(/[^a-zA-Z0-9-_]/g, "")}`
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployPodMultiSeriesSparkline
 
   if (!series || series.length === 0) {
     return (
@@ -41,7 +48,7 @@ export function PodMultiSeriesSparkline({
         )}
         style={{ height }}
       >
-        No telemetry data available
+        {t.emptyState}
       </div>
     )
   }
@@ -127,7 +134,7 @@ export function PodMultiSeriesSparkline({
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             role="img"
-            aria-label="Pod telemetry line chart"
+            aria-label={t.chartAriaLabel}
           >
             {/* Grid lines */}
             {tickValues.map((t, idx) => (

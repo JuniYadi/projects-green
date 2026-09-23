@@ -19,6 +19,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { useParams, useRouter } from "next/navigation"
 import { whatsappClient } from "@/lib/api/whatsapp-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type CatalogProduct = {
   id: string
@@ -35,6 +37,9 @@ export default function CatalogDetailPage() {
   const params = useParams<{ lang?: string; catalogId: string }>()
   const router = useRouter()
   const catalogId = params.catalogId!
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappCatalogsCatalogIdPageClient
 
   const [catalog, setCatalog] = React.useState<Record<string, unknown> | null>(
     null
@@ -93,9 +98,9 @@ export default function CatalogDetailPage() {
     return (
       <div className="flex flex-col items-center gap-4 py-16">
         <ShoppingBagOpen className="size-16 text-muted-foreground/40" />
-        <p className="text-muted-foreground">Catalog not found.</p>
+        <p className="text-muted-foreground">{t.notFound}</p>
         <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="mr-2 size-4" /> Back
+          <ArrowLeft className="mr-2 size-4" /> {t.back}
         </Button>
       </div>
     )
@@ -110,8 +115,8 @@ export default function CatalogDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold">{catalog.name as string}</h1>
           <p className="text-sm text-muted-foreground">
-            Meta ID: {catalog.metaCatalogId as string} &middot;{" "}
-            {products.length} products
+            {t.metaIdLabel} {catalog.metaCatalogId as string} &middot;{" "}
+            {t.productsCount.replace("{count}", String(products.length))}
           </p>
         </div>
         <Button onClick={handleSync} disabled={syncing}>
@@ -124,25 +129,21 @@ export default function CatalogDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Products</CardTitle>
-          <CardDescription>
-            Products cached from Meta Commerce Manager. Click sync to refresh.
-          </CardDescription>
+          <CardTitle>{t.productsTitle}</CardTitle>
+          <CardDescription>{t.productsDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {products.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <ShoppingBagOpen className="size-12 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                No products synced yet.
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noProductsYet}</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleSync}
                 disabled={syncing}
               >
-                Sync Now
+                {t.syncNow}
               </Button>
             </div>
           ) : (

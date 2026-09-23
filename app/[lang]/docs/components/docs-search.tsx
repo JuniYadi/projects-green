@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { MagnifyingGlass, ArrowRight, FileText } from "@phosphor-icons/react"
+import { useMessages } from "@/components/use-messages"
 
 export interface SearchableDoc {
   path: string
@@ -17,6 +18,7 @@ interface DocsSearchProps {
 }
 
 export function DocsSearch({ lang, documents }: DocsSearchProps) {
+  const t = useMessages(lang).pDocs
   const [query, setQuery] = React.useState("")
   const [isOpen, setIsOpen] = React.useState(false)
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -63,7 +65,7 @@ export function DocsSearch({ lang, documents }: DocsSearchProps) {
             setIsOpen(true)
           }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search documentation, guides, API parameters... (⌘K)"
+          placeholder={t.searchInputPlaceholder}
           className="h-12 w-full rounded-2xl border border-border/60 bg-card/80 pr-16 pl-11 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/70 focus:border-emerald-500/50 focus:bg-card focus:ring-4 focus:ring-emerald-500/10 focus:outline-none"
         />
         <kbd className="pointer-events-none absolute right-3 hidden items-center gap-1 rounded-md border border-border/60 bg-muted/60 px-2 py-0.5 font-mono text-[11px] font-medium text-muted-foreground sm:inline-flex">

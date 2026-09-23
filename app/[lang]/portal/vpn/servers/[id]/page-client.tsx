@@ -114,17 +114,15 @@ function TrafficList({
 
 function ProcessList({
   rows,
-  metric,
   messages,
 }: {
   rows: VpnServerProcessItem[]
-  metric: "cpu" | "memory"
-  messages?: ReturnType<typeof getMessages>["console"]["vpn"]["serverDetail"]
+  messages: ReturnType<typeof getMessages>["console"]["vpn"]["serverDetail"]
 }) {
   if (rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        {messages?.noProcessData ?? "No process data."}
+        {messages.noProcessData}
       </div>
     )
   }
@@ -132,12 +130,15 @@ function ProcessList({
     <div className="space-y-2">
       {rows.map((process) => (
         <div
-          key={`${metric}:${process.pid}:${process.command}`}
+          key={`${process.pid}:${process.command}`}
           className="flex items-center justify-between gap-3 text-sm"
         >
           <span className="truncate font-mono text-xs">{process.command}</span>
           <span className="text-xs whitespace-nowrap text-muted-foreground">
-            pid {process.pid} · CPU {process.cpu}% · MEM {process.memory}%
+            {messages.processUsage
+              .replace("{pid}", String(process.pid))
+              .replace("{cpu}", String(process.cpu))
+              .replace("{memory}", String(process.memory))}
           </span>
         </div>
       ))}
@@ -492,7 +493,7 @@ export default function VpnServerDetailPage() {
                     ? "Unavailable"
                     : `${metrics.resources.cpu.usedPercent.toFixed(1)}% / ${metrics.resources.cpu.totalCores ?? "?"} cores`
                 }
-                hint="usage / total"
+                hint={messages.hintUsageOverTotal}
               />
               <MetricCard
                 label={messages.memory}
@@ -502,7 +503,7 @@ export default function VpnServerDetailPage() {
                     ? "Unavailable"
                     : `${formatBytes(metrics.resources.memory.used)} / ${formatBytes(metrics.resources.memory.total)}`
                 }
-                hint="usage / total"
+                hint={messages.hintUsageOverTotal}
               />
               <MetricCard
                 label={messages.bandwidthMonth}
@@ -531,11 +532,7 @@ export default function VpnServerDetailPage() {
                 <h3 className="mb-3 text-sm font-semibold">
                   {messages.topCpuProcesses}
                 </h3>
-                <ProcessList
-                  rows={metrics.processes.cpu}
-                  metric="cpu"
-                  messages={messages}
-                />
+                <ProcessList rows={metrics.processes.cpu} messages={messages} />
               </div>
               <div className="rounded-lg border p-4">
                 <h3 className="mb-3 text-sm font-semibold">
@@ -543,7 +540,6 @@ export default function VpnServerDetailPage() {
                 </h3>
                 <ProcessList
                   rows={metrics.processes.memory}
-                  metric="memory"
                   messages={messages}
                 />
               </div>

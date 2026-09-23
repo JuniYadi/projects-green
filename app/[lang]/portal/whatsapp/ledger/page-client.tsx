@@ -389,17 +389,17 @@ export default function PortalWhatsAppLedgerPage() {
                   {(
                     summary.activeQuotaCredits ?? summary.activeCredits
                   ).toLocaleString("id-ID")}{" "}
-                  credits
+                  {messages.creditsUnit}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(
                     summary.quotaCredits ?? summary.totalCredits
                   ).toLocaleString("id-ID")}{" "}
-                  deducted,{" "}
+                  {messages.deductedLabel}{" "}
                   {(
                     summary.quotaRefundedCredits ?? summary.totalRefundedCredits
                   ).toLocaleString("id-ID")}{" "}
-                  refunded
+                  {messages.refundedLabel}
                 </p>
               </>
             )}
@@ -423,7 +423,7 @@ export default function PortalWhatsAppLedgerPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(summary.activePaygCount ?? 0).toLocaleString("id-ID")}{" "}
-                  messages billed to Saldo
+                  {messages.messagesBilledToSaldo}
                 </p>
               </>
             )}
@@ -447,7 +447,7 @@ export default function PortalWhatsAppLedgerPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(summary.activeQuotaCredits ?? 0).toLocaleString("id-ID")}{" "}
-                  quota +{" "}
+                  {messages.quotaPlus}{" "}
                   {(summary.activePaygCount ?? 0).toLocaleString("id-ID")} PAYG
                 </p>
               </>
@@ -472,9 +472,9 @@ export default function PortalWhatsAppLedgerPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {(summary.quotaRefundedCredits ?? 0).toLocaleString("id-ID")}{" "}
-                  quota + Rp{" "}
+                  {messages.quotaPlusRp}{" "}
                   {(summary.paygRefundedAmount ?? 0).toLocaleString("id-ID")}{" "}
-                  balance
+                  {messages.balanceLabel}
                 </p>
               </>
             )}
@@ -767,7 +767,7 @@ export default function PortalWhatsAppLedgerPage() {
                                 variant="outline"
                                 className="border-amber-500/30 bg-amber-500/10 text-[9px] font-normal text-amber-600 dark:text-amber-400"
                               >
-                                PAYG Saldo
+                                {messages.paygSaldoBadge}
                               </Badge>
                             </div>
                           ) : (
@@ -777,7 +777,7 @@ export default function PortalWhatsAppLedgerPage() {
                                 {entry.quotaValue} {entry.quotaKey || "unit"}
                               </span>
                               <span className="text-[9px] font-normal text-muted-foreground">
-                                Package Quota
+                                {messages.packageQuotaBadge}
                               </span>
                             </div>
                           )}

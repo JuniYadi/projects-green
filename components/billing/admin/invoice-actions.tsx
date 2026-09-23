@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { useMessages } from "@/components/use-messages"
 
 type InvoiceStatus = "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE"
 
@@ -32,6 +33,7 @@ export function InvoiceActions({
   createdAt,
 }: InvoiceActionsProps) {
   const router = useRouter()
+  const t = useMessages().sharedComponents.invoiceActions
   const [actionState, setActionState] = useState<ActionState>("idle")
   const [showVoidDialog, setShowVoidDialog] = useState(false)
 
@@ -125,17 +127,13 @@ export function InvoiceActions({
         <Dialog open={showVoidDialog} onOpenChange={setShowVoidDialog}>
           <DialogTrigger asChild>
             <Button size="sm" variant="destructive">
-              Void
+              {t.voidAction}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Void Invoice</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to void this invoice? This action cannot
-                be undone. The invoice will be marked as void and no longer
-                valid for payment.
-              </DialogDescription>
+              <DialogTitle>{t.voidTitle}</DialogTitle>
+              <DialogDescription>{t.voidDescription}</DialogDescription>
             </DialogHeader>
             <DialogFooter>
               <Button
@@ -143,7 +141,7 @@ export function InvoiceActions({
                 onClick={() => setShowVoidDialog(false)}
                 disabled={actionState === "submitting"}
               >
-                Cancel
+                {t.cancel}
               </Button>
               <Button
                 variant="destructive"

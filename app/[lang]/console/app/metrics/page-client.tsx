@@ -258,7 +258,7 @@ export default function MetricsPage() {
               <TabMetrics cpuLimit="1.0" memLimit="512Mi" />
             ) : (
               <div className="rounded-xl border border-dashed border-border bg-muted/10 p-8 text-center text-sm text-muted-foreground">
-                Select an application to view its metrics.
+                {messages.console.app.metrics.selectPrompt}
               </div>
             )}
           </>

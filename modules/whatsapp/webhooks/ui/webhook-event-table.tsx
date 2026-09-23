@@ -105,12 +105,7 @@ function getTypeBadgeConfig(eventType: string) {
 function getDeliveryBadgeConfig(status: string | null | undefined): {
   label: string
   variant:
-    | "success"
-    | "destructive"
-    | "warning"
-    | "default"
-    | "secondary"
-    | "outline"
+    "success" | "destructive" | "warning" | "default" | "secondary" | "outline"
   className?: string
 } {
   const s = (status || "").toUpperCase()
@@ -344,7 +339,9 @@ export function WebhookEventTable({
                 <TableHead>
                   <WhatsAppText id="s306" />
                 </TableHead>
-                <TableHead className="w-16 text-right">Inspect</TableHead>
+                <TableHead className="w-16 text-right">
+                  <WhatsAppText id="s436" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -449,7 +446,7 @@ export function WebhookEventTable({
                             setSelectedEventForSheet(event)
                           }}
                         >
-                          Details →
+                          <WhatsAppText id="s437" />
                         </Button>
                       </TableCell>
                     </TableRow>

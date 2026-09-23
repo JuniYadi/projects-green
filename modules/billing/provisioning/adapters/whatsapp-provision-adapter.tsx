@@ -1,7 +1,9 @@
 "use client"
 
+import { useParams } from "next/navigation"
 import { z } from "zod"
 
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
@@ -107,18 +109,21 @@ export function WhatsAppPlanConfigComponent({
   disabled?: boolean
   errors?: Record<string, string>
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(
+    params?.lang
+  ).pBillingProvisioningAdaptersWhatsAppProvisionAdapter
+
   return (
     <section className="space-y-4 rounded-md border p-4">
       <div>
-        <h3 className="font-medium">WhatsApp provisioning</h3>
-        <p className="text-sm text-muted-foreground">
-          Set monthly message quotas and device capabilities for this plan.
-        </p>
+        <h3 className="font-medium">{messages.title}</h3>
+        <p className="text-sm text-muted-foreground">{messages.description}</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
         <NumberField
           id="whatsapp-quota-out"
-          label="Quota out (messages/month)"
+          label={messages.quotaOutLabel}
           value={value.quotaOut}
           min={1}
           onChange={(quotaOut) => onChange({ ...value, quotaOut })}
@@ -127,7 +132,7 @@ export function WhatsAppPlanConfigComponent({
         />
         <NumberField
           id="whatsapp-quota-in"
-          label="Quota in (messages/month)"
+          label={messages.quotaInLabel}
           value={value.quotaIn}
           min={1}
           onChange={(quotaIn) => onChange({ ...value, quotaIn })}
@@ -136,7 +141,7 @@ export function WhatsAppPlanConfigComponent({
         />
         <NumberField
           id="whatsapp-max-devices"
-          label="Max devices"
+          label={messages.maxDevicesLabel}
           value={value.maxDevices}
           min={1}
           onChange={(maxDevices) => onChange({ ...value, maxDevices })}
@@ -146,9 +151,9 @@ export function WhatsAppPlanConfigComponent({
       </div>
       <div className="flex items-center justify-between gap-4 border-t pt-3">
         <div>
-          <Label htmlFor="whatsapp-broadcast">Broadcast messaging</Label>
+          <Label htmlFor="whatsapp-broadcast">{messages.broadcastLabel}</Label>
           <p className="text-xs text-muted-foreground">
-            Allow this plan to send broadcast campaigns.
+            {messages.broadcastDescription}
           </p>
         </div>
         <Switch

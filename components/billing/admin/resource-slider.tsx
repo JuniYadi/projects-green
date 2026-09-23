@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { Slider } from "@/components/ui/slider"
+import { useMessages } from "@/components/use-messages"
 
 type ResourceType = "cpu" | "memory"
 
@@ -40,6 +41,7 @@ export function ResourceSlider({
   priceEstimate,
 }: ResourceSliderProps) {
   const config = getResourceConfig(resource)
+  const t = useMessages().sharedComponents.resourceSlider
 
   const handleValueChange = (values: number[]) => {
     const newValue = values[0] ?? config.min
@@ -71,7 +73,7 @@ export function ResourceSlider({
       </div>
       {priceEstimate && (
         <span className="text-xs text-muted-foreground">
-          Est. {priceEstimate}
+          {t.estimatePrefix} {priceEstimate}
         </span>
       )}
     </div>

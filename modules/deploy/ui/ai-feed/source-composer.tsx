@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowRight, GitBranch } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 type SourceComposerProps = {
   onSubmit: (url: string) => void
   disabled?: boolean
@@ -17,6 +20,10 @@ function SourceComposer({
   disabled = false,
   placeholder = "Paste a GitHub repository URL to deploy…",
 }: SourceComposerProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployAiFeedSourceComposer
   const [value, setValue] = useState("")
 
   const submit = () => {
@@ -49,7 +56,7 @@ function SourceComposer({
         size="icon-sm"
         onClick={submit}
         disabled={disabled}
-        aria-label="Submit repository URL"
+        aria-label={t.submitAriaLabel}
       >
         <ArrowRight />
       </Button>

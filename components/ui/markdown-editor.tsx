@@ -5,6 +5,7 @@ import { useState, useRef, useImperativeHandle } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { useMessages } from "@/components/use-messages"
 import { sanitizeHtml } from "@/lib/sanitize-html"
 
 type MarkdownEditorProps = {
@@ -39,6 +40,7 @@ export const MarkdownEditor = React.forwardRef<
     const [activeTab, setActiveTab] = useState<"write" | "preview">("write")
     const [previewHtml, setPreviewHtml] = useState<string>("")
     const [isLoading, setIsLoading] = useState(false)
+    const t = useMessages().sharedComponents.markdownEditor
 
     const handleTabChange = async (tab: "write" | "preview") => {
       setActiveTab(tab)
@@ -151,7 +153,7 @@ export const MarkdownEditor = React.forwardRef<
                   : "text-muted-foreground hover:text-white"
               }`}
             >
-              Write
+              {t.writeTab}
             </Button>
             <Button
               type="button"
@@ -164,7 +166,7 @@ export const MarkdownEditor = React.forwardRef<
                   : "text-muted-foreground hover:text-white"
               }`}
             >
-              Preview
+              {t.previewTab}
             </Button>
           </div>
 
@@ -176,7 +178,7 @@ export const MarkdownEditor = React.forwardRef<
                 variant="ghost"
                 size="icon"
                 onClick={() => handleToolbarClick("bold")}
-                title="Bold"
+                title={t.bold}
                 className="h-6 w-6 text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                 disabled={disabled}
               >
@@ -189,7 +191,7 @@ export const MarkdownEditor = React.forwardRef<
                 variant="ghost"
                 size="icon"
                 onClick={() => handleToolbarClick("italic")}
-                title="Italic"
+                title={t.italic}
                 className="h-6 w-6 text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                 disabled={disabled}
               >
@@ -202,7 +204,7 @@ export const MarkdownEditor = React.forwardRef<
                 variant="ghost"
                 size="icon"
                 onClick={() => handleToolbarClick("code")}
-                title="Code"
+                title={t.code}
                 className="h-6 w-6 text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                 disabled={disabled}
               >
@@ -215,7 +217,7 @@ export const MarkdownEditor = React.forwardRef<
                 variant="ghost"
                 size="icon"
                 onClick={() => handleToolbarClick("link")}
-                title="Link"
+                title={t.link}
                 className="h-6 w-6 text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                 disabled={disabled}
               >
@@ -228,7 +230,7 @@ export const MarkdownEditor = React.forwardRef<
                 variant="ghost"
                 size="icon"
                 onClick={() => handleToolbarClick("list")}
-                title="Bullet List"
+                title={t.bulletList}
                 className="h-6 w-6 text-muted-foreground hover:bg-white/[0.04] hover:text-white"
                 disabled={disabled}
               >

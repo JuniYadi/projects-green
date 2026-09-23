@@ -20,6 +20,9 @@ import {
   DEFAULT_FILTER_STATE,
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +62,10 @@ function makeOrganizationLabel(org: OrganizationListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookLogsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappWebhookLogsPageClient
   // Device list (for filter dropdown)
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   // Organizations list (for filter dropdown)
@@ -196,10 +203,8 @@ export default function PortalWhatsAppWebhookLogsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Webhook Logs</h1>
-        <p className="text-muted-foreground">
-          View and inspect incoming WhatsApp webhook events across all devices.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
+        <p className="text-muted-foreground">{t.description}</p>
       </div>
 
       {/* Filter Bar — device filter enabled */}
@@ -224,15 +229,13 @@ export default function PortalWhatsAppWebhookLogsPage() {
       {/* Events Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Event Log</CardTitle>
-          <CardDescription>Webhook events for all devices</CardDescription>
+          <CardTitle>{t.eventLogTitle}</CardTitle>
+          <CardDescription>{t.eventLogDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {!organizations.length && !devices.length && pageState !== "error" ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                No devices or organizations found.
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noDevicesOrgs}</p>
             </div>
           ) : (
             <WebhookEventTable

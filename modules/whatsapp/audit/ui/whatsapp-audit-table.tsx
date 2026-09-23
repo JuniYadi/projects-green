@@ -152,7 +152,9 @@ function DetailsViewer({ details }: { details: Record<string, unknown> }) {
           {copied ? (
             <>
               <CheckCircle className="size-3.5 text-emerald-500" />
-              <span className="font-medium text-emerald-600">Copied</span>
+              <span className="font-medium text-emerald-600">
+                <WhatsAppText id="s359" />
+              </span>
             </>
           ) : (
             <>
@@ -317,7 +319,9 @@ export function AuditLogTable({
                 <TableHead>
                   <WhatsAppText id="s306" />
                 </TableHead>
-                <TableHead className="w-16 text-right">Inspect</TableHead>
+                <TableHead className="w-16 text-right">
+                  <WhatsAppText id="s436" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -430,7 +434,7 @@ export function AuditLogTable({
                               variant="secondary"
                               className="h-4 px-1.5 text-[10px] font-normal"
                             >
-                              Platform Support
+                              <WhatsAppText id="s438" />
                             </Badge>
                           </div>
                         ) : (
@@ -451,7 +455,7 @@ export function AuditLogTable({
                             setSelectedLogForSheet(log)
                           }}
                         >
-                          Details →
+                          <WhatsAppText id="s437" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -476,7 +480,9 @@ export function AuditLogTable({
                               {log.ip ?? "—"}
                             </div>
                             <div>
-                              <span className="font-medium">User Agent:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s439" />
+                              </span>{" "}
                               {log.userAgent ?? "—"}
                             </div>
                             <div>
@@ -498,7 +504,9 @@ export function AuditLogTable({
                               {log.correlationId ?? "—"}
                             </div>
                             <div>
-                              <span className="font-medium">Duration:</span>{" "}
+                              <span className="font-medium">
+                                <WhatsAppText id="s440" />
+                              </span>{" "}
                               {log.durationMs != null
                                 ? `${log.durationMs}ms`
                                 : "—"}

@@ -276,7 +276,7 @@ export function TabDomains({
               <span>{t.dnsTargetsLabel}</span>
               {isVerified && (
                 <span className="ml-1 font-normal text-emerald-500 lowercase">
-                  ✓ verified
+                  {t.verifiedLabel}
                 </span>
               )}
             </button>
@@ -471,7 +471,9 @@ export function TabDomains({
                 className="flex items-center gap-1.5 text-left text-xs font-semibold text-foreground hover:text-primary"
               >
                 <CaretDown size={14} />
-                <span>{t.allowlistLabel} (IP Restriction)</span>
+                <span>
+                  {t.allowlistLabel} ({t.ipRestrictionSuffix})
+                </span>
                 {domain.allowlistMode === "ALLOWLIST_ONLY" ? (
                   <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-500 uppercase">
                     {t.allowlistRestricted} ({domain.allowlistEntries.length})
@@ -807,7 +809,7 @@ export function TabDomains({
                 <p className="text-[11px] leading-normal text-muted-foreground">
                   {t.trustHeadersHintPrefix}
                   <code className="rounded border border-border/50 bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground">
-                    TRUST_PROXIES=*
+                    {t.trustProxyHeaderExample}
                   </code>
                   {t.trustHeadersHintSuffix}
                 </p>
@@ -823,7 +825,7 @@ export function TabDomains({
                 <p className="text-[11px] leading-normal font-medium text-muted-foreground">
                   {t.ipResolutionBody2Prefix}
                   <code className="font-mono text-foreground">
-                    X-Forwarded-For
+                    {t.ipResolutionHeaderExample}
                   </code>
                   {t.ipResolutionBody2Suffix}
                 </p>

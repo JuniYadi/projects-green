@@ -200,9 +200,7 @@ export default function WidgetEmbedCustomizer({
   const handleSave = async () => {
     if (!currentAgent) return
     if (!isDomainsValid) {
-      toast.error(
-        `${messages.invalidDomainError} ${invalidDomains.join(", ")}`
-      )
+      toast.error(`${messages.invalidDomainError} ${invalidDomains.join(", ")}`)
       return
     }
 
@@ -255,9 +253,7 @@ export default function WidgetEmbedCustomizer({
         }
       >
         <div>
-          <h2 className="text-xl font-bold tracking-tight">
-            {messages.title}
-          </h2>
+          <h2 className="text-xl font-bold tracking-tight">{messages.title}</h2>
           <p className="text-xs text-muted-foreground">{messages.subtitle}</p>
         </div>
 
@@ -294,14 +290,8 @@ export default function WidgetEmbedCustomizer({
         <div className="space-y-6 lg:col-span-6">
           <Card className="border-border">
             <CardHeader className="pb-4">
-              <CardTitle
-                className="flex items-center gap-2 text-sm font-semibold"
-              >
-                <Sparkle
-                  size={16}
-                  weight="fill"
-                  className="text-emerald-500"
-                />
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Sparkle size={16} weight="fill" className="text-emerald-500" />
                 <span>{messages.customizerCardTitle}</span>
               </CardTitle>
               <CardDescription className="text-xs">
@@ -338,8 +328,7 @@ export default function WidgetEmbedCustomizer({
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {COLOR_PRESETS.map((preset) => {
-                      const label =
-                        presetLabels[preset.label] || preset.label
+                      const label = presetLabels[preset.label] || preset.label
                       return (
                         <button
                           key={preset.hex}
@@ -409,10 +398,7 @@ export default function WidgetEmbedCustomizer({
 
               {/* Welcome Message */}
               <div className="space-y-2">
-                <Label
-                  htmlFor={welcomeInputId}
-                  className="text-xs font-medium"
-                >
+                <Label htmlFor={welcomeInputId} className="text-xs font-medium">
                   {messages.welcomeMessageLabel}
                 </Label>
                 <Input
@@ -434,7 +420,10 @@ export default function WidgetEmbedCustomizer({
                     {messages.allowedDomainsLabel}
                   </Label>
                   <span className="text-[10px] text-muted-foreground">
-                    {parsedDomains.length} domain
+                    {messages.domainCount.replace(
+                      "{count}",
+                      String(parsedDomains.length)
+                    )}
                   </span>
                 </div>
                 <Textarea
@@ -457,14 +446,11 @@ export default function WidgetEmbedCustomizer({
                 {/* Validation message if invalid */}
                 {!isDomainsValid && (
                   <div
-                    className={
-                      "flex items-center gap-1.5 text-xs text-red-500"
-                    }
+                    className={"flex items-center gap-1.5 text-xs text-red-500"}
                   >
                     <WarningCircle size={14} />
                     <span>
-                      {messages.invalidDomainError}{" "}
-                      {invalidDomains.join(", ")}
+                      {messages.invalidDomainError} {invalidDomains.join(", ")}
                     </span>
                   </div>
                 )}
@@ -521,10 +507,10 @@ export default function WidgetEmbedCustomizer({
                 <Badge
                   variant="outline"
                   className={
-                    "font-mono text-[10px] uppercase text-muted-foreground"
+                    "font-mono text-[10px] text-muted-foreground uppercase"
                   }
                 >
-                  Live Preview
+                  {messages.livePreviewBadge}
                 </Badge>
               </div>
             </CardHeader>
@@ -575,17 +561,15 @@ export default function WidgetEmbedCustomizer({
                     <div className="flex items-center gap-2">
                       <div className="h-4 w-4 rounded bg-muted-foreground/30" />
                       <span className="text-xs font-bold tracking-tight">
-                        {currentAgent?.name || "Official Store"}
+                        {currentAgent?.name || messages.defaultStoreName}
                       </span>
                     </div>
                     <div
-                      className={
-                        "flex gap-2 text-[10px] text-muted-foreground"
-                      }
+                      className={"flex gap-2 text-[10px] text-muted-foreground"}
                     >
-                      <span>Beranda</span>
-                      <span>Katalog</span>
-                      <span>Kontak</span>
+                      <span>{messages.navHome}</span>
+                      <span>{messages.navCatalog}</span>
+                      <span>{messages.navContact}</span>
                     </div>
                   </div>
 
@@ -602,21 +586,17 @@ export default function WidgetEmbedCustomizer({
                         "font-medium text-muted-foreground"
                       }
                     >
-                      Promo Spesial
+                      {messages.promoSpecial}
                     </span>
                     <h3 className="mt-1.5 text-xs font-semibold">
-                      Selamat Datang di Website Resmi
+                      {messages.welcomeHeading}
                     </h3>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      Belanja produk terpercaya dengan layanan asisten AI 24/7.
+                      {messages.welcomeDescription}
                     </p>
                     <div className="mt-3 flex gap-2">
-                      <div
-                        className="h-6 w-16 rounded bg-muted-foreground/20"
-                      />
-                      <div
-                        className="h-6 w-20 rounded bg-muted-foreground/10"
-                      />
+                      <div className="h-6 w-16 rounded bg-muted-foreground/20" />
+                      <div className="h-6 w-20 rounded bg-muted-foreground/10" />
                     </div>
                   </div>
 
@@ -627,9 +607,7 @@ export default function WidgetEmbedCustomizer({
                         "h-14 rounded border border-border/30 bg-muted/10 p-2"
                       }
                     >
-                      <div
-                        className="h-2 w-12 rounded bg-muted-foreground/20"
-                      />
+                      <div className="h-2 w-12 rounded bg-muted-foreground/20" />
                       <div
                         className={
                           "mt-1.5 h-2 w-16 rounded bg-muted-foreground/10"
@@ -641,9 +619,7 @@ export default function WidgetEmbedCustomizer({
                         "h-14 rounded border border-border/30 bg-muted/10 p-2"
                       }
                     >
-                      <div
-                        className="h-2 w-10 rounded bg-muted-foreground/20"
-                      />
+                      <div className="h-2 w-10 rounded bg-muted-foreground/20" />
                       <div
                         className={
                           "mt-1.5 h-2 w-14 rounded bg-muted-foreground/10"
@@ -681,16 +657,19 @@ export default function WidgetEmbedCustomizer({
                         </div>
                         <div className="text-left leading-tight">
                           <p className="text-xs font-medium">
-                            {currentAgent?.name || "Asisten AI"}
+                            {currentAgent?.name ||
+                              messages.defaultAssistantName}
                           </p>
-                          <span className="text-[10px] opacity-80">Online</span>
+                          <span className="text-[10px] opacity-80">
+                            {messages.onlineStatus}
+                          </span>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => setIsPreviewChatOpen(false)}
                         className="rounded p-1 text-white/80 hover:bg-white/10"
-                        aria-label="Tutup Pratinjau Chat"
+                        aria-label={messages.closePreviewAria}
                       >
                         <X size={13} weight="bold" />
                       </button>
@@ -716,7 +695,7 @@ export default function WidgetEmbedCustomizer({
                             "text-foreground shadow-2xs"
                           }
                         >
-                          {welcomeMessage || "Halo! Ada yang bisa kami bantu?"}
+                          {welcomeMessage || messages.defaultWelcomeMessage}
                         </div>
                       </div>
                     </div>
@@ -733,7 +712,7 @@ export default function WidgetEmbedCustomizer({
                           "text-[10px] text-muted-foreground"
                         }
                       >
-                        Ketik pesan...
+                        {messages.previewInputPlaceholder}
                       </div>
                       <div
                         className={
@@ -759,7 +738,7 @@ export default function WidgetEmbedCustomizer({
                     type="button"
                     onClick={() => setIsPreviewChatOpen(!isPreviewChatOpen)}
                     style={{ backgroundColor: color }}
-                    aria-label="Toggle widget launcher preview"
+                    aria-label={messages.togglePreviewAria}
                     className={
                       "flex h-11 w-11 items-center justify-center " +
                       "rounded-full text-white shadow-md " +
@@ -834,7 +813,7 @@ export default function WidgetEmbedCustomizer({
                   size="sm"
                   variant="secondary"
                   onClick={() => handleCopy(htmlSnippet, "html")}
-                  className="absolute right-3 top-3 h-7 gap-1.5 text-xs"
+                  className="absolute top-3 right-3 h-7 gap-1.5 text-xs"
                 >
                   {copiedSnippet === "html" ? (
                     <>
@@ -870,7 +849,7 @@ export default function WidgetEmbedCustomizer({
                   size="sm"
                   variant="secondary"
                   onClick={() => handleCopy(nextjsSnippet, "nextjs")}
-                  className="absolute right-3 top-3 h-7 gap-1.5 text-xs"
+                  className="absolute top-3 right-3 h-7 gap-1.5 text-xs"
                 >
                   {copiedSnippet === "nextjs" ? (
                     <>

@@ -432,7 +432,7 @@ export function ServerForm({
                   clearTestResult()
                   setSshUser(e.target.value)
                 }}
-                placeholder="root"
+                placeholder={messages.pPortalVpnServerForm.sshUserPlaceholder}
               />
             </div>
           </div>

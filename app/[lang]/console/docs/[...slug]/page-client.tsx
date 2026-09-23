@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { useParams } from "next/navigation"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -25,7 +27,9 @@ type DocResponse = {
 } & Partial<DocDetail>
 
 export default function DocDetailPage() {
-  const params = useParams()
+  const params = useParams<{ lang?: string; slug: string | string[] }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).pConsolePages.docsDetail
   const slug = Array.isArray(params.slug) ? params.slug.join("/") : params.slug
   const path = `/${slug}`
 
@@ -61,7 +65,7 @@ export default function DocDetailPage() {
       <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <Alert variant="destructive">
           <Warning className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>{t.errorTitle}</AlertTitle>
           <AlertDescription>
             {data.message || "Could not load documentation."}
           </AlertDescription>
@@ -69,7 +73,7 @@ export default function DocDetailPage() {
         <Button asChild variant="outline" className="w-fit">
           <Link href="/console/docs">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Docs
+            {t.backToDocs}
           </Link>
         </Button>
       </div>
@@ -92,14 +96,14 @@ export default function DocDetailPage() {
 
       <div className="grid gap-6">
         <section>
-          <h2 className="mb-2 text-xl font-semibold">Purpose</h2>
+          <h2 className="mb-2 text-xl font-semibold">{t.purpose}</h2>
           <p className="leading-relaxed text-muted-foreground">
             {data?.purpose}
           </p>
         </section>
 
         <section>
-          <h2 className="mb-2 text-xl font-semibold">How-To</h2>
+          <h2 className="mb-2 text-xl font-semibold">{t.howTo}</h2>
           <ul className="list-inside list-decimal space-y-2 text-muted-foreground">
             {data?.howTo?.map((step: string, i: number) => (
               <li key={i} className="pl-2">
@@ -111,7 +115,7 @@ export default function DocDetailPage() {
 
         {data?.notes && data.notes.length > 0 && (
           <section>
-            <h2 className="mb-2 text-xl font-semibold">Notes</h2>
+            <h2 className="mb-2 text-xl font-semibold">{t.notes}</h2>
             <ul className="list-inside list-disc space-y-2 text-muted-foreground">
               {data.notes.map((note: string, i: number) => (
                 <li key={i} className="pl-2">
@@ -123,10 +127,10 @@ export default function DocDetailPage() {
         )}
 
         <div className="border-t pt-6 text-xs text-muted-foreground">
-          Last updated:{" "}
+          {t.lastUpdated}{" "}
           {data?.updatedAt
-            ? new Date(data.updatedAt).toLocaleDateString()
-            : "Unknown"}
+            ? new Date(data.updatedAt).toLocaleDateString(locale)
+            : t.unknownUpdatedAt}
         </div>
       </div>
     </div>

@@ -9,12 +9,14 @@ import {
   Database,
   LockKey,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function TestimonialsSection() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const isId = locale === "id"
+  const t = getMessages(locale).pHomeTestimonials
 
   const highlights = [
     {
@@ -89,21 +91,10 @@ export function TestimonialsSection() {
             </span>
           </div>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            {isId ? (
-              <>
-                Infrastruktur yang dibangun untuk{" "}
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  keberlanjutan bisnis
-                </span>
-              </>
-            ) : (
-              <>
-                Infrastructure engineered for{" "}
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  mission-critical workloads
-                </span>
-              </>
-            )}
+            {t.headingStart}{" "}
+            <span className="text-emerald-600 dark:text-emerald-400">
+              {t.headingHighlight}
+            </span>
           </h2>
           <p className="mx-auto max-w-2xl text-base text-muted-foreground sm:text-lg">
             {isId

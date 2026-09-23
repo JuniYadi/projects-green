@@ -8,12 +8,19 @@ import { PlusIcon } from "@phosphor-icons/react"
 import { AdjustmentTable } from "@/components/billing/admin/adjustment-table"
 import { AdjustmentForm } from "@/components/billing/admin/adjustment-form"
 import { getAdminAdjustments, type AdminAdjustment } from "@/lib/billing-client"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type AdjustmentsTabProps = {
   orgId: string
 }
 
 export function AdjustmentsTab({ orgId }: AdjustmentsTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOrgTabsAdjustmentsTab
   const [adjustments, setAdjustments] = useState<AdminAdjustment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -43,7 +50,7 @@ export function AdjustmentsTab({ orgId }: AdjustmentsTabProps) {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load adjustments: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )
@@ -52,10 +59,10 @@ export function AdjustmentsTab({ orgId }: AdjustmentsTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <CardTitle className="text-base font-medium">Adjustments</CardTitle>
+        <CardTitle className="text-base font-medium">{t.title}</CardTitle>
         <Button size="sm" onClick={() => setFormOpen(true)}>
           <PlusIcon className="mr-1 h-4 w-4" />
-          New Adjustment
+          {t.newAdjustment}
         </Button>
       </div>
 

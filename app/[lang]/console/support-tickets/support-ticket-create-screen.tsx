@@ -492,11 +492,13 @@ export function SupportTicketCreateScreen({
               data-testid="ticket-credential-warning"
               role="status"
             >
-              <AlertTitle>Possible credential detected</AlertTitle>
+              <AlertTitle>
+                {messages.console.supportTickets.possibleCredentialTitle}
+              </AlertTitle>
               <AlertDescription>
-                The {credentialWarning.field} looks like a credential (
-                {credentialWarning.patterns.join(", ")}). Move it to the Secure
-                details (encrypted) tab.
+                {messages.console.supportTickets.possibleCredentialDetailedBody
+                  .replace("{field}", credentialWarning.field)
+                  .replace("{patterns}", credentialWarning.patterns.join(", "))}
               </AlertDescription>
             </Alert>
           ) : null}

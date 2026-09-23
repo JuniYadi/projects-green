@@ -566,12 +566,18 @@ export default function AdminStacksPage() {
                         )}
                         {stack.cpu && (
                           <div className="font-mono text-[11px]">
-                            {stack.cpu}m CPU
+                            {messages.cpuSummary.replace(
+                              "{value}",
+                              String(stack.cpu)
+                            )}
                           </div>
                         )}
                         {stack.memory && (
                           <div className="font-mono text-[11px]">
-                            {stack.memory}Mi RAM
+                            {messages.memorySummary.replace(
+                              "{value}",
+                              String(stack.memory)
+                            )}
                           </div>
                         )}
                       </div>

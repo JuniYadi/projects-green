@@ -156,7 +156,7 @@ export function TabOverview({
                     {messages.repository}
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    acme/laravel-shop
+                    {messages.repositoryExample}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -165,7 +165,7 @@ export function TabOverview({
                   </span>
                   <span className="inline-flex items-center gap-1 text-sm font-bold text-primary">
                     <GitBranch size={14} />
-                    main
+                    {messages.branchExample}
                   </span>
                 </div>
               </div>
@@ -179,7 +179,7 @@ export function TabOverview({
                     d4a7d0e
                   </span>
                   <span className="truncate text-xs font-medium text-muted-foreground">
-                    feat: optimize product loading speed
+                    {messages.commitMessageExample}
                   </span>
                 </div>
               </div>
@@ -338,7 +338,9 @@ export function TabOverview({
               </div>
               <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
                 <span>{messages.targetPort}</span>
-                <span className="text-foreground">80 / 8080 (TCP)</span>
+                <span className="text-foreground">
+                  {messages.targetPortExample}
+                </span>
               </div>
               <div className="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
                 <span>{messages.replicas}</span>

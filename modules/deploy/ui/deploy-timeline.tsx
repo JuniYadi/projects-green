@@ -136,11 +136,17 @@ function formatDuration(ms: number | null): string {
   return rem === 0 ? `${minutes}m` : `${minutes}m ${rem}s`
 }
 
-function StepIcon({ state }: { state: StepUiState }) {
+function StepIcon({
+  state,
+  states,
+}: {
+  state: StepUiState
+  states: TimelineMessages["states"]
+}) {
   if (state === "completed") {
     return (
       <CheckIcon
-        aria-label="Completed"
+        aria-label={states.completed}
         className="size-4 text-emerald-600"
         weight="bold"
       />
@@ -149,7 +155,7 @@ function StepIcon({ state }: { state: StepUiState }) {
   if (state === "active") {
     return (
       <Spinner
-        aria-label="In progress"
+        aria-label={states.active}
         className="size-4 animate-spin text-blue-600"
       />
     )
@@ -157,7 +163,7 @@ function StepIcon({ state }: { state: StepUiState }) {
   if (state === "failed") {
     return (
       <WarningCircle
-        aria-label="Failed"
+        aria-label={states.failed}
         className="size-4 text-destructive"
         weight="fill"
       />
@@ -165,12 +171,15 @@ function StepIcon({ state }: { state: StepUiState }) {
   }
   if (state === "skipped") {
     return (
-      <XIcon aria-label="Skipped" className="size-4 text-muted-foreground" />
+      <XIcon
+        aria-label={states.skipped}
+        className="size-4 text-muted-foreground"
+      />
     )
   }
   return (
     <span
-      aria-label="Pending"
+      aria-label={states.pending}
       className="size-4 rounded-full border border-border"
     />
   )
@@ -197,44 +206,44 @@ export function DeployStepTimeline({
   const t = getMessages(locale).console.app.timeline
 
   const getStepLabel = (step: { id: string; label: string }): string => {
-      switch (step.id) {
-        case "queued-init":
-        case "queued":
-          return t.steps.queuedInit ?? t.steps.queued
-        case "jenkins-build":
-        case "jenkins-running":
-          return t.steps.jenkinsBuild ?? t.steps.jenkinsRunning
-        case "artifacts-scan":
-        case "image-tag-received":
-          return t.steps.artifactsScan ?? t.steps.imageTagReceived
-        case "gitops-config":
-        case "gitops-committed":
-          return t.steps.gitopsConfig ?? t.steps.gitopsCommitted
-        case "cloud-rollout":
-        case "argocd-sync-started":
-          return t.steps.cloudRollout ?? t.steps.argocdSyncStarted
-        case "live-serving":
-        case "live":
-          return t.steps.liveServing ?? t.steps.live
-        case "monitor-wait":
-          return t.steps.monitorWait
-        case "monitor-picked-up":
-          return t.steps.monitorPickedUp
-        case "jenkins-triggered":
-          return t.steps.jenkinsTriggered
-        case "jenkins-queued":
-          return t.steps.jenkinsQueued
-        case "image-pushed":
-          return t.steps.imagePushed
-        case "argocd-synced":
-          return t.steps.argocdSynced
-        case "pods-ready":
-          return t.steps.podsReady
-        case "base-image-ready":
-          return t.steps.templateReady
-        default:
-          return step.label
-      }
+    switch (step.id) {
+      case "queued-init":
+      case "queued":
+        return t.steps.queuedInit ?? t.steps.queued
+      case "jenkins-build":
+      case "jenkins-running":
+        return t.steps.jenkinsBuild ?? t.steps.jenkinsRunning
+      case "artifacts-scan":
+      case "image-tag-received":
+        return t.steps.artifactsScan ?? t.steps.imageTagReceived
+      case "gitops-config":
+      case "gitops-committed":
+        return t.steps.gitopsConfig ?? t.steps.gitopsCommitted
+      case "cloud-rollout":
+      case "argocd-sync-started":
+        return t.steps.cloudRollout ?? t.steps.argocdSyncStarted
+      case "live-serving":
+      case "live":
+        return t.steps.liveServing ?? t.steps.live
+      case "monitor-wait":
+        return t.steps.monitorWait
+      case "monitor-picked-up":
+        return t.steps.monitorPickedUp
+      case "jenkins-triggered":
+        return t.steps.jenkinsTriggered
+      case "jenkins-queued":
+        return t.steps.jenkinsQueued
+      case "image-pushed":
+        return t.steps.imagePushed
+      case "argocd-synced":
+        return t.steps.argocdSynced
+      case "pods-ready":
+        return t.steps.podsReady
+      case "base-image-ready":
+        return t.steps.templateReady
+      default:
+        return step.label
+    }
   }
   const [fetchedStatus, setFetchedStatus] = useState<FetchedStatus | null>(null)
   const [events, setEvents] = useState<FetchedEvent[]>([])
@@ -472,7 +481,7 @@ export function DeployStepTimeline({
     <div className="space-y-2">
       <ol
         className="space-y-0.5"
-        aria-label="Deployment step timeline"
+        aria-label={t.labels.stepsAriaLabel}
         aria-live="polite"
       >
         {visibleSteps.map(({ step, originalIndex, isSynthetic }) => {
@@ -520,8 +529,7 @@ export function DeployStepTimeline({
                 selectedStepIndex === originalIndex &&
                   "border-l-foreground bg-muted/60",
                 uiState === "active" && "bg-blue-500/5",
-                uiState === "failed" &&
-                  "border-l-destructive bg-destructive/5",
+                uiState === "failed" && "border-l-destructive bg-destructive/5",
                 uiState === "pending" && "opacity-70",
                 uiState === "skipped" && "opacity-50"
               )}
@@ -534,12 +542,17 @@ export function DeployStepTimeline({
                 }
               >
                 <CollapsibleTrigger className="flex w-full items-center gap-2.5 text-left">
-                  <StepIcon state={uiState} />
+                  <StepIcon state={uiState} states={t.states} />
                   <div className="flex flex-1 items-center gap-2">
                     <span className="text-xs font-medium">
                       {getStepLabel(step)}
                     </span>
-                    <span aria-hidden="true" className="text-[10px] text-muted-foreground">·</span>
+                    <span
+                      aria-hidden="true"
+                      className="text-[10px] text-muted-foreground"
+                    >
+                      ·
+                    </span>
                     <span className="text-[10px] text-muted-foreground">
                       {statusText(uiState, t)}
                       {uiState === "failed" && fetchedStatus?.failureReason && (

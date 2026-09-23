@@ -566,7 +566,7 @@ export function StepSourceV2({
                   id="template-app-name"
                   value={appName}
                   onChange={(event) => onAppNameChange(event.target.value)}
-                  placeholder="my-app"
+                  placeholder={messages.source.appNamePlaceholder}
                   className="h-9 text-sm"
                 />
               </div>
@@ -674,7 +674,7 @@ function SourceDetails({
             id="public-source-ref"
             value={publicSourceRef ?? "main"}
             onChange={(event) => onPublicSourceRefChange(event.target.value)}
-            placeholder="main"
+            placeholder={messages.publicRefPlaceholder}
             className="h-9 text-sm"
           />
         </div>
@@ -705,7 +705,7 @@ function SourceDetails({
           id="source-app-name"
           value={appName}
           onChange={(event) => onAppNameChange(event.target.value)}
-          placeholder="my-app"
+          placeholder={messages.appNamePlaceholder}
           className="h-9 text-sm"
         />
       </div>

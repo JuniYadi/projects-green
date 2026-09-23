@@ -22,6 +22,9 @@ import {
   type WebhookEventFilterState,
 } from "@/modules/whatsapp/webhooks/ui/webhook-event-filter"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type OrganizationListItem = {
   id: string
@@ -62,6 +65,10 @@ function makeOrganizationLabel(org: OrganizationListItem): string {
 // ─── Page Component ───────────────────────────────────────────────────────────
 
 export default function PortalWhatsAppWebhookEventsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappEventsPageClient
   // Device list
   const [devices, setDevices] = React.useState<DeviceListItem[]>([])
   // Organizations list (for filter dropdown)
@@ -185,11 +192,8 @@ export default function PortalWhatsAppWebhookEventsPage() {
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight">Webhook Events</h1>
-        <p className="text-muted-foreground">
-          View and inspect incoming WhatsApp webhook events across all devices
-          and organizations.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{t.title}</h1>
+        <p className="text-muted-foreground">{t.description}</p>
       </div>
 
       {/* Filter Bar */}
@@ -213,10 +217,8 @@ export default function PortalWhatsAppWebhookEventsPage() {
       {/* Events Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Event Log</CardTitle>
-          <CardDescription>
-            Webhook events across all devices and organizations.
-          </CardDescription>
+          <CardTitle>{t.eventLogTitle}</CardTitle>
+          <CardDescription>{t.eventLogDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {!devices.length && !organizations.length && pageState !== "error" ? (
@@ -225,9 +227,7 @@ export default function PortalWhatsAppWebhookEventsPage() {
                 className="mb-3 size-10 text-muted-foreground"
                 weight="fill"
               />
-              <p className="text-sm text-muted-foreground">
-                No devices or organizations found.
-              </p>
+              <p className="text-sm text-muted-foreground">{t.noDevicesOrgs}</p>
             </div>
           ) : (
             <WebhookEventTable

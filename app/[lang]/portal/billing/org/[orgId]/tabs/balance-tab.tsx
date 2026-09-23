@@ -4,6 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { WalletIcon, WarningIcon } from "@phosphor-icons/react"
 import type { AdminOrgDetail } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type BalanceTabProps = {
   orgId: string
@@ -35,6 +38,10 @@ function getBalanceColor(balance: string, currency: string): string {
 }
 
 export function BalanceTab({ orgDetail }: BalanceTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOrgTabsBalanceTab
   const org = orgDetail.org
 
   return (
@@ -42,7 +49,9 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
       {/* Balance Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-base font-medium">Balance</CardTitle>
+          <CardTitle className="text-base font-medium">
+            {t.balanceTitle}
+          </CardTitle>
           <WalletIcon className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
@@ -52,7 +61,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
             {formatBillingMoney(org.balance, org.currency)}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Currency: {org.currency} | Status: {org.status}
+            {t.currencyLabel} {org.currency} {t.statusLabel} {org.status}
           </p>
 
           {Number(org.balance) <
@@ -61,7 +70,7 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
             <div className="mt-4 flex items-start gap-2 rounded-md border border-yellow-500/20 bg-yellow-500/10 p-3">
               <WarningIcon className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
               <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                Balance is running low. Top up to avoid service interruption.
+                {t.lowBalanceWarning}
               </p>
             </div>
           )}
@@ -72,13 +81,13 @@ export function BalanceTab({ orgDetail }: BalanceTabProps) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base font-medium">
-            Recent Invoices
+            {t.recentInvoices}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {org.recentInvoices.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              No invoices found.
+              {t.noInvoices}
             </p>
           ) : (
             <div className="space-y-3">

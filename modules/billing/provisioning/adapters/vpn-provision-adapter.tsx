@@ -1,7 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { z } from "zod"
+
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 
 import {
   listVpnServers,
@@ -82,6 +85,10 @@ export function VpnPlanConfigComponent({
   disabled?: boolean
   errors?: Record<string, string>
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(
+    params?.lang
+  ).pBillingProvisioningAdaptersVpnProvisionAdapter
   const [servers, setServers] = useState<VpnServerItem[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -118,19 +125,17 @@ export function VpnPlanConfigComponent({
   return (
     <section className="space-y-4 rounded-md border p-4">
       <div>
-        <h3 className="font-medium">VPN provisioning</h3>
-        <p className="text-sm text-muted-foreground">
-          Choose the active servers that should provision this plan.
-        </p>
+        <h3 className="font-medium">{messages.title}</h3>
+        <p className="text-sm text-muted-foreground">{messages.description}</p>
       </div>
       {loading && (
-        <p className="text-sm text-muted-foreground">Loading VPN servers...</p>
+        <p className="text-sm text-muted-foreground">
+          {messages.loadingServers}
+        </p>
       )}
       {loadError && <p className="text-sm text-destructive">{loadError}</p>}
       {!loading && !loadError && servers.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No active VPN servers are available.
-        </p>
+        <p className="text-sm text-muted-foreground">{messages.noServers}</p>
       )}
       <div className="space-y-2">
         {servers.map((server) => (
@@ -168,7 +173,9 @@ export function VpnPlanConfigComponent({
         </p>
       )}
       <div className="flex items-center justify-between gap-4 border-t pt-3">
-        <Label htmlFor="vpn-custom-username">Allow custom username</Label>
+        <Label htmlFor="vpn-custom-username">
+          {messages.allowCustomUsername}
+        </Label>
         <Switch
           id="vpn-custom-username"
           checked={value.customUsername}

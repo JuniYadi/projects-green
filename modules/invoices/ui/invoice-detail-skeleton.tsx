@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -12,6 +15,10 @@ import {
 } from "@/components/ui/table"
 
 export function InvoiceDetailSkeleton() {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang).console.invoices
+    .detail
+
   return (
     <div
       className="flex w-full max-w-7xl flex-col gap-6"
@@ -59,19 +66,25 @@ export function InvoiceDetailSkeleton() {
           {/* Line Items & Totals Card */}
           <Card className="overflow-hidden">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Line Items</CardTitle>
+              <CardTitle className="text-base">
+                {messages.lineItemsHeading}
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50%] pl-6">Description</TableHead>
-                    <TableHead className="w-[15%] text-right">Qty</TableHead>
+                    <TableHead className="w-[50%] pl-6">
+                      {messages.descriptionColumn}
+                    </TableHead>
+                    <TableHead className="w-[15%] text-right">
+                      {messages.qtyColumn}
+                    </TableHead>
                     <TableHead className="w-[20%] text-right">
-                      Unit Price
+                      {messages.unitPriceColumn}
                     </TableHead>
                     <TableHead className="w-[15%] pr-6 text-right">
-                      Amount
+                      {messages.amountColumn}
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -123,7 +136,9 @@ export function InvoiceDetailSkeleton() {
         <div className="flex flex-col gap-6 lg:col-span-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Overview</CardTitle>
+              <CardTitle className="text-base">
+                {messages.overviewHeading}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 divide-y">
               {Array.from({ length: 8 }).map((_, i) => (

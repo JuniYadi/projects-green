@@ -112,17 +112,15 @@ export function StepDetectV2({
     ]
 
     if (isWorking) {
-      return base.map(
-        (op, index): OperationRow => ({
-          ...op,
-          status:
-            index < activeOperation
-              ? "done"
-              : index === activeOperation
-                ? "scanning"
-                : "idle",
-        })
-      )
+      return base.map((op, index): OperationRow => ({
+        ...op,
+        status:
+          index < activeOperation
+            ? "done"
+            : index === activeOperation
+              ? "scanning"
+              : "idle",
+      }))
     }
 
     if (detectionResult) {
@@ -432,7 +430,8 @@ export function StepDetectV2({
                         </p>
                       ) : null}
                       <p className="mt-1 text-muted-foreground">
-                        {messages.detect.confidence}: {detectionResult.confidence}%
+                        {messages.detect.confidence}:{" "}
+                        {detectionResult.confidence}%
                       </p>
                     </div>
                   </>
@@ -469,9 +468,7 @@ export function StepDetectV2({
             <div className="flex-1">
               <p>{detectionError}</p>
               {isFinalFailure ? (
-                <p className="mt-1">
-                  {messages.detect.retryFallback}
-                </p>
+                <p className="mt-1">{messages.detect.retryFallback}</p>
               ) : null}
             </div>
             {isFinalFailure ? (
@@ -491,7 +488,9 @@ export function StepDetectV2({
               {messages.detect.changeTechnicalSettings}
             </summary>
             <div className="mt-3 space-y-3">
-              <p className="text-sm font-medium">{messages.detect.manualOverride}</p>
+              <p className="text-sm font-medium">
+                {messages.detect.manualOverride}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {manualOverrideRequired
                   ? messages.detect.manualRequired
@@ -499,7 +498,9 @@ export function StepDetectV2({
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.language}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.language}
+                  </p>
                   <select
                     aria-label={messages.detect.languageSelector}
                     aria-invalid={needsManualValues && missingLanguage}
@@ -518,7 +519,9 @@ export function StepDetectV2({
                     <option value="Node.js">Node.js</option>
                     <option value="Python">Python</option>
                     <option value="Ruby">Ruby</option>
-                    <option value="Go">Go</option>
+                    <option value="Go">
+                      {messages.buildSettings.goLanguage}
+                    </option>
                     <option value="Java">Java</option>
                     <option value="PHP">PHP</option>
                     <option value="Rust">Rust</option>
@@ -527,7 +530,9 @@ export function StepDetectV2({
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.framework}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.framework}
+                  </p>
                   <select
                     aria-label={messages.detect.frameworkSelector}
                     aria-invalid={needsManualValues && missingFramework}
@@ -565,7 +570,9 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.frameworkVersion}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.frameworkVersion}
+                  </p>
                   <input
                     aria-label={messages.detect.frameworkVersion}
                     value={buildState.frameworkVersion ?? ""}
@@ -577,7 +584,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.defaultPort}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.defaultPort}
+                  </p>
                   <input
                     aria-label={messages.detect.defaultPort}
                     type="number"
@@ -596,11 +605,13 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.primaryEngine}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.primaryEngine}
+                  </p>
                   <input
                     aria-label={messages.detect.primaryEngine}
                     value={buildState.primaryEngine ?? ""}
-                    placeholder="e.g. node"
+                    placeholder={messages.buildSettings.enginePlaceholder}
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
                     onChange={(event) => {
                       onBuildFieldChange("primaryEngine", event.target.value)
@@ -608,7 +619,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.engineVersion}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.engineVersion}
+                  </p>
                   <input
                     aria-label={messages.detect.engineVersion}
                     value={buildState.primaryEngineVersion ?? ""}
@@ -626,11 +639,13 @@ export function StepDetectV2({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.secondaryEngine}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.secondaryEngine}
+                  </p>
                   <input
                     aria-label={messages.detect.secondaryEngine}
                     value={buildState.secondaryEngine ?? ""}
-                    placeholder="e.g. node"
+                    placeholder={messages.buildSettings.enginePlaceholder}
                     className="h-8 w-full border border-input bg-transparent px-2.5 text-xs"
                     onChange={(event) => {
                       onBuildFieldChange("secondaryEngine", event.target.value)
@@ -638,7 +653,9 @@ export function StepDetectV2({
                   />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium">{messages.detect.engineVersion}</p>
+                  <p className="text-xs font-medium">
+                    {messages.detect.engineVersion}
+                  </p>
                   <input
                     aria-label={messages.detect.engineVersion}
                     value={buildState.secondaryEngineVersion ?? ""}
@@ -655,13 +672,15 @@ export function StepDetectV2({
               </div>
 
               <div className="space-y-1">
-                <p className="text-xs font-medium">{messages.detect.buildCommand}</p>
+                <p className="text-xs font-medium">
+                  {messages.detect.buildCommand}
+                </p>
                 <input
                   aria-label={messages.detect.buildCommand}
                   aria-invalid={needsManualValues && missingBuildCommand}
                   value={buildState.buildCommand}
                   disabled={buildState.useDockerfile}
-                  placeholder="bun run build"
+                  placeholder={messages.buildSettings.buildCommandPlaceholder}
                   className={cn(
                     "h-8 w-full border border-input bg-transparent px-2.5 text-xs",
                     needsManualValues &&
@@ -701,7 +720,9 @@ export function StepDetectV2({
                   className="space-y-1 border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive"
                   role="alert"
                 >
-                  <p className="font-medium">{messages.detect.buildSettingsAttention}</p>
+                  <p className="font-medium">
+                    {messages.detect.buildSettingsAttention}
+                  </p>
                   <ul className="list-disc pl-4">
                     {validationMessages.map((message) => {
                       return <li key={message}>{message}</li>

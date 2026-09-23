@@ -715,7 +715,9 @@ export function AdminWhatsappAnalyticsView() {
                 <TableHead className="text-right">
                   {messages.thNetProfit}
                 </TableHead>
-                <TableHead className="text-right">Margin (%)</TableHead>
+                <TableHead className="text-right">
+                  {messages.thMargin}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

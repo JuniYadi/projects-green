@@ -152,7 +152,14 @@ export function CronJobsManagementView({
     return () => {
       ignore = true
     }
-  }, [activeTab, statusFilter, jobFilter, page, messages.messages.loadFailed, jobs.length])
+  }, [
+    activeTab,
+    statusFilter,
+    jobFilter,
+    page,
+    messages.messages.loadFailed,
+    jobs.length,
+  ])
 
   const refreshData = () => {
     if (activeTab === "overview") {
@@ -410,16 +417,22 @@ export function CronJobsManagementView({
             </div>
             <div className="flex items-center gap-2">
               <select
-                aria-label="Filter by category"
+                aria-label={messages.filters.categoryFilterAria}
                 className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
                 <option value="ALL">{messages.filters.allCategories}</option>
-                <option value="billing">Billing</option>
-                <option value="whatsapp">WhatsApp</option>
-                <option value="vpn">VPN</option>
-                <option value="system">System</option>
+                <option value="billing">
+                  {messages.filters.categoryBilling}
+                </option>
+                <option value="whatsapp">
+                  {messages.filters.categoryWhatsApp}
+                </option>
+                <option value="vpn">{messages.filters.categoryVpn}</option>
+                <option value="system">
+                  {messages.filters.categorySystem}
+                </option>
               </select>
             </div>
           </div>
@@ -498,7 +511,7 @@ export function CronJobsManagementView({
         <TabsContent value="history" className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <select
-              aria-label="Filter by cron job"
+              aria-label={messages.filters.jobFilterAria}
               className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
               value={jobFilter}
               onChange={(e) => {
@@ -515,7 +528,7 @@ export function CronJobsManagementView({
             </select>
 
             <select
-              aria-label="Filter by execution status"
+              aria-label={messages.filters.statusFilterAria}
               className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
               value={statusFilter}
               onChange={(e) => {
@@ -563,7 +576,7 @@ export function CronJobsManagementView({
                         {exec.id.slice(0, 12)}
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium text-sm">
+                        <div className="text-sm font-medium">
                           {exec.jobName || exec.jobCode || "-"}
                         </div>
                         {exec.jobCode && (
@@ -578,7 +591,7 @@ export function CronJobsManagementView({
                         </Badge>
                       </TableCell>
                       <TableCell
-                        className="font-mono text-xs text-muted-foreground max-w-[200px] truncate"
+                        className="max-w-[200px] truncate font-mono text-xs text-muted-foreground"
                         title={exec.podName || "unknown-pod"}
                       >
                         {exec.podName || "unknown-pod"}
@@ -722,7 +735,9 @@ export function CronJobsManagementView({
                   {messages.table.jobName}:
                 </span>{" "}
                 <span className="font-medium">
-                  {selectedExecution?.jobName || selectedExecution?.jobCode || "-"}
+                  {selectedExecution?.jobName ||
+                    selectedExecution?.jobCode ||
+                    "-"}
                 </span>
                 {selectedExecution?.jobCode && (
                   <div className="font-mono text-xs text-muted-foreground">
@@ -734,7 +749,7 @@ export function CronJobsManagementView({
                 <span className="text-muted-foreground">
                   {messages.table.target}:
                 </span>{" "}
-                <span className="font-mono font-medium text-xs break-all">
+                <span className="font-mono text-xs font-medium break-all">
                   {selectedExecution?.podName || "unknown-pod"}
                 </span>
               </div>

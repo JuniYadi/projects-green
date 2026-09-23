@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { getAccount, type BillingAccount } from "@/lib/billing-client"
 import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
+import { useMessages } from "@/components/use-messages"
 import { cn } from "@/lib/utils"
 
 export interface CompactBalanceBadgeProps {
@@ -33,6 +34,7 @@ export function CompactBalanceBadge({
     return false
   })
   const [dialogOpen, setDialogOpen] = useState(false)
+  const t = useMessages(lang).sharedComponents.compactBalanceBadge
 
   const toggleMask = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -89,7 +91,7 @@ export function CompactBalanceBadge({
           type="button"
           onClick={() => setDialogOpen(true)}
           className="flex items-center gap-1.5 font-medium text-foreground transition-opacity hover:opacity-80"
-          aria-label="Open Quick Top-Up"
+          aria-label={t.openTopUp}
         >
           <WalletIcon className="size-3.5 text-muted-foreground" />
           <span className="font-semibold">{maskedDisplay}</span>
@@ -113,8 +115,8 @@ export function CompactBalanceBadge({
           variant="ghost"
           onClick={() => setDialogOpen(true)}
           className="size-5 rounded-full bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600/20 hover:text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
-          title="Quick Top-Up"
-          aria-label="Quick Top-Up button"
+          title={t.quickTopUp}
+          aria-label={t.quickTopUpButton}
         >
           <Lightning className="size-3" weight="fill" />
         </Button>

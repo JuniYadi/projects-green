@@ -568,8 +568,12 @@ export default function DeploymentsPage() {
                         {totalPages > 1 ? (
                           <div className="mt-4 flex items-center justify-between gap-3 text-sm text-muted-foreground">
                             <span>
-                              Page {historyMeta?.page ?? historyPage} of{" "}
-                              {totalPages}
+                              {tDeployments.pageOf
+                                .replace(
+                                  "{page}",
+                                  String(historyMeta?.page ?? historyPage)
+                                )
+                                .replace("{total}", String(totalPages))}
                             </span>
                             <div className="flex gap-2">
                               <Button
@@ -583,7 +587,7 @@ export default function DeploymentsPage() {
                                   )
                                 }
                               >
-                                Previous
+                                {tDeployments.previous}
                               </Button>
                               <Button
                                 type="button"
@@ -596,7 +600,7 @@ export default function DeploymentsPage() {
                                   )
                                 }
                               >
-                                Next
+                                {tDeployments.next}
                               </Button>
                             </div>
                           </div>

@@ -90,9 +90,7 @@ export function generateInquiryQuestion(key: string): string {
   return `Boleh minta ${humanized}nya?`
 }
 
-export function parseSampleJsonToSlots(
-  rawJson: string
-): ActionIntentSlotDTO[] {
+export function parseSampleJsonToSlots(rawJson: string): ActionIntentSlotDTO[] {
   const parsed = JSON.parse(rawJson)
   const obj = Array.isArray(parsed) ? parsed[0] : parsed
   if (!obj || typeof obj !== "object") return []
@@ -287,9 +285,7 @@ export default function ActionIntentBuilder({
       }
 
       if (editingId) {
-        const res = await eden.api.console.ai.actions[editingId].patch(
-          payload
-        )
+        const res = await eden.api.console.ai.actions[editingId].patch(payload)
         if (res.data && res.data.ok) {
           toast.success(t.toasts.updateSuccess)
           setModalOpen(false)
@@ -409,9 +405,7 @@ export default function ActionIntentBuilder({
         <div className="grid gap-4 md:grid-cols-2">
           {actions.map((act) => (
             <Card key={act.id} className="border-border">
-              <CardHeader
-                className="flex flex-row items-start justify-between pb-2"
-              >
+              <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="font-mono text-[10px]">
@@ -454,7 +448,7 @@ export default function ActionIntentBuilder({
               <CardContent className="space-y-3">
                 <div
                   className={
-                    "rounded-lg bg-muted p-2 text-xs font-mono " +
+                    "rounded-lg bg-muted p-2 font-mono text-xs " +
                     "text-muted-foreground"
                   }
                 >
@@ -478,16 +472,14 @@ export default function ActionIntentBuilder({
                           className="border border-border text-[10px]"
                         >
                           {s.name}
-                          <span
-                            className="ml-1 text-[9px] text-muted-foreground"
-                          >
+                          <span className="ml-1 text-[9px] text-muted-foreground">
                             ({s.type})
                           </span>
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-[11px] italic text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground italic">
                       {t.noSlotsFallback}
                     </p>
                   )}
@@ -496,8 +488,8 @@ export default function ActionIntentBuilder({
                 {/* Toggles Status Badges */}
                 <div
                   className={
-                    "flex flex-wrap items-center gap-2 border-t border-border "
-                    + "pt-2 text-[11px]"
+                    "flex flex-wrap items-center gap-2 border-t border-border " +
+                    "pt-2 text-[11px]"
                   }
                 >
                   {act.enableMultimodalVision && (
@@ -506,7 +498,7 @@ export default function ActionIntentBuilder({
                       className="gap-1 border-border text-foreground"
                     >
                       <Eye size={12} className="text-emerald-500" />
-                      <span>Vision OCR</span>
+                      <span>{t.toggles.visionLabel}</span>
                     </Badge>
                   )}
                   {act.requireCustomerConfirmation && (
@@ -515,7 +507,7 @@ export default function ActionIntentBuilder({
                       className="gap-1 border-border text-foreground"
                     >
                       <ShieldCheck size={12} className="text-emerald-500" />
-                      <span>Confirmation Gate</span>
+                      <span>{t.toggles.confirmationGateLabel}</span>
                     </Badge>
                   )}
                 </div>
@@ -530,14 +522,8 @@ export default function ActionIntentBuilder({
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Lightning
-                className="text-emerald-500"
-                size={20}
-                weight="fill"
-              />
-              <span>
-                {editingId ? t.editButton : t.createButton}
-              </span>
+              <Lightning className="text-emerald-500" size={20} weight="fill" />
+              <span>{editingId ? t.editButton : t.createButton}</span>
             </DialogTitle>
             <DialogDescription>{t.subtitle}</DialogDescription>
           </DialogHeader>
@@ -558,10 +544,7 @@ export default function ActionIntentBuilder({
               </div>
 
               <div className="space-y-1.5">
-                <Label
-                  htmlFor="action-agent"
-                  className="text-xs font-semibold"
-                >
+                <Label htmlFor="action-agent" className="text-xs font-semibold">
                   {t.agentProfileLabel}
                 </Label>
                 <Select
@@ -604,9 +587,7 @@ export default function ActionIntentBuilder({
             </div>
 
             {/* Connection & Endpoint */}
-            <div
-              className="rounded-lg border border-border bg-card p-3 space-y-3"
-            >
+            <div className="space-y-3 rounded-lg border border-border bg-card p-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="space-y-1 sm:col-span-1">
                   <Label className="text-xs font-semibold">
@@ -676,7 +657,7 @@ export default function ActionIntentBuilder({
                 <div>
                   <Label
                     className={
-                      "text-xs font-semibold uppercase tracking-wider " +
+                      "text-xs font-semibold tracking-wider uppercase " +
                       "text-muted-foreground"
                     }
                   >
@@ -721,9 +702,7 @@ export default function ActionIntentBuilder({
                   {t.slotsSection.emptySlots}
                 </div>
               ) : (
-                <div
-                  className="overflow-x-auto rounded-lg border border-border"
-                >
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full text-left text-xs">
                     <thead
                       className={
@@ -732,16 +711,12 @@ export default function ActionIntentBuilder({
                       }
                     >
                       <tr>
-                        <th className="p-2 pl-3">
-                          {t.slotsSection.colName}
-                        </th>
+                        <th className="p-2 pl-3">{t.slotsSection.colName}</th>
                         <th className="p-2">{t.slotsSection.colType}</th>
                         <th className="p-2 text-center">
                           {t.slotsSection.colRequired}
                         </th>
-                        <th className="p-2">
-                          {t.slotsSection.colQuestion}
-                        </th>
+                        <th className="p-2">{t.slotsSection.colQuestion}</th>
                         <th className="p-2 pr-3 text-center">
                           {t.slotsSection.colAction}
                         </th>
@@ -754,14 +729,10 @@ export default function ActionIntentBuilder({
                             <Input
                               value={slot.name}
                               onChange={(e) =>
-                                handleUpdateSlot(
-                                  index,
-                                  "name",
-                                  e.target.value
-                                )
+                                handleUpdateSlot(index, "name", e.target.value)
                               }
-                              placeholder="nama_parameter"
-                              className="h-7 text-xs font-mono"
+                              placeholder={t.parameterNamePlaceholder}
+                              className="h-7 font-mono text-xs"
                             />
                           </td>
                           <td className="p-2">
@@ -809,9 +780,7 @@ export default function ActionIntentBuilder({
                                   e.target.value
                                 )
                               }
-                              placeholder={
-                                t.slotsSection.questionPlaceholder
-                              }
+                              placeholder={t.slotsSection.questionPlaceholder}
                               className="h-7 text-xs"
                             />
                           </td>
@@ -838,15 +807,11 @@ export default function ActionIntentBuilder({
             </div>
 
             {/* Toggles & Guardrails */}
-            <div
-              className="space-y-3 rounded-lg border border-border bg-card p-3"
-            >
+            <div className="space-y-3 rounded-lg border border-border bg-card p-3">
               {/* Multimodal Vision */}
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-0.5">
-                  <div
-                    className="flex items-center gap-1.5 font-semibold text-xs"
-                  >
+                  <div className="flex items-center gap-1.5 text-xs font-semibold">
                     <Eye size={16} className="text-emerald-500" />
                     <span>{t.toggles.visionTitle}</span>
                   </div>
@@ -876,7 +841,7 @@ export default function ActionIntentBuilder({
                   <div className="space-y-0.5">
                     <div
                       className={
-                        "flex items-center gap-1.5 font-semibold text-xs"
+                        "flex items-center gap-1.5 text-xs font-semibold"
                       }
                     >
                       <ShieldCheck size={16} className="text-emerald-500" />
@@ -907,7 +872,7 @@ export default function ActionIntentBuilder({
                   <div
                     className={
                       "mt-3 rounded-lg border border-border bg-muted/30 " +
-                      "p-3 space-y-2"
+                      "space-y-2 p-3"
                     }
                   >
                     <Label
@@ -933,7 +898,7 @@ export default function ActionIntentBuilder({
                               <span className="font-mono font-medium">
                                 {s.name || `param_${idx + 1}`}:
                               </span>{" "}
-                              <span className="italic text-muted-foreground">
+                              <span className="text-muted-foreground italic">
                                 {t.toggles.previewCustomerValue}
                               </span>
                             </li>
@@ -941,9 +906,9 @@ export default function ActionIntentBuilder({
                         ) : (
                           <li>
                             <span className="font-mono font-medium">
-                              nomor_kwitansi:
+                              {t.sampleReceiptNumber}:
                             </span>{" "}
-                            <span className="italic text-muted-foreground">
+                            <span className="text-muted-foreground italic">
                               KW-12345
                             </span>
                           </li>
@@ -1001,11 +966,7 @@ export default function ActionIntentBuilder({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkle
-                className="text-emerald-500"
-                size={20}
-                weight="fill"
-              />
+              <Sparkle className="text-emerald-500" size={20} weight="fill" />
               <span>{t.autoDetectDialog.title}</span>
             </DialogTitle>
             <DialogDescription>
@@ -1024,10 +985,7 @@ export default function ActionIntentBuilder({
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="ghost"
-              onClick={() => setAutoDetectOpen(false)}
-            >
+            <Button variant="ghost" onClick={() => setAutoDetectOpen(false)}>
               {t.autoDetectDialog.cancelButton}
             </Button>
             <Button

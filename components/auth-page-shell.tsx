@@ -1,8 +1,11 @@
+"use client"
+
 import type { ReactNode } from "react"
 import Link from "next/link"
 
 import { BrandLogo } from "@/components/brand-logo"
 import { Card, CardContent } from "@/components/ui/card"
+import { useMessages } from "@/components/use-messages"
 import { cn } from "@/lib/utils"
 
 type AuthPageShellProps = {
@@ -35,6 +38,7 @@ export function AuthPageShell({
   panelDescription,
   className,
 }: AuthPageShellProps) {
+  const t = useMessages().sharedComponents.authPageShell
   return (
     <main className="relative flex min-h-svh items-center overflow-hidden bg-[#060b18] px-6 py-10 text-white md:px-10">
       <div className="absolute inset-0 bg-[#060b18]" />
@@ -60,11 +64,11 @@ export function AuthPageShell({
             </span>
           </div>
           <h1 className="text-4xl leading-tight font-bold tracking-tight text-white xl:text-5xl">
-            Access your{" "}
+            {t.headlinePrefix}{" "}
             <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
               PFNApp
             </span>{" "}
-            workspace
+            {t.headlineSuffix}
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-white/55">
             {panelDescription}
