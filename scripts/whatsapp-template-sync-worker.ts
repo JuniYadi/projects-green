@@ -271,6 +271,7 @@ async function pushLocalTemplatesToMeta(
         await prisma.whatsappTemplate.update({
           where: { id: tpl.id },
           data: {
+            syncStatus: WhatsappTemplateSyncStatus.NOT_SYNCED,
             metaStatus: WhatsappTemplateMetaStatus.REJECTED,
           },
         })

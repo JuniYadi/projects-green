@@ -285,6 +285,23 @@ describe("template-validator", () => {
       expect(noProtoRes.errors[0]).toContain(
         "must start with http:// or https://"
       )
+
+      const longUrl = "https://example.com/" + "a".repeat(2000)
+      const longUrlRes = validateTemplateButtons([
+        { type: "URL", text: "Long", url: longUrl },
+      ])
+      expect(longUrlRes.isValid).toBe(false)
+      expect(longUrlRes.errors[0]).toContain(
+        "exceeds Meta's maximum limit of 2000 characters"
+      )
+
+      const noTextWaRes = validateTemplateButtons([
+        { type: "URL", url: "https://wa.me/628123456" },
+      ])
+      expect(noTextWaRes.isValid).toBe(false)
+      expect(noTextWaRes.errors[0]).toContain(
+        'Button #1 ("URL"): Meta prohibits WhatsApp links'
+      )
     })
   })
 

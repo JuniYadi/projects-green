@@ -129,12 +129,14 @@ mock.module("@/lib/queue/whatsapp-template-sync", () => ({
   enqueueWhatsAppTemplateSync: mockEnqueueTemplateSync,
 }))
 
+const mockFromDevice = mock(async () => ({
+  createTemplate: mockCreateMetaTemplate,
+  deleteTemplate: mockDeleteMetaTemplate,
+}))
+
 mock.module("@/lib/whatsapp/meta-cloud/device-client", () => ({
   WhatsAppDeviceClient: {
-    fromDevice: mock(async () => ({
-      createTemplate: mockCreateMetaTemplate,
-      deleteTemplate: mockDeleteMetaTemplate,
-    })),
+    fromDevice: mockFromDevice,
   },
 }))
 mock.module("@/modules/whatsapp/audit/whatsapp-audit.service", () => ({
@@ -280,6 +282,11 @@ describe("templatesRoutes", () => {
       status: "ACTIVE",
     })
     mockLogAudit.mockClear()
+    mockFromDevice.mockClear()
+    mockFromDevice.mockImplementation(async () => ({
+      createTemplate: mockCreateMetaTemplate,
+      deleteTemplate: mockDeleteMetaTemplate,
+    }))
   })
   describe("POST /", () => {
     it("creates a template with category UTILITY and active device & subscription", async () => {
@@ -546,6 +553,205 @@ describe("templatesRoutes", () => {
         })
       )
       expect(json.template.metaStatus).toBe("REJECTED")
+    })
+
+    it("marks template and language as REJECTED when direct push to Meta fails with MetaCloudError", async () => {
+      const { MetaCloudError } =
+        await import("@/lib/whatsapp/meta-cloud/errors")
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted",
+        whatsappPhoneId: "phone-1",
+        whatsappBusinessAccountId: "waba-1",
+      } as any)
+      mockTemplateCreate.mockResolvedValueOnce({
+        id: "tpl-meta-fail",
+        slug: "info_meta_err",
+        name: "INFO META ERR",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: null,
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-meta-1",
+            templateId: "tpl-meta-fail",
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Testing meta err",
+            footer: "",
+            buttons: null,
+            parameters: null,
+            isApproved: false,
+            metaStatus: null,
+            rejectReason: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      })
+      mockCreateMetaTemplate.mockRejectedValueOnce(
+        new MetaCloudError("Param error", {
+          code: 100,
+          httpStatus: 400,
+          type: "OAuthException",
+          fbtrace_id: "fb_123",
+        })
+      )
+      mockTemplateUpdate.mockResolvedValueOnce({
+        id: "tpl-meta-fail",
+        slug: "info_meta_err",
+        name: "INFO META ERR",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: "REJECTED",
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [],
+      })
+
+      const app = createTestApp()
+      const body = {
+        slug: "info_meta_err",
+        name: "INFO META ERR",
+        whatsappDeviceId: "dev-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            body: "Testing meta err",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockTemplateLanguageUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "lang-meta-1" },
+          data: expect.objectContaining({
+            metaStatus: "REJECTED",
+            isApproved: false,
+            rejectReason: "Param error",
+          }),
+        })
+      )
+    })
+
+    it("marks template and all languages as REJECTED when outer direct push fails (e.g. client init error)", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "corrupted-token",
+        whatsappPhoneId: "phone-1",
+        whatsappBusinessAccountId: "waba-1",
+      } as any)
+      mockTemplateCreate.mockResolvedValueOnce({
+        id: "tpl-client-fail",
+        slug: "info_client_fail",
+        name: "INFO CLIENT FAIL",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: null,
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-init-1",
+            templateId: "tpl-client-fail",
+            lang: "id",
+            headerType: "NONE",
+            body: "Testing client fail",
+            isApproved: false,
+            metaStatus: null,
+            rejectReason: null,
+          },
+        ],
+      })
+      mockFromDevice.mockRejectedValueOnce(
+        new Error("Failed to decrypt device token")
+      )
+      mockTemplateUpdate.mockResolvedValueOnce({
+        id: "tpl-client-fail",
+        slug: "info_client_fail",
+        name: "INFO CLIENT FAIL",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: "REJECTED",
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [],
+      })
+
+      const app = createTestApp()
+      const body = {
+        slug: "info_client_fail",
+        name: "INFO CLIENT FAIL",
+        whatsappDeviceId: "dev-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            body: "Testing client fail",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      expect(mockTemplateLanguageUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "lang-init-1" },
+          data: expect.objectContaining({
+            metaStatus: "REJECTED",
+            isApproved: false,
+            rejectReason: "Failed to decrypt device token",
+          }),
+        })
+      )
+      expect(mockTemplateUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "tpl-client-fail" },
+          data: expect.objectContaining({
+            syncStatus: "NOT_SYNCED",
+            metaStatus: "REJECTED",
+          }),
+        })
+      )
     })
 
     it("creates template successfully when authenticated via API key (type platform)", async () => {
@@ -993,6 +1199,107 @@ describe("templatesRoutes", () => {
       )
 
       expect(res.status).toBe(200)
+    })
+
+    it("resets rejection status and marks as NOT_SYNCED when updating a rejected template with languages", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        id: "tpl-rejected-1",
+        slug: "fix_rejected",
+        name: "Fix Rejected",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: "REJECTED",
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-rej-1",
+            templateId: "tpl-rejected-1",
+            lang: "id",
+            headerType: "NONE",
+            body: "Old rejected body",
+            metaStatus: "REJECTED",
+            rejectReason: "Invalid URL button",
+            isApproved: false,
+          },
+        ],
+      })
+      const app = createTestApp()
+      const body = {
+        name: "Fixed Template",
+        languages: [
+          {
+            id: "lang-rej-1",
+            lang: "id",
+            headerType: "NONE",
+            body: "New valid body",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/tpl-rejected-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const calls = mockTemplateUpdate.mock.calls as unknown as Array<
+        [{ data: Record<string, any> }]
+      >
+      const updateCall = calls.at(-1)?.[0]
+      expect(updateCall?.data.syncStatus).toBe("NOT_SYNCED")
+      expect(updateCall?.data.metaStatus).toBeNull()
+      expect(updateCall?.data.languages.upsert[0].update.metaStatus).toBeNull()
+      expect(
+        updateCall?.data.languages.upsert[0].update.rejectReason
+      ).toBeNull()
+      expect(updateCall?.data.languages.upsert[0].update.isApproved).toBe(false)
+    })
+
+    it("resets rejection status and marks as NOT_SYNCED when updating a rejected template without languages", async () => {
+      mockTemplateFindUnique.mockResolvedValueOnce({
+        id: "tpl-rejected-2",
+        slug: "fix_rejected_no_langs",
+        name: "Fix Rejected No Langs",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: "REJECTED",
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [],
+      })
+      const app = createTestApp()
+      const body = {
+        name: "Renamed Rejected Template",
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/tpl-rejected-2", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const calls = mockTemplateUpdate.mock.calls as unknown as Array<
+        [{ data: Record<string, any> }]
+      >
+      const updateCall = calls.at(-1)?.[0]
+      expect(updateCall?.data.syncStatus).toBe("NOT_SYNCED")
+      expect(updateCall?.data.metaStatus).toBeNull()
+      expect(updateCall?.data.name).toBe("Renamed Rejected Template")
     })
   })
 

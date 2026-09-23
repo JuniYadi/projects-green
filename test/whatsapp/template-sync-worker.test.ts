@@ -440,6 +440,7 @@ describe("whatsapp-template-sync-worker", () => {
       expect.objectContaining({
         where: { id: "tpl_local_fail" },
         data: expect.objectContaining({
+          syncStatus: "NOT_SYNCED",
           metaStatus: "REJECTED",
         }),
       })
