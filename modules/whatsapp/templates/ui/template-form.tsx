@@ -50,6 +50,7 @@ import {
   normalizeTemplateButtons,
   validateTemplateBodyRules,
   validateTemplateButtons,
+  validateTemplateSlug,
 } from "../template-validator"
 import { normalizeIndonesianPhoneNumber } from "@/modules/whatsapp/messages/phone-number"
 import {
@@ -407,7 +408,10 @@ export function TemplateForm({
       newErrors.whatsappDeviceId = "Active WhatsApp device is required."
     }
     if (!name.trim()) newErrors.name = "Name is required."
-    if (!slug.trim()) newErrors.slug = "Slug is required."
+    const slugValidation = validateTemplateSlug(slug)
+    if (!slugValidation.isValid && slugValidation.error) {
+      newErrors.slug = slugValidation.error
+    }
 
     if (!isAuth) {
       if (!body.trim()) newErrors.body = "Body text is required."

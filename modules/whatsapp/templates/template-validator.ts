@@ -300,6 +300,36 @@ export function formatTemplateSlug(input: string): string {
     .slice(0, 100)
 }
 
+/**
+ * Validates a template slug against Meta constraints:
+ * 1. Must not be empty.
+ * 2. Must not start with a digit.
+ * 3. Lowercase letters, numbers, and underscores only.
+ */
+export function validateTemplateSlug(slug: string): {
+  isValid: boolean
+  error?: string
+} {
+  const trimmed = slug.trim()
+  if (!trimmed) {
+    return { isValid: false, error: "Slug is required." }
+  }
+  if (/^[0-9]/.test(trimmed)) {
+    return {
+      isValid: false,
+      error: "Slug cannot start with a number (Meta Cloud API requirement).",
+    }
+  }
+  if (!/^[a-z0-9_]+$/.test(trimmed)) {
+    return {
+      isValid: false,
+      error:
+        "Slug can only contain lowercase letters, numbers, and underscores.",
+    }
+  }
+  return { isValid: true }
+}
+
 export type BuildMetaComponentsInput = {
   category?: string | null
   headerType?: string | null

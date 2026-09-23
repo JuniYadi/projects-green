@@ -211,32 +211,52 @@ export function TemplateDetailView({
   // Map Rejection Reasons to human explanations & fix recommendations
   const getHumanRejectionGuidance = (reason?: string | null) => {
     const t = messages.pWhatsappTemplatesTemplateDetail
-    switch (reason) {
-      case "INCORRECT_CATEGORY":
-        return {
-          title: t.rejectIncorrectCategoryTitle,
-          explanation: t.rejectIncorrectCategoryExplanation,
-          fix: t.rejectIncorrectCategoryFix,
-        }
-      case "TAG_CONTENT_MISMATCH":
-        return {
-          title: t.rejectTagMismatchTitle,
-          explanation: t.rejectTagMismatchExplanation,
-          fix: t.rejectTagMismatchFix,
-        }
-      case "PROMOTIONAL_CONTENT":
-        return {
-          title: t.rejectPromotionalTitle,
-          explanation: t.rejectPromotionalExplanation,
-          fix: t.rejectPromotionalFix,
-        }
-      case "INVALID_FORMAT":
-      default:
-        return {
-          title: t.rejectInvalidFormatTitle,
-          explanation: t.rejectInvalidFormatExplanation,
-          fix: t.rejectInvalidFormatFix,
-        }
+    if (reason?.startsWith("INCORRECT_CATEGORY")) {
+      return {
+        title: t.rejectIncorrectCategoryTitle,
+        explanation: t.rejectIncorrectCategoryExplanation,
+        fix: t.rejectIncorrectCategoryFix,
+      }
+    }
+    if (reason?.startsWith("TAG_CONTENT_MISMATCH")) {
+      return {
+        title: t.rejectTagMismatchTitle,
+        explanation: t.rejectTagMismatchExplanation,
+        fix: t.rejectTagMismatchFix,
+      }
+    }
+    if (reason?.startsWith("PROMOTIONAL_CONTENT")) {
+      return {
+        title: t.rejectPromotionalTitle,
+        explanation: t.rejectPromotionalExplanation,
+        fix: t.rejectPromotionalFix,
+      }
+    }
+    if (reason?.includes(":")) {
+      const colonIndex = reason.indexOf(":")
+      const prefix = reason.slice(0, colonIndex).trim()
+      const detail = reason.slice(colonIndex + 1).trim()
+      return {
+        title:
+          prefix === "INVALID_FORMAT"
+            ? "Format Template Tidak Valid"
+            : prefix.replace(/_/g, " "),
+        explanation: detail,
+        fix: "Perbarui bagian template yang tidak sesuai panduan Meta lalu submit ulang.",
+      }
+    }
+    if (reason?.toLowerCase().includes("invalid parameter")) {
+      return {
+        title: "Parameter Template Tidak Sesuai",
+        explanation:
+          "Meta menolak pengajuan template ini karena parameter atau komponen (seperti tombol URL, nama slug, atau format teks) tidak memenuhi spesifikasi Meta Cloud API.",
+        fix: "Pastikan nama template tidak diawali angka, tombol URL tidak menggunakan tautan wa.me, dan format komponen sesuai ketentuan.",
+      }
+    }
+    return {
+      title: t.rejectInvalidFormatTitle,
+      explanation: t.rejectInvalidFormatExplanation,
+      fix: t.rejectInvalidFormatFix,
     }
   }
 
@@ -457,6 +477,7 @@ export function TemplateDetailView({
                 {rejectionReasonLanguage?.metaReason ??
                   rejectionReasonLanguage?.rejectReason ??
                   "REJECTED"}
+                )
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
                 {rejectionGuidance.explanation}

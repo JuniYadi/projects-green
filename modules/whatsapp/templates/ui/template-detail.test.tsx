@@ -143,7 +143,7 @@ describe("TemplateDetailView", () => {
       />
     )
 
-    expect(view.getByText("Kategori Meta: MARKETING")).toBeInTheDocument()
+    expect(view.getByText(/Category:\s+MARKETING/)).toBeInTheDocument()
     expect(view.getByText("Information from Meta")).toBeInTheDocument()
     expect(
       view.getByText(
@@ -166,11 +166,11 @@ describe("TemplateDetailView", () => {
       />
     )
 
-    expect(view.getByText("Category Reclassified by Meta")).toBeInTheDocument()
+    expect(view.getByText("Kategori Diubah oleh Meta")).toBeInTheDocument()
+    expect(view.getByText(/Template ini diajukan sebagai/i)).toBeInTheDocument()
     expect(
-      view.getByText(/This template was originally submitted as/i)
+      view.getByText("(Changed by Meta from {requested})")
     ).toBeInTheDocument()
-    expect(view.getByText("(Diubah Meta dari UTILITY)")).toBeInTheDocument()
   })
   it("dispatches ask_p_query event when clicking Ask P audit button in reclassification banner", () => {
     const dispatchSpy = mock()
@@ -191,7 +191,7 @@ describe("TemplateDetailView", () => {
       )
 
       const askPBtn = view.getByRole("button", {
-        name: /Ask P: Why Marketing & Get Fix Recommendations/i,
+        name: /Tanyakan ke Asisten AI/i,
       })
       expect(askPBtn).toBeInTheDocument()
 
@@ -205,7 +205,7 @@ describe("TemplateDetailView", () => {
   it("omits the Meta notice when no reason is available", () => {
     const view = render(<TemplateDetailView {...propsFor()} />)
 
-    expect(view.getByText("Kategori Meta: UTILITY")).toBeInTheDocument()
+    expect(view.getByText(/Category:\s+UTILITY/)).toBeInTheDocument()
     expect(view.queryByText("Information from Meta")).not.toBeInTheDocument()
     expect(view.queryByText(/Reason from Meta:/)).not.toBeInTheDocument()
   })
@@ -229,18 +229,18 @@ describe("TemplateDetailView", () => {
     ],
     [
       "TAG_CONTENT_MISMATCH",
-      "Format Parameter {{1}} Tidak Valid",
-      "Pastikan semua variabel {{1}}, {{2}}",
+      "Tag Kategori Tidak Cocok",
+      "Sesuaikan tag dan kategori template",
     ],
     [
       "PROMOTIONAL_CONTENT",
-      "Terdeteksi Konten Promosi pada Kategori Utility",
-      "Ganti kategori template menjadi MARKETING",
+      "Materi Promosi pada Kategori Non-Marketing",
+      "Hapus kata-kata promosi",
     ],
     [
       "OTHER_REASON",
-      "Format Template Ditolak oleh Meta",
-      "Buat duplikat template, perbaiki teks pesan",
+      "Format Parameter {{1}} Tidak Valid",
+      "Pastikan parameter variabel berurutan",
     ],
   ])("renders guidance for %s rejection", (reason, title, fix) => {
     const language = { ...baseLanguage, rejectReason: reason }

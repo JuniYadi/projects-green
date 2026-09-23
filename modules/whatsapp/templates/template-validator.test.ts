@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import {
   extractTemplateVariables,
   formatTemplateSlug,
+  validateTemplateSlug,
   validateTemplateBodyRules,
   buildMetaTemplateComponents,
   validateTemplateButtons,
@@ -38,6 +39,29 @@ describe("template-validator", () => {
       expect(formatTemplateSlug("pengingat_donor_darah")).toBe(
         "pengingat_donor_darah"
       )
+    })
+  })
+
+  describe("validateTemplateSlug", () => {
+    it("rejects empty slug", () => {
+      expect(validateTemplateSlug("").isValid).toBe(false)
+      expect(validateTemplateSlug("   ").isValid).toBe(false)
+    })
+
+    it("rejects slugs starting with a number", () => {
+      const result = validateTemplateSlug("5_stok_kritis")
+      expect(result.isValid).toBe(false)
+      expect(result.error).toContain("Slug cannot start with a number")
+    })
+
+    it("rejects uppercase or special characters", () => {
+      expect(validateTemplateSlug("Order_Status").isValid).toBe(false)
+      expect(validateTemplateSlug("order-status").isValid).toBe(false)
+    })
+
+    it("accepts valid lowercase snake_case slugs", () => {
+      expect(validateTemplateSlug("order_status_2026").isValid).toBe(true)
+      expect(validateTemplateSlug("promo_gajian").isValid).toBe(true)
     })
   })
 
