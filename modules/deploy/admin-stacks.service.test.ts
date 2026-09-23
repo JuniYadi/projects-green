@@ -867,17 +867,32 @@ describe("adminDeleteStack", () => {
     )
   })
 
-  it("terminates: deletes manifests in GitOps, releases stock, and retains DB record", async () => {
+  it("terminates: deletes manifests in GitOps, triggers ArgoCD delete, releases stock, and retains DB record", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
     const cluster = makeMockCluster()
+    const argocdConfig = {
+      apiUrl: "https://argocd.example.com",
+      token: "argocd-token",
+      project: "default",
+      appNamespace: "argocd",
+      webhookSecret: null,
+      chartRepo: null,
+      chartVersion: null,
+    }
 
     mockResolveClusterIntegration.mockImplementation(
       async (_stackId: string, type: string) => {
         if (type === "GITOPS") return gitopsConfig
+        if (type === "ARGOCD") return argocdConfig
         throw new Error("No integration configured")
       }
     )
     mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    globalThis.fetch = mock(async () => ({
+      ok: true,
+      status: 200,
+    })) as unknown as typeof fetch
 
     const result = await adminDeleteStack("stack_1")
 
@@ -886,6 +901,10 @@ describe("adminDeleteStack", () => {
       expect.stringContaining("Terminate"),
       [],
       expect.any(Array)
+    )
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/applications/"),
+      expect.objectContaining({ method: "DELETE" })
     )
     expect(mockReleaseManagedStock).toHaveBeenCalledWith("stack_1")
     expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
@@ -899,9 +918,56 @@ describe("adminDeleteStack", () => {
       })
     )
     expect(result.gitopsDeleted).toBe(true)
+    expect(result.argocdDeleted).toBe(true)
     expect(result.stockReleased).toBe(true)
     // Should NOT hard-delete the record from database
     expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
+  })
+
+  it("handles gitops commitFiles failure during terminate gracefully", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+    mockCommitFiles.mockImplementationOnce(async () => {
+      throw new Error("Git push failed")
+    })
+
+    const result = await adminDeleteStack("stack_1")
+
+    expect(result.gitopsDeleted).toBe(false)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          status: "TERMINATED",
+        }),
+      })
+    )
+  })
+
+  it("handles releaseManagedStock failure during terminate gracefully", async () => {
+    mockReleaseManagedStock.mockImplementationOnce(async () => {
+      throw new Error("Vault error")
+    })
+
+    const result = await adminDeleteStack("stack_1")
+
+    expect(result.stockReleased).toBe(false)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          status: "TERMINATED",
+        }),
+      })
+    )
   })
 
   it("updates DB with TERMINATED status even when GitOps is not configured", async () => {
