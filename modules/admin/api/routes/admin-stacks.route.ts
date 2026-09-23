@@ -6,6 +6,7 @@ import {
 import {
   listAdminStacks,
   adminSuspendStack,
+  adminResumeStack,
   adminDeployStack,
   adminDeleteStack,
   adminPurgeTerminatedStack,
@@ -15,6 +16,7 @@ export type AdminStacksRouteDeps = {
   requireSuperAdmin?: typeof requireSuperAdmin
   listAdminStacks?: typeof listAdminStacks
   adminSuspendStack?: typeof adminSuspendStack
+  adminResumeStack?: typeof adminResumeStack
   adminDeployStack?: typeof adminDeployStack
   adminDeleteStack?: typeof adminDeleteStack
   adminPurgeTerminatedStack?: typeof adminPurgeTerminatedStack
@@ -25,6 +27,7 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
     requireSuperAdmin: guard = requireSuperAdmin,
     listAdminStacks: listStacks = listAdminStacks,
     adminSuspendStack: suspendStack = adminSuspendStack,
+    adminResumeStack: resumeStack = adminResumeStack,
     adminDeployStack: deployStack = adminDeployStack,
     adminDeleteStack: deleteStack = adminDeleteStack,
     adminPurgeTerminatedStack: purgeStack = adminPurgeTerminatedStack,
@@ -122,6 +125,56 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
             ok: false as const,
             error: "INTERNAL_ERROR",
             message: "Failed to suspend application stack",
+          }
+        }
+      },
+      {
+        params: t.Object({ id: t.String() }),
+      }
+    )
+    .post(
+      "/admin/app-hosting/stacks/:id/resume",
+      async ({ params, set }) => {
+        const actor = await guard(set)
+        if ("ok" in actor && !actor.ok) {
+          return actor as AdminApiError
+        }
+
+        try {
+          const result = await resumeStack(params.id)
+          const gitopsConfigured = result.gitopsPushed !== undefined
+          const partialFailure = gitopsConfigured && !result.gitopsPushed
+          return {
+            ok: true as const,
+            message: partialFailure
+              ? "Stack marked as resumed in DB but GitOps push failed — runtime may not scale up immediately"
+              : "Stack resumed successfully",
+            data: result,
+          }
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          if (msg.startsWith("NOT_FOUND")) {
+            set.status = 404
+            return {
+              ok: false as const,
+              error: "NOT_FOUND",
+              message: "Application stack not found",
+            }
+          }
+          if (msg.startsWith("ALREADY_TERMINATED")) {
+            set.status = 409
+            return {
+              ok: false as const,
+              error: "ALREADY_TERMINATED",
+              message: "Stack is already terminated",
+            }
+          }
+          console.error("[admin-stacks] resume error:", error)
+          set.status = 500
+          return {
+            ok: false as const,
+            error: "INTERNAL_ERROR",
+            message: "Failed to resume application stack",
           }
         }
       },

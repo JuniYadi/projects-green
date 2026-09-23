@@ -4412,6 +4412,13 @@ export type AppMessages = {
         suspendSuccess: string
         suspendFailed: string
         suspendPartial: string
+        resume: string
+        resumeTitle: string
+        resumeDescription: string
+        resumeConfirm: string
+        resumeSuccess: string
+        resumeFailed: string
+        resumePartial: string
         terminateTitle: string
         terminateDescription: string
         terminateConfirm: string
