@@ -28,7 +28,6 @@ import {
   FileCode,
   DotsThree,
   Sparkle,
-  PencilSimple,
 } from "@phosphor-icons/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -81,7 +80,7 @@ export function TemplateDetailView({
   loading,
   error,
   onRetry,
-  onEdit,
+  onEdit: _onEdit,
   onDelete,
   onSync,
   syncing,
@@ -387,13 +386,6 @@ export function TemplateDetailView({
             </Button>
           )}
 
-          {onEdit && (
-            <Button size="sm" variant="outline" onClick={onEdit}>
-              <PencilSimple weight="bold" className="mr-1.5 size-4" />
-              <WhatsAppText id="s176" />
-            </Button>
-          )}
-
           {currentLanguage && (
             <Button
               size="sm"
@@ -416,12 +408,6 @@ export function TemplateDetailView({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {onEdit && (
-                <DropdownMenuItem onSelect={onEdit}>
-                  <PencilSimple weight="bold" className="size-4" />
-                  <WhatsAppText id="s176" />
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem
                 onSelect={() =>
                   router.push(
@@ -471,7 +457,6 @@ export function TemplateDetailView({
                 {rejectionReasonLanguage?.metaReason ??
                   rejectionReasonLanguage?.rejectReason ??
                   "REJECTED"}
-                )
               </p>
               <p className="text-xs leading-relaxed text-foreground/80">
                 {rejectionGuidance.explanation}
