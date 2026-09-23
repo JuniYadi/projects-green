@@ -46,6 +46,7 @@ import {
 import { CountryFlag } from "@/components/ui/country-flag"
 import {
   formatTemplateSlug,
+  isWhatsAppUrl,
   normalizeTemplateButtons,
   validateTemplateBodyRules,
   validateTemplateButtons,
@@ -1425,14 +1426,28 @@ export function TemplateForm({
                           />
                         </div>
                         {btn.type === "URL" && (
-                          <Input
-                            value={btn.url}
-                            onChange={(e) =>
-                              updateButton(i, { url: e.target.value })
-                            }
-                            placeholder="https://example.com/track"
-                            className="font-mono text-xs"
-                          />
+                          <div className="space-y-1">
+                            <Input
+                              value={btn.url}
+                              onChange={(e) =>
+                                updateButton(i, { url: e.target.value })
+                              }
+                              placeholder="https://example.com/track"
+                              className={`font-mono text-xs ${
+                                isWhatsAppUrl(btn.url)
+                                  ? "border-destructive focus-visible:ring-destructive"
+                                  : ""
+                              }`}
+                            />
+                            {isWhatsAppUrl(btn.url) && (
+                              <p className="flex items-center gap-1 text-[11px] text-destructive">
+                                <WarningCircle className="size-3.5 shrink-0" />
+                                {locale === "id"
+                                  ? "Meta melarang link WhatsApp (wa.me) di tombol URL. Gunakan tombol Phone Number."
+                                  : "Meta prohibits WhatsApp links (wa.me) in URL buttons. Use a Phone Number button."}
+                              </p>
+                            )}
+                          </div>
                         )}
                         {btn.type === "PHONE_NUMBER" && (
                           <Input

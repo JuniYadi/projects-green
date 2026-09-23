@@ -187,7 +187,20 @@ export function validateTemplateBodyRules(
 export const META_BUTTON_TEXT_MAX_LENGTH = 25
 
 /**
- * Validates template buttons against Meta constraints (max length 25 chars per button text).
+ * Checks if a given URL is a WhatsApp direct link (wa.me / whatsapp.com).
+ * Meta Cloud API strictly forbids WhatsApp links in URL buttons.
+ */
+export function isWhatsAppUrl(url?: string | null): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  return /^(https?:\/\/)?([a-zA-Z0-9.-]+\.)?(wa\.me|whatsapp\.com)(\/.*)?$/i.test(
+    trimmed
+  )
+}
+
+/**
+ * Validates template buttons against Meta constraints (max length 25 chars per button text,
+ * phone number validity, and prohibited WhatsApp URLs).
  */
 export function validateTemplateButtons(buttons?: unknown): {
   isValid: boolean
@@ -224,6 +237,25 @@ export function validateTemplateButtons(buttons?: unknown): {
             `Button #${i + 1} phone number "${rawPhone}" is invalid. Please use international format (e.g. +6281234567890).`
           )
         }
+      }
+    }
+
+    if (btn.type === "URL") {
+      const url = typeof btn.url === "string" ? btn.url.trim() : ""
+      if (!url) {
+        errors.push(`Button #${i + 1} (URL) requires a web URL.`)
+      } else if (isWhatsAppUrl(url)) {
+        errors.push(
+          `Button #${i + 1} ("${text || "URL"}"): Meta prohibits WhatsApp links (wa.me / whatsapp.com) in URL buttons. Use a PHONE_NUMBER or QUICK_REPLY button instead.`
+        )
+      } else if (!/^https?:\/\//i.test(url)) {
+        errors.push(
+          `Button #${i + 1} URL "${url}" must start with http:// or https://.`
+        )
+      } else if (url.length > 2000) {
+        errors.push(
+          `Button #${i + 1} URL exceeds Meta's maximum limit of 2000 characters.`
+        )
       }
     }
   }

@@ -69,6 +69,7 @@ const mockTemplateFindUnique = mock(async (): Promise<MockTemplate> => ({
 const mockTemplateFindMany = mock(async () => [])
 const mockTemplateCount = mock(async () => 0)
 const mockTemplateDelete = mock(async () => ({ id: "tpl-1" }))
+const mockTemplateLanguageUpdate = mock(async () => ({}))
 const mockEnqueueTemplateSync = mock(async () => {})
 const mockSubscriptionFindFirst = mock(async () => ({
   id: "sub-1",
@@ -115,6 +116,9 @@ mock.module("@/lib/prisma", () => ({
       findFirst: mockDeviceFindFirst,
       findUnique: mockDeviceFindUnique,
       update: mockDeviceUpdate,
+    },
+    whatsappTemplateLanguage: {
+      update: mockTemplateLanguageUpdate,
     },
     serviceSubscription: {
       findFirst: mockSubscriptionFindFirst,
@@ -224,6 +228,7 @@ describe("templatesRoutes", () => {
     })
     mockTemplateCreate.mockClear()
     mockTemplateUpdate.mockClear()
+    mockTemplateLanguageUpdate.mockClear()
     mockTemplateFindUnique.mockClear()
     mockTemplateFindUnique.mockImplementation(async () => ({
       id: "tpl-1",
@@ -414,6 +419,133 @@ describe("templatesRoutes", () => {
       expect(mockCreateMetaTemplate).toHaveBeenCalled()
       expect(json.template.syncStatus).toBe("SYNCED")
       expect(json.template.metaStatus).toBe("PENDING")
+    })
+
+    it("marks template and language as REJECTED when direct push to Meta fails", async () => {
+      mockDeviceFindFirst.mockResolvedValueOnce({
+        id: "dev-1",
+        tokenEncrypted: "encrypted",
+        whatsappPhoneId: "phone-1",
+        whatsappBusinessAccountId: "waba-1",
+      } as any)
+      mockTemplateCreate.mockResolvedValueOnce({
+        id: "tpl-fail",
+        slug: "info_kebutuhan_gol_b",
+        name: "INFO KEBUTUHAN GOL B",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: null,
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-1",
+            templateId: "tpl-fail",
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Testing failure",
+            footer: "",
+            buttons: null,
+            parameters: null,
+            isApproved: false,
+            metaStatus: null,
+            rejectReason: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      })
+      mockCreateMetaTemplate.mockRejectedValueOnce(
+        new Error("Invalid parameter: WhatsApp links prohibited in URL buttons")
+      )
+      mockTemplateUpdate.mockResolvedValueOnce({
+        id: "tpl-fail",
+        slug: "info_kebutuhan_gol_b",
+        name: "INFO KEBUTUHAN GOL B",
+        description: null,
+        organizationId: "org-1",
+        whatsappDeviceId: "dev-1",
+        syncStatus: "NOT_SYNCED",
+        metaStatus: "REJECTED",
+        lastSyncedAt: null,
+        category: "UTILITY",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        languages: [
+          {
+            id: "lang-1",
+            templateId: "tpl-fail",
+            lang: "id",
+            headerType: "NONE",
+            headerText: "",
+            headerUrl: "",
+            body: "Testing failure",
+            footer: "",
+            buttons: null,
+            parameters: null,
+            isApproved: false,
+            metaStatus: "REJECTED",
+            rejectReason:
+              "Invalid parameter: WhatsApp links prohibited in URL buttons",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+      })
+
+      const app = createTestApp()
+      const body = {
+        slug: "info_kebutuhan_gol_b",
+        name: "INFO KEBUTUHAN GOL B",
+        whatsappDeviceId: "dev-1",
+        category: "UTILITY",
+        languages: [
+          {
+            lang: "id",
+            headerType: "NONE",
+            body: "Testing failure",
+          },
+        ],
+      }
+
+      const res = await app.handle(
+        new Request("http://localhost/templates/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const json = await res.json()
+      expect(json.ok).toBe(true)
+      expect(mockTemplateLanguageUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "lang-1" },
+          data: expect.objectContaining({
+            metaStatus: "REJECTED",
+            isApproved: false,
+            rejectReason:
+              "Invalid parameter: WhatsApp links prohibited in URL buttons",
+          }),
+        })
+      )
+      expect(mockTemplateUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "tpl-fail" },
+          data: expect.objectContaining({
+            syncStatus: "NOT_SYNCED",
+            metaStatus: "REJECTED",
+          }),
+        })
+      )
+      expect(json.template.metaStatus).toBe("REJECTED")
     })
 
     it("creates template successfully when authenticated via API key (type platform)", async () => {
