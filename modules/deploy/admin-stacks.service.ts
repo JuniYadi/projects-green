@@ -27,6 +27,8 @@ import {
   resolveStackProbes,
   resolveStorageMounts,
 } from "@/modules/deploy/deploy-builder.service"
+import { triggerDeploy } from "@/modules/deploy/deploy-pipeline.service"
+import { ensureManagedDomainForStack } from "@/modules/deploy/app-hosting-edge.service"
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -563,6 +565,68 @@ export async function adminSuspendStack(
   })
 
   return { gitopsPushed, argocdSynced }
+}
+
+// ─── Deploy / Trigger (Super Admin override for IDLE/FAILED/stuck stacks) ────
+
+/**
+ * Super Admin deploy trigger — forces a new deployment for an application stack.
+ * Useful when an application stack is stuck in IDLE (e.g. initial deploy failure)
+ * or when Super Admin needs to trigger a redeployment manually.
+ */
+export async function adminDeployStack(stackId: string): Promise<{
+  deploymentId: string
+  status: string
+}> {
+  const stack = await prisma.applicationStack.findUnique({
+    where: { id: stackId },
+  })
+  if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  if (stack.status === StackStatus.TERMINATED) {
+    throw new Error(
+      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated`
+    )
+  }
+
+  // Ensure managed domain binding exists
+  await ensureManagedDomainForStack(stack.id).catch(() => {})
+
+  // Clear suspended flag if it was marked as suspended
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+  if (currentMeta.suspended) {
+    await prisma.applicationStack.update({
+      where: { id: stackId },
+      data: {
+        metadataJson: {
+          ...currentMeta,
+          suspended: false,
+          suspendedAt: null,
+        },
+      },
+    })
+  }
+
+  const triggerType =
+    stack.sourceType === "TEMPLATE"
+      ? "TEMPLATE"
+      : stack.sourceType === "PUBLIC"
+        ? "PUBLIC"
+        : "MANUAL"
+
+  const result = await triggerDeploy({
+    stackId: stack.id,
+    triggerType,
+    force: true,
+  })
+
+  return {
+    deploymentId: result.deploymentId,
+    status: result.status,
+  }
 }
 
 // ─── Terminate (soft-delete: scale to 0, schedule purge in 30 days) ──────────

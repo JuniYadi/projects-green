@@ -151,8 +151,26 @@ mock.module("@/modules/deploy/deploy-builder.service", () => ({
   resolveStorageMounts: mock(() => []),
 }))
 
-const { listAdminStacks, adminSuspendStack, adminDeleteStack } =
-  await import("./admin-stacks.service")
+const mockTriggerDeploy = mock(async () => ({
+  deploymentId: "deploy_test_123",
+  status: "QUEUED" as const,
+}))
+const mockEnsureManagedDomainForStack = mock(async () => ({}) as any)
+
+mock.module("@/modules/deploy/deploy-pipeline.service", () => ({
+  triggerDeploy: mockTriggerDeploy,
+}))
+
+mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
+  ensureManagedDomainForStack: mockEnsureManagedDomainForStack,
+}))
+
+const {
+  listAdminStacks,
+  adminSuspendStack,
+  adminDeployStack,
+  adminDeleteStack,
+} = await import("./admin-stacks.service")
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -465,6 +483,75 @@ describe("adminSuspendStack", () => {
 })
 
 // ─── describe adminDeleteStack ────────────────────────────────────────────────
+
+describe("adminDeployStack", () => {
+  beforeEach(() => {
+    mockTriggerDeploy.mockClear()
+    mockEnsureManagedDomainForStack.mockClear()
+    mockPrisma.applicationStack.findUnique.mockImplementation(
+      async () => mockStackRecord as any
+    )
+    mockPrisma.applicationStack.update.mockImplementation(
+      async () => mockStackRecord as any
+    )
+  })
+
+  it("throws NOT_FOUND when stack does not exist", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
+
+    await expect(adminDeployStack("stack_missing")).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("throws ALREADY_TERMINATED when stack is terminated", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+    }))
+
+    await expect(adminDeployStack("stack_1")).rejects.toThrow(
+      "ALREADY_TERMINATED"
+    )
+  })
+
+  it("triggers deploy with force: true and returns deployment result", async () => {
+    const result = await adminDeployStack("stack_1")
+
+    expect(mockEnsureManagedDomainForStack).toHaveBeenCalledWith("stack_1")
+    expect(mockTriggerDeploy).toHaveBeenCalledWith({
+      stackId: "stack_1",
+      triggerType: "MANUAL",
+      force: true,
+    })
+    expect(result).toEqual({
+      deploymentId: "deploy_test_123",
+      status: "QUEUED",
+    })
+  })
+
+  it("un-suspends stack if metadata indicated suspended", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      metadataJson: {
+        suspended: true,
+        suspendedAt: "2026-09-01T10:00:00.000Z",
+      },
+    }))
+
+    await adminDeployStack("stack_1")
+
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack_1" },
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            suspended: false,
+            suspendedAt: null,
+          }),
+        }),
+      })
+    )
+  })
+})
 
 describe("adminDeleteStack", () => {
   beforeEach(() => {
