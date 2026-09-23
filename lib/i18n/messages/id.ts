@@ -4921,6 +4921,8 @@ export const idMessages: AppMessages = {
         terminateSuccess:
           "Platform {stack} diterminasi. Resource GitOps dihapus, data tetap disimpan di database.",
         terminateFailed: "Gagal menterminasi platform",
+        terminatePartial:
+          "Platform {stack} diterminasi, namun sebagian tugas pembersihan (ArgoCD/Vault) tidak lengkap — periksa log cluster",
         terminateScheduledPurge:
           "Platform {stack} langsung diterminasi. Resource GitOps dihapus.",
         statusTerminated: "Diterminasi",

@@ -4435,6 +4435,7 @@ export type AppMessages = {
         terminateConfirm: string
         terminateSuccess: string
         terminateFailed: string
+        terminatePartial: string
         terminateScheduledPurge: string
         statusTerminated: string
         purgedLabel: string

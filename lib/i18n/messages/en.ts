@@ -4879,6 +4879,8 @@ export const enMessages: AppMessages = {
         terminateSuccess:
           "Platform {stack} terminated. GitOps resources removed, record retained in database.",
         terminateFailed: "Failed to terminate platform",
+        terminatePartial:
+          "Platform {stack} terminated, but some cleanup tasks (ArgoCD/Vault) were partial — check cluster logs",
         terminateScheduledPurge:
           "Platform {stack} terminated immediately. GitOps resources removed.",
         statusTerminated: "Terminated",

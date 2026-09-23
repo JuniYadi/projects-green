@@ -262,6 +262,14 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
               message: "Stack is already terminated",
             }
           }
+          if (msg.startsWith("GITOPS_DELETE_FAILED")) {
+            set.status = 502
+            return {
+              ok: false as const,
+              error: "GITOPS_DELETE_FAILED",
+              message: msg,
+            }
+          }
           console.error("[admin-stacks] delete error:", error)
           set.status = 500
           return {

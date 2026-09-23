@@ -950,9 +950,12 @@ export async function adminDeleteStack(stackId: string): Promise<{
 
       gitopsDeleted = true
     } catch (err) {
-      console.warn(
+      console.error(
         `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
         err
+      )
+      throw new Error(
+        `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
       )
     }
   }

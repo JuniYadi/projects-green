@@ -924,7 +924,7 @@ describe("adminDeleteStack", () => {
     expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
   })
 
-  it("handles gitops commitFiles failure during terminate gracefully", async () => {
+  it("fails and throws GITOPS_DELETE_FAILED without updating DB when gitops commitFiles fails", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
     const cluster = makeMockCluster()
 
@@ -939,17 +939,10 @@ describe("adminDeleteStack", () => {
       throw new Error("Git push failed")
     })
 
-    const result = await adminDeleteStack("stack_1")
-
-    expect(result.gitopsDeleted).toBe(false)
-    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "stack_1" },
-        data: expect.objectContaining({
-          status: "TERMINATED",
-        }),
-      })
+    await expect(adminDeleteStack("stack_1")).rejects.toThrow(
+      "GITOPS_DELETE_FAILED"
     )
+    expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
   })
 
   it("handles releaseManagedStock failure during terminate gracefully", async () => {

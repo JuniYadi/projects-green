@@ -502,6 +502,23 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.data.gitopsDeleted).toBe(false)
   })
 
+  it("returns 502 when gitops delete fails", async () => {
+    mockDeleteStack.mockRejectedValueOnce(
+      new Error("GITOPS_DELETE_FAILED: Failed to delete GitOps manifests")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("GITOPS_DELETE_FAILED")
+  })
+
   it("returns 404 when stack not found", async () => {
     mockDeleteStack.mockRejectedValueOnce(
       new Error("NOT_FOUND: Stack stack_x not found")

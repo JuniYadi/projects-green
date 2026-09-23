@@ -302,9 +302,21 @@ export default function AdminStacksPage() {
       if (!res || !res.ok) {
         throw new Error(messages.terminateFailed)
       }
-      toast.success(
-        messages.terminateSuccess.replace("{stack}", deleteTarget.slug)
-      )
+      const result = res.data
+      if (
+        result &&
+        (!result.gitopsDeleted ||
+          !result.argocdDeleted ||
+          !result.stockReleased)
+      ) {
+        toast.warning(
+          messages.terminatePartial.replace("{stack}", deleteTarget.slug)
+        )
+      } else {
+        toast.success(
+          messages.terminateSuccess.replace("{stack}", deleteTarget.slug)
+        )
+      }
       setReloadTick((v) => v + 1)
       setDeleteTarget(null)
     } catch (err) {
