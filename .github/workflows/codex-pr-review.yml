@@ -1,0 +1,151 @@
+# Workflow for automated PR review using OpenAI Codex Action.
+# Configuration via Repository Secrets:
+#   - CODEX_API_KEY (or OPENAI_API_KEY): API key for your model provider (required)
+#   - CODEX_BASE_URL (or OPENAI_BASE_URL): Custom Responses API endpoint URL, e.g. https://api.your-gateway.com/v1/responses (optional)
+#   - CODEX_MODEL (or OPENAI_MODEL): Model name, e.g. gpt-5.4, gpt-4o, etc. (optional, default: gpt-5.4)
+
+name: Codex Auto PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Skip fix PRs
+        env:
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$AUTHOR" == "github-actions[bot]" ]; then
+            echo "Skipping: Fix PR created by bot"
+            exit 0
+          fi
+          if [[ "$BRANCH" == fix/pr-* ]]; then
+            echo "Skipping: Fix PR branch"
+            exit 0
+          fi
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock', '**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Prepare test env file from .env.example
+        run: |
+          cp .env.example .env
+          for line in $(grep -v '^#' .env | grep '='); do
+            key=$(echo "$line" | cut -d'=' -f1)
+            value=$(echo "$line" | cut -d'=' -f2- | sed 's/^"*//;s/"*$//')
+            echo "${key}=${value}" >> $GITHUB_ENV
+          done
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: bun run db:generate
+
+      # =========================================================
+      # RUN CODEX REVIEW
+      # =========================================================
+      - name: Run Codex PR Review
+        id: codex-review
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.CODEX_API_KEY || secrets.OPENAI_API_KEY }}
+          responses-api-endpoint: ${{ secrets.CODEX_BASE_URL || secrets.OPENAI_BASE_URL || '' }}
+          model: ${{ secrets.CODEX_MODEL || secrets.OPENAI_MODEL || 'gpt-5.4' }}
+          output-file: review_output.md
+          permission-profile: ":workspace"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            EVENT ACTION: ${{ github.event.action }}
+            PR TITLE: ${{ github.event.pull_request.title }}
+            PR BODY: ${{ github.event.pull_request.body }}
+
+            SPEED & EFFICIENCY DIRECTIVE:
+            - Complete the review swiftly and decisively.
+            - Do not perform unnecessary exploration on unedited files.
+
+            SCOPE & PROPORTIONALITY (read this before anything else):
+            - Only reference files and lines that appear in git diff origin/${{ github.base_ref }}...HEAD.
+            - Never comment on a file that has no change in this PR.
+            - Inspect changed lines first:
+              - SMALL diff (roughly under 100 changed lines): give a fast, compact review.
+                One short paragraph summary + only real blocking bugs. If there is nothing wrong, approve immediately.
+              - LARGER diff: do a focused scan for real bugs, security flaws, or breaking regressions.
+            - Every review MUST end with a formal verdict.
+
+            ROLE & PERSONA:
+            You are a sharp, pragmatic Staff Engineer reviewing pull requests.
+            - Be concise, direct, and factual.
+            - Do not invent speculative nitpicks or write lengthy essays for simple changes.
+
+            FORMAT REQUIREMENTS:
+            Your output will be posted directly to GitHub PR review.
+            You MUST begin your output with one of these exact marker lines:
+            VERDICT: APPROVE
+            or
+            VERDICT: REQUEST_CHANGES
+
+            Followed by:
+            ### Summary of Changes
+            <2-3 sentences explaining what changed>
+
+            ### Findings & Blocking Issues
+            <If any critical blockers exist, cite specific file and line numbers with actionable fix instructions. If none, state "No blocking issues identified.">
+
+            ### Suggestions (Optional)
+            <Minor non-blocking suggestions, if any>
+
+      # =========================================================
+      # SUBMIT VERDICT KE GITHUB PR
+      # =========================================================
+      - name: Submit PR Review Verdict
+        if: always() && steps.codex-review.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -s review_output.md ]; then
+            echo "Review output is empty or not generated."
+            exit 1
+          fi
+
+          if grep -q "^VERDICT: REQUEST_CHANGES" review_output.md; then
+            echo "Verdict: Request Changes"
+            gh pr review "$PR_NUM" --request-changes -F review_output.md || gh pr review "$PR_NUM" --comment -F review_output.md
+          elif grep -q "^VERDICT: APPROVE" review_output.md; then
+            echo "Verdict: Approve"
+            gh pr review "$PR_NUM" --approve -F review_output.md || gh pr review "$PR_NUM" --comment -F review_output.md
+          else
+            echo "Verdict: Comment (fallback)"
+            gh pr review "$PR_NUM" --comment -F review_output.md
+          fi
