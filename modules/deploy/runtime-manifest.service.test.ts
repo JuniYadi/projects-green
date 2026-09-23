@@ -221,4 +221,15 @@ describe("RuntimeManifestService", () => {
       "ghcr.io/pfnapp/base/frameworks/laravel:php8.4-alpine"
     )
   })
+
+  it("finds local base-image manifests when not present in DB", async () => {
+    const manifest = await service.getRuntimeManifest("hermes-agent")
+    expect(manifest.runtime).toBe("hermes-agent")
+    expect(manifest.ports.default).toBe(9119)
+    expect(
+      manifest.tunables.some(
+        (t) => t.key === "HERMES_DASHBOARD_BASIC_AUTH_SECRET"
+      )
+    ).toBe(true)
+  })
 })

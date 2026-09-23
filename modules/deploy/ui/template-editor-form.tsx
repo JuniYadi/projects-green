@@ -14,7 +14,16 @@ import {
   DownloadSimple,
   UploadSimple,
   Warning,
+  DotsThreeVertical,
+  CloudArrowDown,
 } from "@phosphor-icons/react"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -214,6 +223,7 @@ export function TemplateEditorForm({
   )
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [importJsonText, setImportJsonText] = useState("")
+  const [isSyncingManifest, setIsSyncingManifest] = useState(false)
   const [activeTab, setActiveTab] = useState("general")
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [rejectNotes, setRejectNotes] = useState("")
@@ -441,6 +451,110 @@ export function TemplateEditorForm({
     toast.success("Template exported as JSON")
   }
 
+  const handleSyncFromManifest = async () => {
+    setIsSyncingManifest(true)
+    try {
+      const targetQuery = slug.trim() || name.trim().toLowerCase()
+      const res = await fetch(
+        `/api/admin/runtimes/manifests?framework=${encodeURIComponent(targetQuery)}`
+      )
+      if (!res.ok) {
+        throw new Error(`Gagal mengambil manifest (${res.status})`)
+      }
+      const json = await res.json()
+      if (!json.ok || !json.data || !Array.isArray(json.data.tunables)) {
+        throw new Error(
+          json.message ||
+            "Manifest tidak ditemukan atau tidak memiliki tunables"
+        )
+      }
+      const tunables = json.data.tunables as Array<{
+        key: string
+        label?: string
+        type?: string
+        default?: unknown
+        example?: unknown
+        required?: boolean
+        safe?: boolean
+        category?: string
+        description?: string
+        troubleshooting?: string
+        options?: string[]
+      }>
+
+      let addedCount = 0
+      const currentKeys = new Set(
+        envSchema.map((e) => e.key.trim().toUpperCase())
+      )
+      const newItems: AppTemplateBlueprintEnvVar[] = []
+
+      for (const t of tunables) {
+        const cleanKey = t.key.trim()
+        if (currentKeys.has(cleanKey.toUpperCase())) continue
+
+        const isSecret =
+          t.category === "security" ||
+          t.safe === false ||
+          /key|secret|password|token|auth/i.test(cleanKey)
+
+        const dataType: "string" | "number" | "boolean" | "select" =
+          t.type === "boolean"
+            ? "boolean"
+            : t.type === "number"
+              ? "number"
+              : t.type === "select"
+                ? "select"
+                : "string"
+
+        const defVal =
+          t.default !== undefined && t.default !== null
+            ? String(t.default)
+            : t.example !== undefined && t.example !== null && !isSecret
+              ? String(t.example)
+              : ""
+
+        const desc = [t.description, t.troubleshooting]
+          .filter(Boolean)
+          .join(" ")
+
+        newItems.push({
+          key: cleanKey,
+          label: t.label?.trim() || cleanKey,
+          description: desc || undefined,
+          defaultValue: defVal,
+          required: Boolean(t.required),
+          isSecret,
+          dataType,
+          options: t.options,
+          generateRandomHex: /secret|token/i.test(cleanKey) ? 32 : undefined,
+          isFixed: false,
+          isHidden: false,
+        })
+        currentKeys.add(cleanKey.toUpperCase())
+        addedCount++
+      }
+
+      if (addedCount > 0) {
+        setEnvSchema((prev) => [...prev, ...newItems])
+        toast.success(
+          `${addedCount} environment variable berhasil disinkronkan dari manifest ${
+            json.data.framework || targetQuery
+          }!`
+        )
+      } else {
+        toast.info(
+          "Semua environment variable dari runtime manifest sudah terpasang."
+        )
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Gagal sinkronisasi manifest"
+      toast.error(msg)
+    } finally {
+      setIsSyncingManifest(false)
+    }
+  }
+
   const handleApplyImport = (jsonStr: string) => {
     try {
       const parsed = JSON.parse(jsonStr)
@@ -653,78 +767,88 @@ export function TemplateEditorForm({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowImportDialog(true)}
-            className="gap-1.5 text-xs"
-          >
-            <UploadSimple className="size-4" /> {messages.importJson}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleExportJson}
-            className="gap-1.5 text-xs"
-          >
-            <DownloadSimple className="size-4" /> {messages.exportJson}
-          </Button>
-          {!isNew && initialData?.id && (
-            <>
-              {initialData.visibility === "PENDING_REVIEW" && onApprove && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onApprove(initialData.id)}
-                  className="gap-1 text-emerald-600 hover:text-emerald-700"
-                >
-                  <CheckCircle className="size-4" /> {messages.approve}
-                </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+              >
+                <DotsThreeVertical className="size-4" />
+                <span>{messages.moreActions || "Aksi Lainnya"}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                onClick={() => setShowImportDialog(true)}
+                className="cursor-pointer gap-2"
+              >
+                <UploadSimple className="size-4" />
+                <span>{messages.importJson}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleExportJson}
+                className="cursor-pointer gap-2"
+              >
+                <DownloadSimple className="size-4" />
+                <span>{messages.exportJson}</span>
+              </DropdownMenuItem>
+              {!isNew && initialData?.id && (
+                <>
+                  {onToggleFeatured && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setIsFeatured(!isFeatured)
+                          onToggleFeatured(initialData.id)
+                        }}
+                        className="cursor-pointer gap-2"
+                      >
+                        <Star
+                          className={`size-4 ${
+                            isFeatured ? "fill-amber-400 text-amber-400" : ""
+                          }`}
+                        />
+                        <span>{isFeatured ? "Unfeature" : "Feature"}</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {initialData.visibility === "PENDING_REVIEW" && onApprove && (
+                    <DropdownMenuItem
+                      onClick={() => onApprove(initialData.id)}
+                      className="cursor-pointer gap-2 text-emerald-600 focus:text-emerald-700"
+                    >
+                      <CheckCircle className="size-4" />
+                      <span>{messages.approve}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {initialData.visibility === "PENDING_REVIEW" && onReject && (
+                    <DropdownMenuItem
+                      onClick={() => setShowRejectDialog(true)}
+                      className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                    >
+                      <XCircle className="size-4" />
+                      <span>{messages.reject}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setShowDeleteDialog(true)}
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                      >
+                        <Trash className="size-4" />
+                        <span>{messages.delete}</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </>
               )}
-              {initialData.visibility === "PENDING_REVIEW" && onReject && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowRejectDialog(true)}
-                  className="gap-1 text-destructive hover:text-destructive"
-                >
-                  <XCircle className="size-4" /> {messages.reject}
-                </Button>
-              )}
-              {onToggleFeatured && (
-                <Button
-                  type="button"
-                  variant={isFeatured ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setIsFeatured(!isFeatured)
-                    onToggleFeatured(initialData.id)
-                  }}
-                  className="gap-1 text-xs"
-                >
-                  <Star
-                    className={`size-4 ${isFeatured ? "fill-amber-400 text-amber-400" : ""}`}
-                  />
-                  {isFeatured ? "Unfeature" : "Feature"}
-                </Button>
-              )}
-              {onDelete && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="gap-1 text-destructive hover:bg-destructive/10"
-                >
-                  <Trash className="size-4" /> {messages.delete}
-                </Button>
-              )}
-            </>
-          )}
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Button
             type="submit"
@@ -1714,15 +1838,34 @@ export function TemplateEditorForm({
                   {messages.envSchema.description}
                 </CardDescription>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addEnvVar}
-                className="gap-1 text-xs"
-              >
-                <Plus className="size-3.5" /> {messages.envSchema.addVariable}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSyncFromManifest}
+                  disabled={isSyncingManifest}
+                  className="gap-1.5 text-xs"
+                  title="Tarik environment variables / tunables dari runtime manifest image ini"
+                >
+                  <CloudArrowDown className="size-3.5" />
+                  <span>
+                    {isSyncingManifest
+                      ? messages.syncing || "Menyinkronkan..."
+                      : messages.syncFromManifest ||
+                        "Sync dari Runtime Manifest"}
+                  </span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addEnvVar}
+                  className="gap-1 text-xs"
+                >
+                  <Plus className="size-3.5" /> {messages.envSchema.addVariable}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {envSchema.length === 0 ? (

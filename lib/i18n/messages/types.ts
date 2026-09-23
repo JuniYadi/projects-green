@@ -371,6 +371,9 @@ export type AppMessages = {
         idPrefix: string
         importJson: string
         exportJson: string
+        moreActions: string
+        syncFromManifest: string
+        syncing: string
         approve: string
         reject: string
         delete: string

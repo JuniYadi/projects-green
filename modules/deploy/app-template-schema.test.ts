@@ -86,6 +86,10 @@ describe("AppTemplate Prisma Schema & Seed", () => {
       "API_SERVER_ENABLED",
       "API_SERVER_HOST",
       "API_SERVER_KEY",
+      "HERMES_DASHBOARD",
+      "HERMES_DASHBOARD_BASIC_AUTH_USERNAME",
+      "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD",
+      "HERMES_DASHBOARD_BASIC_AUTH_SECRET",
     ])
 
     const apiKeyEnv = hermes?.blueprint.envSchema?.find(
