@@ -4,6 +4,7 @@ import * as React from "react"
 import { useTheme } from "next-themes"
 import { Sun, Moon } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
+import { useMessages } from "@/components/use-messages"
 
 function useIsMounted() {
   return React.useSyncExternalStore(
@@ -16,6 +17,7 @@ function useIsMounted() {
 export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme()
   const mounted = useIsMounted()
+  const t = useMessages().sharedComponents.themeToggle
 
   if (!mounted) {
     return (
@@ -23,7 +25,7 @@ export function ThemeToggle() {
         variant="outline"
         size="icon"
         className="size-9 rounded-xl border-border/60 bg-card/60"
-        aria-label="Toggle theme"
+        aria-label={t.label}
         disabled
       >
         <span className="size-4" />
@@ -39,7 +41,7 @@ export function ThemeToggle() {
       size="icon"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className="size-9 rounded-xl border-border/60 bg-card/60 shadow-sm backdrop-blur-sm transition-all hover:bg-muted"
-      aria-label="Toggle theme"
+      aria-label={t.label}
     >
       {isDark ? (
         <Sun

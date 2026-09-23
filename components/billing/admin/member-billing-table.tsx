@@ -7,6 +7,7 @@ import { DataTable } from "@/components/data-table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { type AdminMember } from "@/lib/billing-client"
+import { useMessages } from "@/components/use-messages"
 
 type MemberBillingTableProps = {
   members: AdminMember[]
@@ -15,6 +16,7 @@ type MemberBillingTableProps = {
 }
 
 export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
+  const t = useMessages(lang).sharedComponents.memberBillingTable
   const columns: ColumnDef<AdminMember, unknown>[] = [
     {
       accessorKey: "name",
@@ -46,7 +48,7 @@ export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
         const total = row.getValue("subscriptionCount") as number
         return (
           <span>
-            {active} / {total} active
+            {active} / {total} {t.activeSuffix}
           </span>
         )
       },
@@ -66,7 +68,7 @@ export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
         return (
           <Button asChild size="sm" variant="outline">
             <Link href={`/${lang}/portal/billing/members/${userId}`}>
-              View Billing
+              {t.viewBilling}
             </Link>
           </Button>
         )
@@ -80,8 +82,8 @@ export function MemberBillingTable({ members, lang }: MemberBillingTableProps) {
       columns={columns}
       data={members}
       searchableColumns={["name", "email"]}
-      searchPlaceholder="Search members..."
-      emptyMessage="No members found."
+      searchPlaceholder={t.searchPlaceholder}
+      emptyMessage={t.emptyMessage}
     />
   )
 }

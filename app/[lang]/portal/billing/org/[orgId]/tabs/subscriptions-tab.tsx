@@ -8,12 +8,19 @@ import {
   getAdminSubscriptions,
   type AdminSubscriptionItem,
 } from "@/lib/billing-client"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type SubscriptionsTabProps = {
   orgId: string
 }
 
 export function SubscriptionsTab({ orgId }: SubscriptionsTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOrgTabsSubscriptionsTab
   const [subscriptions, setSubscriptions] = useState<AdminSubscriptionItem[]>(
     []
   )
@@ -40,7 +47,7 @@ export function SubscriptionsTab({ orgId }: SubscriptionsTabProps) {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load subscriptions: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )

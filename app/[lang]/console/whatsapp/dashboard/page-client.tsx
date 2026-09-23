@@ -382,7 +382,7 @@ export default function WhatsAppDashboardPage() {
             </div>
             <Button className="shrink-0" onClick={() => setIsOrderOpen(true)}>
               <Sparkle className="mr-2 size-4" />
-              Hubungkan WhatsApp Sekarang
+              {t.connectNow}
             </Button>
           </CardContent>
         </Card>

@@ -472,25 +472,31 @@ export default function WhatsAppBroadcastsPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Broadcast preflight</DialogTitle>
-            <DialogDescription>
-              Review recipients, estimated cost versus balance, and template
-              variables.
-            </DialogDescription>
+            <DialogTitle>{t.preflight.title}</DialogTitle>
+            <DialogDescription>{t.preflight.description}</DialogDescription>
           </DialogHeader>
           {preflightLoading && (
-            <p className="text-sm text-muted-foreground">Checking broadcast…</p>
+            <p className="text-sm text-muted-foreground">
+              {t.preflight.checking}
+            </p>
           )}
           {preflightError && (
             <p className="text-sm text-destructive">{preflightError}</p>
           )}
           {preflight && (
             <div className="space-y-2 text-sm">
-              <p>Recipients: {String(preflight.recipientCount ?? 0)}</p>
-              <p>Estimated cost vs balance: verified before dispatch.</p>
               <p>
-                Template variables:{" "}
-                {preflight.valid === true ? "Complete" : "Incomplete"}
+                {t.preflight.recipients.replace(
+                  "{count}",
+                  String(preflight.recipientCount ?? 0)
+                )}
+              </p>
+              <p>{t.preflight.costBalance}</p>
+              <p>
+                {t.preflight.templateVariables}{" "}
+                {preflight.valid === true
+                  ? t.preflight.complete
+                  : t.preflight.incomplete}
               </p>
               {Array.isArray(preflight.issues) && (
                 <ul className="list-disc pl-5">
@@ -503,7 +509,7 @@ export default function WhatsAppBroadcastsPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setSendCandidate(null)}>
-              Cancel
+              {t.preflight.cancel}
             </Button>
             <Button
               onClick={() => void confirmSend()}
@@ -511,7 +517,7 @@ export default function WhatsAppBroadcastsPage() {
                 preflightLoading || !preflight || preflight.valid !== true
               }
             >
-              Send broadcast
+              {t.preflight.send}
             </Button>
           </DialogFooter>
         </DialogContent>

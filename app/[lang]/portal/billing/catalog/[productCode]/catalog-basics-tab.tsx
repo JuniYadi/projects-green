@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { ProductBasicsForm } from "@/components/billing/admin/catalog/catalog-editor.types"
 import {
   PRODUCT_OPTIONS,
@@ -24,13 +27,17 @@ export function CatalogBasicsTab({
   basics: ProductBasicsForm
   onChange: (next: Partial<ProductBasicsForm>) => void
 }>) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale).pPortalBillingCatalogBasicsTab
+
   return (
     <form
       className="grid gap-6 md:grid-cols-2"
       onSubmit={(e) => e.preventDefault()}
     >
       <div className="space-y-2">
-        <Label htmlFor="product-code">Product code</Label>
+        <Label htmlFor="product-code">{messages.productCodeLabel}</Label>
         <Select
           value={basics.code}
           onValueChange={(value) =>
@@ -51,7 +58,7 @@ export function CatalogBasicsTab({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="product-name">Product name *</Label>
+        <Label htmlFor="product-name">{messages.productNameLabel}</Label>
         <Input
           id="product-name"
           value={basics.name}
@@ -61,12 +68,12 @@ export function CatalogBasicsTab({
       </div>
 
       <div className="space-y-2 md:col-span-2">
-        <Label htmlFor="product-description">Description</Label>
+        <Label htmlFor="product-description">{messages.descriptionLabel}</Label>
         <Textarea
           id="product-description"
           value={basics.description}
           onChange={(e) => onChange({ description: e.target.value })}
-          placeholder="Describe this product and what it includes..."
+          placeholder={messages.descriptionPlaceholder}
           rows={4}
         />
       </div>
@@ -78,12 +85,14 @@ export function CatalogBasicsTab({
           onCheckedChange={(checked) => onChange({ isActive: checked })}
         />
         <Label htmlFor="product-is-active" className="mb-0">
-          Active
+          {messages.activeLabel}
         </Label>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="product-currency">Default currency</Label>
+        <Label htmlFor="product-currency">
+          {messages.defaultCurrencyLabel}
+        </Label>
         <Select
           value={basics.currency ?? "IDR"}
           onValueChange={(value) => onChange({ currency: value })}
@@ -102,10 +111,9 @@ export function CatalogBasicsTab({
       </div>
 
       <div className="space-y-2 md:col-span-2">
-        <Label>Enabled currencies</Label>
+        <Label>{messages.enabledCurrenciesLabel}</Label>
         <p className="text-xs text-muted-foreground">
-          Each enabled currency creates a required price row for every enabled
-          term.
+          {messages.enabledCurrenciesHint}
         </p>
         <div className="flex flex-wrap gap-4">
           {SUPPORTED_CURRENCIES.map((currency) => {

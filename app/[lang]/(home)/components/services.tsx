@@ -10,12 +10,14 @@ import {
   ArrowRight,
   WhatsappLogo,
 } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function ServicesSection() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const isId = locale === "id"
+  const t = getMessages(locale).pHomeServices
 
   const services = [
     {
@@ -209,21 +211,10 @@ export function ServicesSection() {
             </span>
           </div>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-            {isId ? (
-              <>
-                Semua yang Anda butuhkan untuk{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  tumbuh & berkembang
-                </span>
-              </>
-            ) : (
-              <>
-                Everything you need to{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  ship & scale
-                </span>
-              </>
-            )}
+            {t.headingStart}{" "}
+            <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+              {t.headingHighlight}
+            </span>
           </h2>
           <p className="mx-auto max-w-2xl text-base text-white/50 sm:text-lg">
             {isId
@@ -285,7 +276,7 @@ export function ServicesSection() {
 
               {/* Link */}
               <div className="flex items-center gap-1 text-sm font-medium text-white/40 transition-colors group-hover:text-white">
-                Learn more
+                {t.learnMore}
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
               </div>
             </div>

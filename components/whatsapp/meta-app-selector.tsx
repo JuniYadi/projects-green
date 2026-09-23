@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 
 import { eden } from "@/lib/eden"
 import { Label } from "@/components/ui/label"
+import { useMessages } from "@/components/use-messages"
 
 type MetaApp = {
   id: string
@@ -37,6 +38,7 @@ export function MetaAppSelector({
   const [apps, setApps] = useState<MetaApp[]>([])
   const [isLoading, setIsLoading] = useState(loadOnMount)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const t = useMessages().sharedComponents.metaAppSelector
 
   useEffect(() => {
     if (!loadOnMount) return
@@ -101,9 +103,9 @@ export function MetaAppSelector({
 
   return (
     <div className="grid gap-2 md:col-span-2">
-      <Label htmlFor="whatsapp-meta-app">MetaApp</Label>
+      <Label htmlFor="whatsapp-meta-app">{t.label}</Label>
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading Meta Apps…</p>
+        <p className="text-sm text-muted-foreground">{t.loading}</p>
       ) : loadError ? (
         <p className="text-sm text-destructive">{loadError}</p>
       ) : (
@@ -129,9 +131,7 @@ export function MetaAppSelector({
             ))}
           </select>
           {activeApps.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No active Meta Apps available.
-            </p>
+            <p className="text-sm text-muted-foreground">{t.empty}</p>
           )}
           {selectionError && (
             <p className="text-xs text-destructive">{selectionError}</p>
@@ -142,10 +142,10 @@ export function MetaAppSelector({
         <div className="rounded-md border bg-muted/30 p-3 text-xs">
           <p className="font-medium">{selectedApp.name}</p>
           <p className="text-muted-foreground">
-            Meta App ID: {selectedApp.metaAppId}
+            {t.metaAppId} {selectedApp.metaAppId}
           </p>
           <p className="text-muted-foreground">
-            Callback path: {selectedApp.callbackPath}
+            {t.callbackPath} {selectedApp.callbackPath}
           </p>
         </div>
       )}

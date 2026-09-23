@@ -277,17 +277,21 @@ export function WhatsAppTemplatePreview({
                     : "Document Attachment (PDF)"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">
-                  WhatsApp Document
+                  <WhatsAppText id="s420" />
                 </p>
               </div>
             </div>
           ) : language.headerType === "IMAGE" ? (
             <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
-              <span>🖼️ Image Attachment</span>
+              <span>
+                <WhatsAppText id="s421" />
+              </span>
             </div>
           ) : language.headerType === "VIDEO" ? (
             <div className="flex h-32 items-center justify-center bg-muted/60 text-xs text-muted-foreground">
-              <span>🎥 Video Attachment</span>
+              <span>
+                <WhatsAppText id="s422" />
+              </span>
             </div>
           ) : (
             <div className="p-2 text-center text-xs text-muted-foreground">

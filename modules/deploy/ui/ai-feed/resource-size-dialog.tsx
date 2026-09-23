@@ -9,6 +9,9 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { ResourcePlanId, ResourceSelection } from "./ai-deploy.types"
 
 type Props = {
@@ -32,6 +35,10 @@ export function ResourceSizeDialog({
   recommendedPlanId = "pro",
   isSaving,
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployAiFeedResourceSizeDialog
   const order = [
     recommendedPlanId,
     ...(["payg", "starter"] as ResourcePlanId[]).filter(
@@ -42,17 +49,17 @@ export function ResourceSizeDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Choose resources</DialogTitle>
+          <DialogTitle>{t.title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5">
           {order.map((id, i) => (
             <section key={id}>
               <h3 className="mb-2 text-xs font-semibold text-muted-foreground uppercase">
                 {i === 0
-                  ? "Recommended"
+                  ? t.recommended
                   : id === "payg"
-                    ? "Larger than recommended"
-                    : "Other options"}
+                    ? t.largerThanRecommended
+                    : t.otherOptions}
               </h3>
               <div
                 className={`rounded-xl border p-4 ${id === currentPlanId ? "border-primary bg-primary/10" : ""}`}
@@ -61,7 +68,9 @@ export function ResourceSizeDialog({
                   <div>
                     <div className="flex items-center gap-2 font-medium">
                       {plans[id].name}
-                      {id === recommendedPlanId && <Badge>Recommended</Badge>}
+                      {id === recommendedPlanId && (
+                        <Badge>{t.recommended}</Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground">
                       {plans[id].detail} · {plans[id].price}
@@ -77,7 +86,7 @@ export function ResourceSizeDialog({
                       })
                     }
                   >
-                    Use this
+                    {t.useThis}
                   </Button>
                 </div>
               </div>
@@ -86,7 +95,7 @@ export function ResourceSizeDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t.cancelLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

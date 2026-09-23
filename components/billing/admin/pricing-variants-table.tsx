@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
+import { useMessages } from "@/components/use-messages"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { formatBillingMoney } from "@/modules/billing/format-money"
@@ -14,6 +15,7 @@ export function PricingVariantsTable({
   pricing: AdminPricing[]
   onDeactivate?: (id: string) => void
 }) {
+  const t = useMessages().sharedComponents.pricingVariantsTable
   const columns: ColumnDef<AdminPricing>[] = [
     {
       id: "product",
@@ -81,7 +83,7 @@ export function PricingVariantsTable({
             size="sm"
             onClick={() => onDeactivate(row.original.id)}
           >
-            Deactivate
+            {t.deactivate}
           </Button>
         ) : null,
     },
@@ -93,8 +95,8 @@ export function PricingVariantsTable({
       columns={columns}
       data={pricing}
       searchableColumns={["product", "regionCode", "billingPeriod", "currency"]}
-      searchPlaceholder="Search pricing variants..."
-      emptyMessage="No pricing variants found."
+      searchPlaceholder={t.searchPlaceholder}
+      emptyMessage={t.emptyMessage}
     />
   )
 }

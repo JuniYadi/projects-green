@@ -5,6 +5,7 @@ import { type ColumnDef } from "@tanstack/react-table"
 
 import { cn } from "@/lib/utils"
 import { DataTable } from "@/components/data-table"
+import { useMessages } from "@/components/use-messages"
 import type { AdminAdjustment } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
 
@@ -71,6 +72,7 @@ function AmountCell({
 }
 
 export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
+  const t = useMessages().sharedComponents.adjustmentTable
   const columns = useMemo<ColumnDef<AdminAdjustment, unknown>[]>(
     () => [
       {
@@ -126,8 +128,8 @@ export function AdjustmentTable({ adjustments }: AdjustmentTableProps) {
       columns={columns}
       data={adjustments}
       searchableColumns={["reason", "type"]}
-      searchPlaceholder="Search adjustments..."
-      emptyMessage="No adjustments found."
+      searchPlaceholder={t.searchPlaceholder}
+      emptyMessage={t.emptyMessage}
     />
   )
 }

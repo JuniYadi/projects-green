@@ -155,23 +155,9 @@ export function TemplateDeleteDialog({
             htmlFor="delete-confirm-input"
             className="text-xs text-muted-foreground"
           >
-            {isIndonesian ? (
-              <>
-                Ketik{" "}
-                <span className="font-mono font-bold text-destructive">
-                  DELETE
-                </span>{" "}
-                untuk konfirmasi:
-              </>
-            ) : (
-              <>
-                Type{" "}
-                <span className="font-mono font-bold text-destructive">
-                  DELETE
-                </span>{" "}
-                to confirm:
-              </>
-            )}
+            <WhatsAppText id="s423" />{" "}
+            <span className="font-mono font-bold text-destructive">DELETE</span>{" "}
+            <WhatsAppText id="s424" />
           </label>
           <Input
             id="delete-confirm-input"

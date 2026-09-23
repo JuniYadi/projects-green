@@ -1502,13 +1502,13 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                       value="Equal"
                                       className="text-xs"
                                     >
-                                      Equal
+                                      {messages.settings.operatorEqual}
                                     </SelectItem>
                                     <SelectItem
                                       value="Exists"
                                       className="text-xs"
                                     >
-                                      Exists
+                                      {messages.settings.operatorExists}
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1588,19 +1588,19 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                                       value="NoSchedule"
                                       className="text-xs"
                                     >
-                                      NoSchedule
+                                      {messages.settings.effectNoSchedule}
                                     </SelectItem>
                                     <SelectItem
                                       value="PreferNoSchedule"
                                       className="text-xs"
                                     >
-                                      PreferNoSchedule
+                                      {messages.settings.effectPreferNoSchedule}
                                     </SelectItem>
                                     <SelectItem
                                       value="NoExecute"
                                       className="text-xs"
                                     >
-                                      NoExecute
+                                      {messages.settings.effectNoExecute}
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1691,7 +1691,7 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                     size="xs"
                     onClick={() => setEndpointRetry((value) => value + 1)}
                   >
-                    Retry
+                    {messages.common.retry}
                   </Button>
                 </div>
               )}
@@ -2030,12 +2030,13 @@ export function ClusterDetail({ clusterId }: ClusterDetailProps) {
                             {integrationTestResults[integration.type]
                               .durationMs !== undefined && (
                               <span className="ml-1 text-muted-foreground">
-                                (
-                                {
-                                  integrationTestResults[integration.type]
-                                    .durationMs
-                                }
-                                ms)
+                                {messages.settings.testDuration.replace(
+                                  "{duration}",
+                                  String(
+                                    integrationTestResults[integration.type]
+                                      .durationMs
+                                  )
+                                )}
                               </span>
                             )}
                           </p>

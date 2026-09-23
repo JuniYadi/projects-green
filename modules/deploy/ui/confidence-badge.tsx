@@ -1,4 +1,7 @@
+import { useParams } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import {
   HIGH_CONFIDENCE_THRESHOLD,
   LOW_CONFIDENCE_THRESHOLD,
@@ -10,10 +13,14 @@ type ConfidenceBadgeProps = {
 }
 
 export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployConfidenceBadge
   if (!detectionResult) {
     return (
       <p className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
-        Detection not started
+        {t.detectionNotStarted}
       </p>
     )
   }
@@ -34,7 +41,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
           "border-destructive/50 bg-destructive/10 text-destructive"
         )}
       >
-        Need your help ({confidence}%)
+        {t.needHelp} ({confidence}%)
       </p>
     )
   }
@@ -47,7 +54,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
           "border-emerald-500/40 bg-emerald-500/10 text-emerald-700"
         )}
       >
-        Looks good! ({confidence}%)
+        {t.looksGood} ({confidence}%)
       </p>
     )
   }
@@ -59,7 +66,7 @@ export function ConfidenceBadge({ detectionResult }: ConfidenceBadgeProps) {
         "border-amber-500/40 bg-amber-500/10 text-amber-700"
       )}
     >
-      Please verify settings ({confidence}%)
+      {t.verifySettings} ({confidence}%)
     </p>
   )
 }

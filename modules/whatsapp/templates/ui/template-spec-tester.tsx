@@ -76,7 +76,7 @@ export function TemplateSpecTester({
         <div className="flex items-center justify-between rounded-lg border bg-card p-3 shadow-xs">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-muted-foreground">
-              Active Language:
+              <WhatsAppText id="s425" />
             </span>
             <Badge variant="outline" className="font-mono text-xs">
               {currentLanguage.lang}
@@ -136,7 +136,7 @@ export function TemplateSpecTester({
               )}
               {currentLanguage.headerUrl && (
                 <p className="truncate text-muted-foreground">
-                  Media URL: {currentLanguage.headerUrl}
+                  <WhatsAppText id="s426" /> {currentLanguage.headerUrl}
                 </p>
               )}
             </div>
@@ -189,7 +189,7 @@ export function TemplateSpecTester({
                 {placeholderIndexes.map((idx) => (
                   <div key={idx} className="space-y-1">
                     <Label className="font-mono text-[11px] text-primary">
-                      Variable {"{{" + idx + "}}"}
+                      <WhatsAppText id="s427" /> {"{{" + idx + "}}"}
                     </Label>
                     <Input
                       value={variableValues[idx] || ""}
@@ -220,7 +220,7 @@ export function TemplateSpecTester({
               3
             </span>
             <span className="text-xs font-semibold tracking-wider text-foreground uppercase">
-              Footer Component
+              <WhatsAppText id="s428" />
             </span>
           </div>
           <Badge variant="outline" className="text-[10px]">
@@ -253,7 +253,7 @@ export function TemplateSpecTester({
             </span>
           </div>
           <Badge variant="outline" className="text-[10px]">
-            {buttons.length} Button(s)
+            {buttons.length} <WhatsAppText id="s429" />
           </Badge>
         </div>
 

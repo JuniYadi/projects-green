@@ -12,6 +12,9 @@ import { eden } from "@/lib/eden"
 import type { AdminOrgDetail } from "@/lib/billing-client"
 import type { VoucherDTO } from "@/modules/vouchers/vouchers.dto"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type OverviewTabProps = {
   _lang?: string
@@ -20,6 +23,10 @@ type OverviewTabProps = {
 }
 
 export function OverviewTab({ _lang, orgId, orgDetail }: OverviewTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalOrgsOverviewTab
   const org = orgDetail.org
   const [vouchers, setVouchers] = useState<VoucherDTO[]>([])
   const [isLoadingVouchers, setIsLoadingVouchers] = useState(true)
@@ -107,19 +114,17 @@ export function OverviewTab({ _lang, orgId, orgDetail }: OverviewTabProps) {
       {/* Voucher logs */}
       <Card>
         <CardHeader>
-          <CardTitle>Voucher Generation Logs</CardTitle>
+          <CardTitle>{t.voucherLogsTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingVouchers ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">{t.loading}</p>
           ) : voucherError ? (
             <p className="text-sm text-destructive">
-              Failed to load voucher logs: {voucherError}
+              {t.loadVoucherFailed} {voucherError}
             </p>
           ) : vouchers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No voucher generation logs for this organization.
-            </p>
+            <p className="text-sm text-muted-foreground">{t.noVoucherLogs}</p>
           ) : (
             <div className="space-y-2">
               {vouchers.map((v) => (
@@ -143,7 +148,9 @@ export function OverviewTab({ _lang, orgId, orgDetail }: OverviewTabProps) {
                     <span className="text-muted-foreground">
                       {formatBillingMoney(v.amount, v.currency)}
                     </span>
-                    <span>{v.claimedCount} claimed</span>
+                    <span>
+                      {v.claimedCount} {t.claimedSuffix}
+                    </span>
                     <span>
                       {new Date(v.createdAt).toLocaleDateString("id-ID")}
                     </span>

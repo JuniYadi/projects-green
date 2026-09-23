@@ -101,7 +101,7 @@ export function WebhookEventFilter({
       {showOrganizationDropdown && (
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-medium text-muted-foreground">
-            Organization
+            <WhatsAppText id="s443" />
           </label>
           <Select
             value={initialFilters.organizationId}
@@ -242,7 +242,7 @@ export function WebhookEventFilter({
           className="mb-0.5"
         >
           <X className="mr-1 size-3.5" />
-          Reset
+          <WhatsAppText id="s444" />
         </Button>
       )}
     </div>

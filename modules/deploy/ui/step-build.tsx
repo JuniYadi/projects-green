@@ -125,9 +125,7 @@ export function StepBuild({
     <Card>
       <CardHeader>
         <CardTitle>{messages.title}</CardTitle>
-        <CardDescription>
-          {messages.description}
-        </CardDescription>
+        <CardDescription>{messages.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <RepositorySummaryBar
@@ -209,7 +207,9 @@ export function StepBuild({
                 <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
               </div>
               <div className="space-y-1">
-                <dt className="font-medium text-foreground">{messages.defaultPort}</dt>
+                <dt className="font-medium text-foreground">
+                  {messages.defaultPort}
+                </dt>
                 <dd>
                   {detectionResult?.defaultPort
                     ? detectionResult.defaultPort
@@ -375,7 +375,7 @@ export function StepBuild({
               aria-invalid={needsManualValues && missingBuildCommand}
               value={buildCommand}
               disabled={useDockerfile}
-              placeholder="bun run build"
+              placeholder={messages.buildCommandPlaceholder}
               className={cn(
                 needsManualValues &&
                   missingBuildCommand &&

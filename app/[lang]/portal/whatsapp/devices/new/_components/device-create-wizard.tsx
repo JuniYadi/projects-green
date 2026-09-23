@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { localizePathname } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { StepOrganization } from "./step-organization"
@@ -103,6 +104,8 @@ type DeviceCreateWizardProps = {
 }
 
 export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesNewDeviceCreateWizard
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [data, setData] = useState<WizardData>(emptyData)
@@ -281,10 +284,10 @@ export function DeviceCreateWizard({ locale }: DeviceCreateWizardProps) {
       </Card>
       <div className="flex items-center justify-between">
         <Button variant="outline" onClick={handleBack} disabled={step === 0}>
-          Previous
+          {t.previous}
         </Button>
         {step < STEPS.length - 1 ? (
-          <Button onClick={handleNext}>Next</Button>
+          <Button onClick={handleNext}>{t.next}</Button>
         ) : (
           <Button onClick={() => void handleSubmit()} disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : "Create Device"}

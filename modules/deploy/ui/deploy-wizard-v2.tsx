@@ -1126,7 +1126,7 @@ function DeployWizardV2Inner({
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <nav
           className="overflow-x-auto border-b border-border p-4"
-          aria-label="Deploy wizard phases"
+          aria-label={messages.phaseNavigation}
         >
           <ol className="flex min-w-[520px] items-center">
             {DEPLOY_PHASES.map((phase, index) => {
@@ -1160,7 +1160,10 @@ function DeployWizardV2Inner({
                       )}
                     >
                       {isCompleted ? (
-                        <Check className="h-4 w-4" aria-label="Completed" />
+                        <Check
+                          className="h-4 w-4"
+                          aria-label={messages.phaseCompletedAria}
+                        />
                       ) : (
                         index + 1
                       )}

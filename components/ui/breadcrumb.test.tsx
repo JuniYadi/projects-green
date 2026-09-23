@@ -16,7 +16,7 @@ describe("Breadcrumb", () => {
     const view = render(<Breadcrumb />)
     const nav = view.container.querySelector('[data-slot="breadcrumb"]')
     expect(nav?.tagName).toBe("NAV")
-    expect(nav).toHaveAttribute("aria-label", "breadcrumb")
+    expect(nav).toHaveAttribute("aria-label", "Breadcrumb")
     expect(nav).toHaveAttribute("data-slot", "breadcrumb")
   })
 

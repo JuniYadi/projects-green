@@ -15,6 +15,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type LogColumnPickerProps = {
   availableFields: string[]
@@ -29,6 +32,10 @@ export function LogColumnPicker({
   onToggleColumn,
   onResetColumns,
 }: LogColumnPickerProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployOperateLogColumnPicker
   const [search, setSearch] = useState("")
 
   const filteredFields = availableFields.filter((f) =>
@@ -45,7 +52,7 @@ export function LogColumnPicker({
           className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:text-foreground"
         >
           <Columns size={13} />
-          <span>Kolom</span>
+          <span>{t.columnsLabel}</span>
           {selectedColumns.length > 0 && (
             <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/15 px-1 font-mono text-[10px] font-semibold text-primary">
               +{selectedColumns.length}
@@ -62,7 +69,7 @@ export function LogColumnPicker({
             <div className="flex items-center gap-1.5">
               <Columns size={14} className="text-foreground" />
               <span className="text-xs font-semibold text-foreground">
-                Kustomisasi Kolom Tabel
+                {t.title}
               </span>
             </div>
             {selectedColumns.length > 0 && (
@@ -70,16 +77,16 @@ export function LogColumnPicker({
                 type="button"
                 onClick={onResetColumns}
                 className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                title="Reset ke kolom bawaan"
+                title={t.resetTitle}
               >
                 <ArrowCounterClockwise size={11} />
-                <span>Reset</span>
+                <span>{t.resetLabel}</span>
               </button>
             )}
           </div>
 
           <p className="text-[11px] leading-snug text-muted-foreground">
-            Pilih atribut JSON untuk ditampilkan sebagai kolom dinamis di tabel.
+            {t.searchHint}
           </p>
 
           <div className="relative">
@@ -89,7 +96,7 @@ export function LogColumnPicker({
             />
             <Input
               type="text"
-              placeholder="Cari field (cth: status, pod)..."
+              placeholder={t.searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-7 rounded-lg pl-7 text-[11px]"

@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { MagnifyingGlass, ArrowRight, FileText, X } from "@phosphor-icons/react"
+import { useMessages } from "@/components/use-messages"
 import type { SearchableDoc } from "./docs-search"
 
 interface NavbarSearchProps {
@@ -11,6 +12,7 @@ interface NavbarSearchProps {
 }
 
 export function NavbarSearch({ lang, documents }: NavbarSearchProps) {
+  const t = useMessages(lang).pDocs
   const [isOpen, setIsOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -65,7 +67,7 @@ export function NavbarSearch({ lang, documents }: NavbarSearchProps) {
           size={15}
           className="text-emerald-500 transition-transform group-hover:scale-110"
         />
-        <span className="hidden sm:inline">Search docs...</span>
+        <span className="hidden sm:inline">{t.searchTrigger}</span>
         <kbd className="hidden rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground/80 sm:inline-block">
           ⌘K
         </kbd>
@@ -92,7 +94,7 @@ export function NavbarSearch({ lang, documents }: NavbarSearchProps) {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search across all guides, APIs, and features..."
+                placeholder={t.searchPlaceholder}
                 className="h-14 w-full bg-transparent px-3 text-base text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
               />
               <button
@@ -108,15 +110,15 @@ export function NavbarSearch({ lang, documents }: NavbarSearchProps) {
             <div className="max-h-[60vh] overflow-y-auto p-2">
               {query.trim() === "" ? (
                 <div className="p-6 text-center text-xs text-muted-foreground">
-                  Type to search across documentation or press{" "}
+                  {t.searchHintPrefix}{" "}
                   <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px]">
                     ESC
                   </kbd>{" "}
-                  to close.
+                  {t.searchHintSuffix}
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
-                  No documents found matching &ldquo;
+                  {t.noResultsPrefix}
                   <span className="font-semibold text-foreground">{query}</span>
                   &rdquo;
                 </div>

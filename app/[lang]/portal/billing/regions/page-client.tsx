@@ -377,7 +377,10 @@ export default function PortalBillingRegionsPage() {
       {
         id: "clustersCount",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={messages.thActiveClusters} />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.thActiveClusters}
+          />
         ),
         cell: ({ row }) => {
           const count = row.original._count?.appHostingClusters ?? 0
@@ -436,7 +439,7 @@ export default function PortalBillingRegionsPage() {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    aria-label="More options"
+                    aria-label={messages.moreOptionsAria}
                   >
                     <DotsThreeVerticalIcon className="h-4 w-4" />
                   </Button>
@@ -488,9 +491,7 @@ export default function PortalBillingRegionsPage() {
             <MapPinIcon className="h-5 w-5 text-muted-foreground" />
             {messages.configuredTitle}
           </CardTitle>
-          <CardDescription>
-            {messages.configuredDesc}
-          </CardDescription>
+          <CardDescription>{messages.configuredDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -529,9 +530,7 @@ export default function PortalBillingRegionsPage() {
                 {editingRegion ? messages.edit : messages.addRegion}
               </DialogTitle>
               <DialogDescription>
-                {editingRegion
-                  ? messages.configuredDesc
-                  : messages.description}
+                {editingRegion ? messages.configuredDesc : messages.description}
               </DialogDescription>
             </DialogHeader>
 
@@ -544,7 +543,8 @@ export default function PortalBillingRegionsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="region-name">
-                  {messages.labelName} <span className="text-destructive">*</span>
+                  {messages.labelName}{" "}
+                  <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="region-name"
@@ -560,7 +560,8 @@ export default function PortalBillingRegionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="region-code">
-                    {messages.labelCode} <span className="text-destructive">*</span>
+                    {messages.labelCode}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="region-code"
@@ -576,7 +577,8 @@ export default function PortalBillingRegionsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="region-country">
-                    {messages.labelCountryIso} <span className="text-destructive">*</span>
+                    {messages.labelCountryIso}{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="region-country"
@@ -613,11 +615,10 @@ export default function PortalBillingRegionsPage() {
                     htmlFor="region-active"
                     className="text-sm font-medium"
                   >
-                    Active Status
+                    {messages.activeStatus}
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Inactive regions cannot be selected for new clusters or
-                    packages.
+                    {messages.inactiveRegionsHint}
                   </p>
                 </div>
                 <Switch
@@ -640,9 +641,7 @@ export default function PortalBillingRegionsPage() {
                 {messages.cancel}
               </Button>
               <Button type="submit" disabled={saving}>
-                {saving
-                  ? messages.saving
-                  : messages.save}
+                {saving ? messages.saving : messages.save}
               </Button>
             </DialogFooter>
           </form>
@@ -666,7 +665,9 @@ export default function PortalBillingRegionsPage() {
           )}
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>{messages.cancel}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>
+              {messages.cancel}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={(e) => {

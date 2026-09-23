@@ -265,14 +265,15 @@ export default function WhatsAppUsagePage() {
   )
 
   // Chart series mapping
+  const dateLocale = locale === "id" ? "id-ID" : "en-US"
   const chartData = React.useMemo(() => {
     return timeRange === "3m"
       ? monthlyCounts.slice(-3).map((m) => ({
           date: `${m.year}-${String(m.month).padStart(2, "0")}-01`,
-          label: new Date(m.year, m.month - 1).toLocaleDateString(
-            locale === "id" ? "id-ID" : "en-US",
-            { month: "short", year: "numeric" }
-          ),
+          label: new Date(m.year, m.month - 1).toLocaleDateString(dateLocale, {
+            month: "short",
+            year: "numeric",
+          }),
           messageInboxCount: usageMode === "payg" ? 0 : m.messageInboxCount,
           messageOutboxCount:
             usageMode === "payg"
@@ -281,10 +282,10 @@ export default function WhatsAppUsagePage() {
         }))
       : dailyCounts.map((d) => ({
           date: d.date,
-          label: new Date(d.date).toLocaleDateString(
-            locale === "id" ? "id-ID" : "en-US",
-            { day: "numeric", month: "short" }
-          ),
+          label: new Date(d.date).toLocaleDateString(dateLocale, {
+            day: "numeric",
+            month: "short",
+          }),
           messageInboxCount: usageMode === "payg" ? 0 : d.messageInboxCount,
           messageOutboxCount:
             usageMode === "payg"
@@ -293,7 +294,7 @@ export default function WhatsAppUsagePage() {
                 : 0
               : d.messageOutboxCount,
         }))
-  }, [dailyCounts, monthlyCounts, timeRange, usageMode, locale])
+  }, [dailyCounts, monthlyCounts, timeRange, usageMode, dateLocale])
 
   const peakChartVolume = React.useMemo(() => {
     if (chartData.length === 0) return 0
@@ -533,11 +534,10 @@ export default function WhatsAppUsagePage() {
                       </span>
                     ) : (
                       <span className="text-emerald-500">
-                        Rp 0 (
-                        {locale === "id"
-                          ? "Semua ditanggung kuota"
-                          : "Fully covered by allowance"}
-                        )
+                        {t.usage.payg.zeroCovered.replace(
+                          "{reason}",
+                          t.usage.payg.fullyCoveredByAllowance
+                        )}
                       </span>
                     )}
                   </span>
@@ -662,11 +662,14 @@ export default function WhatsAppUsagePage() {
                     <div className="text-right text-xs">
                       {hasPayg ? (
                         <span className="font-semibold text-amber-500">
-                          PAYG: Rp {dev.totalCost.toLocaleString("id-ID")}
+                          {t.usage.payg.amount.replace(
+                            "{amount}",
+                            dev.totalCost.toLocaleString("id-ID")
+                          )}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">
-                          PAYG: Rp 0
+                          {t.usage.payg.zero}
                         </span>
                       )}
                     </div>

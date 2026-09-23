@@ -1,3 +1,6 @@
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { cn } from "@/lib/utils"
 import { RESOURCE_PLANS } from "@/modules/deploy/deploy.mock"
 import type { ResourcePlanId } from "@/modules/deploy/deploy.types"
@@ -27,6 +30,10 @@ export function ResourcePlanSelector({
   onMemoryChange,
   onBufferHoursChange,
 }: ResourcePlanSelectorProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployResourcePlanSelector
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
@@ -58,7 +65,7 @@ export function ResourcePlanSelector({
               </p>
               {isRecommended ? (
                 <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                  Recommended for this site
+                  {t.recommendedLabel}
                 </span>
               ) : null}
             </label>

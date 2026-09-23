@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { EmailTemplateMeta } from "@/lib/email-templates"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 // ponytail: preview uses iframe src (not srcDoc) — no client fetch, no lint issue
 function previewUrl(id: string) {
@@ -13,6 +16,10 @@ function previewUrl(id: string) {
 }
 
 export function EmailsView() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalSettingsEmailsEmailsView
   const [templates, setTemplates] = useState<EmailTemplateMeta[]>([])
   const [selected, setSelected] = useState<EmailTemplateMeta | null>(null)
   const [loadingList, setLoadingList] = useState(true)
@@ -77,7 +84,8 @@ export function EmailsView() {
               <Badge variant="secondary">{selected.category}</Badge>
             </div>
             <p className="truncate text-sm text-muted-foreground">
-              <span className="font-medium">Subject:</span> {selected.subject}
+              <span className="font-medium">{t.subjectLabel}</span>{" "}
+              {selected.subject}
             </p>
             <p className="text-sm text-muted-foreground">
               <span className="font-medium">From:</span> {selected.from}

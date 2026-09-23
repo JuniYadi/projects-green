@@ -2,6 +2,8 @@ import Link from "next/link"
 import { BrandLogo } from "@/components/brand-logo"
 import { BookOpen, Code, TerminalWindow } from "@phosphor-icons/react/dist/ssr"
 import { prisma } from "@/lib/prisma"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { DocsSidebar } from "./components/docs-sidebar"
 import { LanguageFlags } from "./components/language-flags"
 import { NavbarSearch } from "./components/navbar-search"
@@ -20,6 +22,7 @@ export const dynamic = "force-dynamic"
 
 export default async function PublicDocsLayout({ children, params }: Props) {
   const { lang } = await params
+  const t = getMessages(resolveLocaleOrDefault(lang)).pDocs
 
   // 1. Fetch documents matching active locale
   let documents = await prisma.docsKnowledgeDocument.findMany({
@@ -105,7 +108,7 @@ export default async function PublicDocsLayout({ children, params }: Props) {
               className="hidden h-9 items-center gap-1.5 rounded-xl border border-border/60 bg-card/60 px-3 text-xs font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all hover:bg-muted md:inline-flex"
             >
               <Code size={15} className="text-blue-500" />
-              <span>OpenAPI Reference</span>
+              <span>{t.openapiReference}</span>
             </Link>
 
             {/* Theme Toggle (Light / Dark Mode) */}
@@ -119,7 +122,7 @@ export default async function PublicDocsLayout({ children, params }: Props) {
               className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-semibold text-white shadow-sm shadow-emerald-600/25 transition-all hover:bg-emerald-500 active:scale-95"
             >
               <TerminalWindow size={16} weight="bold" />
-              <span>Console</span>
+              <span>{t.consoleLabel}</span>
             </Link>
           </div>
         </div>

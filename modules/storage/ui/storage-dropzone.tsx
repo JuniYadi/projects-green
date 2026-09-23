@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
+
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   UploadCloud,
   CheckCircle2,
@@ -52,6 +55,8 @@ export function StorageDropzone({
   description = "Drag & drop or click to upload",
   mediaType = "IMAGE",
 }: StorageDropzoneProps) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang).pStorageDropzone
   const [isDragging, setIsDragging] = React.useState(false)
   const [status, setStatus] = React.useState<
     "idle" | "uploading" | "confirming" | "success" | "error"
@@ -240,7 +245,7 @@ export function StorageDropzone({
           <div className="flex items-center justify-between text-xs font-medium">
             <span className="flex items-center gap-1.5">
               <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />{" "}
-              Uploading to S3...
+              {messages.uploading}
             </span>
             <span>{progress}%</span>
           </div>
@@ -255,8 +260,8 @@ export function StorageDropzone({
 
       {status === "confirming" && (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-4 text-xs font-medium text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" /> Verifying
-          and confirming upload...
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          {messages.confirming}
         </div>
       )}
 
@@ -298,7 +303,7 @@ export function StorageDropzone({
             onClick={handleClear}
             className="text-xs text-muted-foreground underline hover:text-foreground"
           >
-            Retry
+            {messages.retry}
           </button>
         </div>
       )}

@@ -200,9 +200,7 @@ export function WhatsAppCommandCenter({
                   <p className="font-semibold text-amber-700 dark:text-amber-300">
                     {t.adminReview}
                   </p>
-                  <p className="text-muted-foreground">
-                    {t.wabaRegistration}
-                  </p>
+                  <p className="text-muted-foreground">{t.wabaRegistration}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-xl border bg-background/50 p-3 opacity-60">
@@ -211,9 +209,7 @@ export function WhatsAppCommandCenter({
                   <p className="font-semibold text-foreground">
                     {t.cockpitLive}
                   </p>
-                  <p className="text-muted-foreground">
-                    {t.level1Ready}
-                  </p>
+                  <p className="text-muted-foreground">{t.level1Ready}</p>
                 </div>
               </div>
             </div>
@@ -272,7 +268,7 @@ export function WhatsAppCommandCenter({
                   />
                 ) : (
                   <Badge variant="outline" className="text-[10px] font-bold">
-                    Lv 0
+                    {tLevels.levelPrefix.replace("{level}", "0")}
                   </Badge>
                 )}
               </div>
@@ -310,7 +306,7 @@ export function WhatsAppCommandCenter({
                   />
                 ) : (
                   <Badge variant="outline" className="text-[10px] font-bold">
-                    Lv 1
+                    {tLevels.levelPrefix.replace("{level}", "1")}
                   </Badge>
                 )}
               </div>
@@ -348,7 +344,7 @@ export function WhatsAppCommandCenter({
                   />
                 ) : (
                   <Badge variant="outline" className="text-[10px] font-bold">
-                    Lv 2
+                    {tLevels.levelPrefix.replace("{level}", "2")}
                   </Badge>
                 )}
               </div>
@@ -384,7 +380,7 @@ export function WhatsAppCommandCenter({
                   />
                 ) : (
                   <Badge variant="outline" className="text-[10px] font-bold">
-                    Lv 3
+                    {tLevels.levelPrefix.replace("{level}", "3")}
                   </Badge>
                 )}
               </div>

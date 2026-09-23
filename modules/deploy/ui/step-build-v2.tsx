@@ -190,7 +190,9 @@ export function StepBuildV2({
                 <dd>{detectionResult?.dockerfileDetected ? "Yes" : "No"}</dd>
               </div>
               <div className="space-y-1">
-                <dt className="font-medium text-foreground">{messages.defaultPort}</dt>
+                <dt className="font-medium text-foreground">
+                  {messages.defaultPort}
+                </dt>
                 <dd>
                   {detectionResult?.defaultPort
                     ? detectionResult.defaultPort
@@ -356,7 +358,7 @@ export function StepBuildV2({
               aria-invalid={needsManualValues && missingBuildCommand}
               value={buildCommand}
               disabled={useDockerfile}
-              placeholder="bun run build"
+              placeholder={messages.buildCommandPlaceholder}
               className={cn(
                 needsManualValues &&
                   missingBuildCommand &&

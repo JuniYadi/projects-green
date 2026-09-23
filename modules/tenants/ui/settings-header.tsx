@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Card,
   CardDescription,
@@ -18,6 +21,11 @@ export function SettingsHeader({
   description,
   organizationName,
 }: SettingsHeaderProps) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(
+    params?.lang
+  ).pTenantsSettingsHeader
+
   return (
     <Card className="rounded-none border-0 border-b shadow-none">
       <CardHeader className="px-6">
@@ -27,7 +35,8 @@ export function SettingsHeader({
           {organizationName && (
             <>
               {" "}
-              for <span className="font-medium">{organizationName}</span>.
+              {messages.forOrganization}{" "}
+              <span className="font-medium">{organizationName}</span>.
             </>
           )}
         </CardDescription>

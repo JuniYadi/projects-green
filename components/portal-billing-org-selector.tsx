@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/select"
 import { BuildingsIcon } from "@phosphor-icons/react"
 import { getAdminOrgs, type AdminOrgSummary } from "@/lib/billing-client"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 const VALID_TABS = [
   "balance",
@@ -44,6 +46,8 @@ export function PortalBillingOrgSelector() {
   const orgIndex = segments.indexOf("org")
   const currentOrgId = orgIndex !== -1 ? segments[orgIndex + 1] : null
   const locale = segments[1] ?? "en"
+  const t = getMessages(resolveLocaleOrDefault(locale)).sharedComponents
+    .orgSelector
 
   const rawTab = searchParams.get("tab")
   const currentTab = rawTab && VALID_TABS.includes(rawTab) ? rawTab : "balance"
@@ -56,7 +60,7 @@ export function PortalBillingOrgSelector() {
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
         <BuildingsIcon className="h-4 w-4 shrink-0" />
-        <span className="truncate">Loading orgs...</span>
+        <span className="truncate">{t.loading}</span>
       </div>
     )
   }
@@ -65,7 +69,7 @@ export function PortalBillingOrgSelector() {
     return (
       <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
         <BuildingsIcon className="h-4 w-4 shrink-0" />
-        <span className="truncate">No organizations</span>
+        <span className="truncate">{t.empty}</span>
       </div>
     )
   }
@@ -76,8 +80,8 @@ export function PortalBillingOrgSelector() {
     <Select value={currentOrgId ?? "__none__"} onValueChange={handleOrgChange}>
       <SelectTrigger className="h-8 w-full gap-2 [&>span]:flex [&>span]:items-center [&>span]:gap-2 [&>span]:truncate">
         <BuildingsIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <SelectValue placeholder="Select organization">
-          {selectedName ?? "Select organization"}
+        <SelectValue placeholder={t.selectPlaceholder}>
+          {selectedName ?? t.selectPlaceholder}
         </SelectValue>
       </SelectTrigger>
       <SelectContent>

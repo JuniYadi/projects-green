@@ -380,7 +380,10 @@ export default function WhatsAppDevicesPage() {
       id: "health",
       header: ({ column }) => (
         <div className="flex items-center gap-1">
-          <DataTableColumnHeader column={column} title="Health" />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.console.whatsapp.devices.healthTitle}
+          />
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -418,7 +421,7 @@ export default function WhatsAppDevicesPage() {
               size="sm"
               onClick={() => diagnoseDevice(device)}
             >
-              [ 🔍 Diagnosa Masalah ]
+              {messages.console.whatsapp.devices.diagnose}
             </Button>
           )
         }
@@ -614,7 +617,9 @@ export default function WhatsAppDevicesPage() {
               columns={columns}
               data={devices}
               tableId="console-whatsapp-devices"
-              searchPlaceholder="Search devices by name or phone..."
+              searchPlaceholder={
+                messages.console.whatsapp.devices.searchPlaceholder
+              }
               searchableColumns={["device"]}
               initialSorting={[{ id: "device", desc: false }]}
               pageSize={10}

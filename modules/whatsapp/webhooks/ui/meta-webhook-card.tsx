@@ -3,7 +3,10 @@
 import * as React from "react"
 import { ArrowsClockwise, CheckCircle, Warning } from "@phosphor-icons/react"
 import { toast } from "sonner"
-import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
+import {
+  getWhatsAppText,
+  WhatsAppText,
+} from "@/modules/whatsapp/ui/whatsapp-text"
 import {
   Card,
   CardContent,
@@ -97,7 +100,9 @@ export function MetaWebhookCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div>
-          <CardTitle className="text-base">Meta Webhook Setup</CardTitle>
+          <CardTitle className="text-base">
+            <WhatsAppText id="s413" />
+          </CardTitle>
           <CardDescription className="text-xs">
             <WhatsAppText id="s279" />
           </CardDescription>
@@ -124,7 +129,7 @@ export function MetaWebhookCard({
               <Alert className="border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
                 <Warning className="size-4 text-amber-600 dark:text-amber-400" />
                 <AlertTitle className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-                  Token Application Mismatch
+                  <WhatsAppText id="s414" />
                 </AlertTitle>
                 <AlertDescription className="text-xs text-amber-800/90 dark:text-amber-300/90">
                   {syncState?.warning ||
@@ -134,7 +139,7 @@ export function MetaWebhookCard({
             )}
 
             <dl className="space-y-3">
-              <MetaWebhookRow label="Meta App">
+              <MetaWebhookRow label={getWhatsAppText("s415")}>
                 <div className="flex items-center gap-2">
                   <span>{metaWebhook.appName}</span>
                   {syncState && (
@@ -157,12 +162,12 @@ export function MetaWebhookCard({
                       {isSubscribed ? (
                         <>
                           <CheckCircle className="mr-1 size-3" />
-                          Subscribed (Active)
+                          <WhatsAppText id="s416" />
                         </>
                       ) : isMismatch ? (
                         <>
                           <Warning className="mr-1 size-3" />
-                          Token Mismatch
+                          <WhatsAppText id="s417" />
                         </>
                       ) : (
                         syncState.status
@@ -172,7 +177,7 @@ export function MetaWebhookCard({
                 </div>
               </MetaWebhookRow>
 
-              <MetaWebhookRow label="Callback URL">
+              <MetaWebhookRow label={getWhatsAppText("s418")}>
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs break-all">
                   {metaWebhook.callbackUrl}
                 </code>
@@ -180,7 +185,7 @@ export function MetaWebhookCard({
 
               {syncState?.subscribedApps &&
                 syncState.subscribedApps.length > 0 && (
-                  <MetaWebhookRow label="Subscribed Meta Apps">
+                  <MetaWebhookRow label={getWhatsAppText("s419")}>
                     <div className="flex flex-wrap gap-1.5">
                       {syncState.subscribedApps.map((app) => (
                         <Badge

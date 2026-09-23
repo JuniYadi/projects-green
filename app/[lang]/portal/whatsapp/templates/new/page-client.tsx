@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, WarningCircle } from "@phosphor-icons/react"
 import { toast } from "sonner"
@@ -22,11 +22,17 @@ import {
 import type { TemplateFormInput } from "@/modules/whatsapp/templates/api/templates.hooks"
 import { TemplateForm } from "@/modules/whatsapp/templates/ui/template-form"
 import type { DeviceListItem } from "@/modules/whatsapp/devices/devices.schemas"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export default function PortalNewTemplatePage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const duplicateId = searchParams.get("duplicate")
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappTemplatesNewPageClient
 
   const { template: sourceTemplate, loading: loadingSource } = useTemplate(
     duplicateId ?? ""
@@ -111,7 +117,7 @@ export default function PortalNewTemplatePage() {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
         <p className="animate-pulse text-sm text-muted-foreground">
-          Loading template to duplicate...
+          {t.loadingDuplicate}
         </p>
       </main>
     )
@@ -123,7 +129,7 @@ export default function PortalNewTemplatePage() {
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href="./">
             <ArrowLeft className="mr-1 size-4" />
-            Back to Templates
+            {t.backToTemplates}
           </Link>
         </Button>
         <h1 className="mt-2 text-2xl font-bold tracking-tight">
@@ -142,16 +148,15 @@ export default function PortalNewTemplatePage() {
             <WarningCircle className="text-warning size-5 shrink-0" />
             <div className="text-sm">
               <p className="font-medium text-foreground">
-                No Active WhatsApp Devices
+                {t.noActiveDevicesTitle}
               </p>
               <p className="text-muted-foreground">
-                You need at least one active WhatsApp device to create
-                templates.{" "}
+                {t.noActiveDevicesDesc}{" "}
                 <Link
                   href="/portal/whatsapp/devices/new"
                   className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
                 >
-                  Connect a device
+                  {t.connectDevice}
                 </Link>
               </p>
             </div>
@@ -161,10 +166,8 @@ export default function PortalNewTemplatePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Template Details</CardTitle>
-          <CardDescription>
-            Configure the template name, category, and language variants.
-          </CardDescription>
+          <CardTitle>{t.detailsTitle}</CardTitle>
+          <CardDescription>{t.detailsDesc}</CardDescription>
         </CardHeader>
         <CardContent>
           <TemplateForm

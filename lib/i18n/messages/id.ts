@@ -743,6 +743,10 @@ export const idMessages: AppMessages = {
         targetPort: "Target Port:",
         replicas: "Replika:",
         active: "aktif",
+        repositoryExample: "acme/laravel-shop",
+        branchExample: "main",
+        commitMessageExample: "feat: optimize product loading speed",
+        targetPortExample: "80 / 8080 (TCP)",
       },
       operateTraffic: {
         canvasTitle: "Canvas Routing Traffic Cluster",
@@ -883,6 +887,7 @@ export const idMessages: AppMessages = {
             "Masukkan URL repositori GitHub publik atau privat mana pun. Sistem akan otomatis mendeteksi apakah kredensial diperlukan.",
           repoUrlLabel: "URL Repositori",
           branchLabel: "Branch",
+          branchPlaceholder: "main",
           rootDirLabel: "Direktori Root",
           inspectingVisibility: "Memeriksa Visibilitas…",
           detectingPermissions:
@@ -1123,6 +1128,7 @@ export const idMessages: AppMessages = {
         badge5xxDetected: "5xx Terdeteksi",
         badgeHigh4xx: "4xx Tinggi",
         badge0Percent5xx: "0% Kesalahan 5xx",
+        errorRateSummary: "5xx • {fourXxPercent}% 4xx",
         serverAndClientErrorPercentages:
           "Persentase kesalahan server dan klien",
         avgLatency: "Rata-rata Latensi",
@@ -2730,6 +2736,7 @@ export const idMessages: AppMessages = {
         conversationsCardDesc: "Obrolan aktif di seluruh perangkat terhubung",
         deviceHealthTitle: "Kesehatan Perangkat",
         deviceHealthDesc: "Status koneksi & kualitas sinkronisasi",
+        connectNow: "Hubungkan WhatsApp Sekarang",
       },
       contacts: {
         heading: "Kontak",
@@ -2766,8 +2773,11 @@ export const idMessages: AppMessages = {
           "Anda yakin ingin menghapus kontak ini? Tindakan ini tidak dapat dibatalkan.",
         phoneNumber: "Nomor Telepon",
         phoneNumberRequired: "Nomor telepon wajib diisi.",
+        phoneNumberPlaceholder: "+1234567890",
         name: "Nama",
+        namePlaceholder: "John Doe",
         email: "Email",
+        emailPlaceholder: "john@example.com",
         audience: "Audien (opsional)",
         status: "Status",
         activeStatus: "Aktif",
@@ -2861,8 +2871,11 @@ export const idMessages: AppMessages = {
         statusTitle: "Status",
         statusTooltip:
           "Status aktivasi nomor/perangkat. Perangkat nonaktif tidak dapat mengirim atau menerima pesan.",
+        healthTitle: "Kesehatan",
         healthTooltip:
           "Kualitas koneksi heartbeat ke WhatsApp Cloud API dan status nomor.",
+        diagnose: "[ 🔍 Diagnosa Masalah ]",
+        searchPlaceholder: "Cari perangkat berdasarkan nama atau nomor...",
         nameApproved: "Disetujui",
         namePending: "Dalam Peninjauan",
         nameDeclined: "Ditolak",
@@ -3030,6 +3043,7 @@ export const idMessages: AppMessages = {
         direction: "Arah",
         directionInbox: "Masuk",
         directionOutbox: "Keluar",
+        typeLabel: "Tipe:",
         statusDelivered: "Sampai",
         statusRead: "Dibaca",
         labels: "Label",
@@ -3202,6 +3216,29 @@ export const idMessages: AppMessages = {
           updatedAt: "Terakhir Diperbarui",
           noRecipients: "Tidak ada penerima yang cocok dengan filter ini.",
           loadError: "Gagal memuat detail broadcast",
+          templateId: "ID Template",
+        },
+        preflight: {
+          title: "Prapemeriksaan Broadcast",
+          description:
+            "Tinjau penerima, perkiraan biaya dibandingkan saldo, dan variabel template.",
+          checking: "Memeriksa broadcast…",
+          recipients: "Penerima: {count}",
+          costBalance:
+            "Perkiraan biaya dibandingkan saldo akan diverifikasi sebelum pengiriman.",
+          templateVariables: "Variabel template:",
+          complete: "Lengkap",
+          incomplete: "Belum lengkap",
+          cancel: "Batal",
+          send: "Kirim broadcast",
+        },
+        newCampaign: {
+          staticTemplate: "statis",
+          textHeader: "• header",
+          buttons: "• tombol",
+          online: "Online",
+          coveredMessages: "{count} {unit} (Rp 0)",
+          unitPrice: "(@Rp {price})",
         },
         status: {
           draft: "Draf",
@@ -3366,6 +3403,7 @@ export const idMessages: AppMessages = {
           receivedAt: "Waktu Diterima",
           activityType: "Tipe Aktivitas",
           actor: "Pelaksana",
+          platformSupport: "Dukungan Platform",
           ipAddress: "Alamat IP",
           duration: "Durasi",
           waMessageId: "ID Pesan (WA ID)",
@@ -3560,6 +3598,15 @@ export const idMessages: AppMessages = {
         retry: "Coba Lagi",
         noTransactions: "Tidak ada transaksi buku besar ditemukan",
         adjustFiltersPrompt: "Coba sesuaikan filter atau rentang tanggal Anda.",
+        creditsUnit: "kredit",
+        deductedLabel: "dipotong,",
+        refundedLabel: "dikembalikan",
+        messagesBilledToSaldo: "pesan ditagihkan ke Saldo",
+        quotaPlus: "kuota +",
+        quotaPlusRp: "kuota + Rp",
+        balanceLabel: "saldo",
+        paygSaldoBadge: "Saldo PAYG",
+        packageQuotaBadge: "Kuota Paket",
         thDate: "Tanggal",
         thOrganization: "Organisasi",
         thDeviceRecipient: "Perangkat / Penerima",
@@ -3645,6 +3692,20 @@ export const idMessages: AppMessages = {
         quotaTitle: "Kuota Pesan",
         usedLabel: "Terpakai",
         remainingLabel: "Sisa Kuota",
+        loading: {
+          inboundCount: "Jumlah Pesan Masuk",
+          outboundCount: "Jumlah Pesan Keluar",
+          monthlyQuotaUsed: "Kuota Bulanan Terpakai",
+          remainingQuota: "Sisa Kuota",
+          projectedCost: "Perkiraan Biaya",
+          balance: "Saldo",
+        },
+        payg: {
+          fullyCoveredByAllowance: "Semua ditanggung kuota",
+          zeroCovered: "Rp 0 ({reason})",
+          amount: "PAYG: Rp {amount}",
+          zero: "PAYG: Rp 0",
+        },
       },
       credentials: {
         heading: "Kredensial",
@@ -3960,6 +4021,11 @@ export const idMessages: AppMessages = {
       heading: "Tiket Dukungan",
       description: "Kelola permintaan dukungan dan pantau perkembangannya.",
       createTicket: "Buat Tiket",
+      queueTitle: "Antrean Tiket",
+      openTicket: "Buka Tiket",
+      searchPlaceholder: "Filter berdasarkan ID Tiket atau Subjek...",
+      emptyMessage: "Tidak ada tiket dukungan yang cocok dengan filter Anda.",
+      loadError: "Gagal memuat tiket dukungan.",
       ticketId: "ID Tiket",
       subject: "Subjek",
       status: "Status",
@@ -3989,7 +4055,6 @@ export const idMessages: AppMessages = {
       close: "Tutup Tiket",
       reopen: "Buka Kembali",
       titleColumn: "Judul",
-      searchPlaceholder: "Filter berdasarkan ID Tiket atau Judul...",
       filterAllStatus: "Semua status",
       filterAllDepartments: "Semua departemen",
       filterAllPriority: "Semua prioritas",
@@ -4026,6 +4091,8 @@ export const idMessages: AppMessages = {
       possibleCredentialTitle: "Kemungkinan kredensial terdeteksi",
       possibleCredentialBody:
         "Sepertinya kredensial. Pindahkan ke Detail aman.",
+      possibleCredentialDetailedBody:
+        "Kolom {field} terlihat seperti kredensial ({patterns}). Pindahkan ke tab Detail aman (terenkripsi).",
       categorization: "Kategorisasi",
       serviceOptional: "Layanan (opsional)",
       selectDepartment: "Pilih departemen",
@@ -4125,6 +4192,13 @@ export const idMessages: AppMessages = {
       filters: {
         searchPlaceholder: "Cari cronjob...",
         allCategories: "Semua Kategori",
+        categoryFilterAria: "Filter berdasarkan kategori",
+        categoryBilling: "Penagihan",
+        categoryWhatsApp: "WhatsApp",
+        categoryVpn: "VPN",
+        categorySystem: "Sistem",
+        jobFilterAria: "Filter berdasarkan cronjob",
+        statusFilterAria: "Filter berdasarkan status eksekusi",
         allStatuses: "Semua Status",
         allJobs: "Semua Pekerjaan",
         statusSuccess: "Berhasil",
@@ -4335,6 +4409,7 @@ export const idMessages: AppMessages = {
         description: "Tempel URL repo atau pilih template.",
         reset: "Atur ulang wizard deploy",
         phaseNavigation: "Tahapan wizard deploy",
+        phaseCompletedAria: "Selesai",
         errors: {
           accountsRequest:
             "Tidak dapat memuat akun GitHub. Permintaan gagal dengan {status}.",
@@ -4473,6 +4548,7 @@ export const idMessages: AppMessages = {
           language: "Bahasa",
           languageSelector: "Pemilih bahasa",
           selectLanguage: "Pilih bahasa",
+          goLanguage: "Go",
           framework: "Framework",
           frameworkSelector: "Pemilih framework",
           selectFramework: "Pilih framework",
@@ -4482,6 +4558,7 @@ export const idMessages: AppMessages = {
           enginePlaceholder: "contoh: node",
           engineVersion: "Versi engine",
           buildCommand: "Perintah build",
+          buildCommandPlaceholder: "bun run build",
           useDockerfileInstead: "Gunakan Dockerfile sebagai gantinya",
           settingsNeedAttention: "Pengaturan build memerlukan perhatian",
           back: "Kembali",
@@ -4582,6 +4659,8 @@ export const idMessages: AppMessages = {
             "Belum ada database — tambahkan PostgreSQL atau Redis setelah deploy",
           notDetected: "Tidak terdeteksi",
           dockerfile: "Dockerfile",
+          cpuUnit: "CPU",
+          memoryUnit: "MiB",
         },
         environment: {
           validationHeading: "Pengaturan environment perlu diperiksa",
@@ -4659,6 +4738,9 @@ export const idMessages: AppMessages = {
           planSuffix: "paket.",
         },
         monitor: {
+          title: "Deploy & Pantau",
+          description:
+            "Pantau progres deployment dan periksa log secara real-time.",
           yourApp: "Aplikasi Anda",
           currentStatus: "Status saat ini:",
           attempt: "Percobaan {attempt}",
@@ -4868,6 +4950,8 @@ export const idMessages: AppMessages = {
         tableCreated: "Dibuat",
         tableAction: "Tindakan",
         replicas: "replika",
+        cpuSummary: "{value}m CPU",
+        memorySummary: "{value}Mi RAM",
         loading: "Memuat stack…",
         empty: "Tidak ada stack ditemukan.",
         loadFailed: "Gagal memuat stack",
@@ -5093,7 +5177,12 @@ export const idMessages: AppMessages = {
           keyPlaceholder: "Kunci",
           valuePlaceholder: "Nilai",
           operator: "Operator",
+          operatorEqual: "Sama Dengan",
+          operatorExists: "Ada",
           effect: "Efek",
+          effectNoSchedule: "Tidak Dijadwalkan",
+          effectPreferNoSchedule: "Lebih Diutamakan Tidak Dijadwalkan",
+          effectNoExecute: "Tidak Dieksekusi",
           trueValue: "True",
           falseValue: "False",
           tolerations: "Toleration",
@@ -5152,6 +5241,7 @@ export const idMessages: AppMessages = {
           testPassed: "Uji berhasil",
           testFailed: "Uji gagal",
           notTested: "Belum diuji",
+          testDuration: "({duration} ms)",
           failedToLoadRegions: "Gagal memuat region",
           failedToLoadCluster: "Tidak dapat memuat cluster.",
           failedToLoadEndpoint: "Tidak dapat memuat edge endpoint.",
@@ -5234,6 +5324,7 @@ export const idMessages: AppMessages = {
           "Pantau status deployment, event, dan log untuk aplikasi Anda.",
         loadingApps: "Memuat aplikasi Anda\u2026",
         loadingAppState: "Memuat status aplikasi\u2026",
+        selectAppHint: "Pilih aplikasi untuk melihat pengaturannya.",
         noApps: "Belum ada aplikasi",
         noAppsDescription:
           "Deploy repositori privat dari halaman Deploy untuk mulai memantau status, event, dan log di sini.",
@@ -5293,11 +5384,13 @@ export const idMessages: AppMessages = {
         heading: "Log Aplikasi",
         description:
           "Lihat output log langsung dan riwayat untuk aplikasi Anda.",
+        selectPrompt: "Pilih aplikasi untuk melihat log-nya.",
       },
       metrics: {
         heading: "Metrik Aplikasi",
         description:
           "Pantau metrik CPU, memori, dan jaringan untuk aplikasi Anda.",
+        selectPrompt: "Pilih aplikasi untuk melihat metriknya.",
       },
       events: {
         heading: "Event Deploy",
@@ -5368,6 +5461,7 @@ export const idMessages: AppMessages = {
           deploymentDetails: "Detail deployment",
           noLogs: "Tidak ada log untuk tahap ini.",
           failedToLoadLogs: "Gagal memuat log",
+          stepsAriaLabel: "Linimasa tahapan deployment",
         },
         monitor: {
           statusTitle: "Status deployment",
@@ -5407,6 +5501,9 @@ export const idMessages: AppMessages = {
           timeoutFailedTip:
             "Waktu build habis: Proses build melampaui durasi maksimum yang dialokasikan.",
           retryDeploy: "Deploy Ulang",
+          toggleAutoscrollTitle: "Alihkan autoscroll",
+          copyLogTitle: "Salin log ke papan klip",
+          streamWarningPrefix: "[Peringatan] Masalah koneksi stream:",
         },
       },
       settings: {
@@ -5497,6 +5594,8 @@ export const idMessages: AppMessages = {
           ipResolutionBody2Prefix:
             "Memercayai forwarded headers membuat aplikasi bisa membaca nilai ",
           ipResolutionBody2Suffix: " milik klien.",
+          trustProxyHeaderExample: "TRUST_PROXIES=*",
+          ipResolutionHeaderExample: "X-Forwarded-For",
           trustActive:
             "Trust proxies aktif. IP klien asli akan tersedia untuk kode aplikasi.",
           trustInactive:
@@ -5507,9 +5606,15 @@ export const idMessages: AppMessages = {
           sslStatusIssuing: "Menerbitkan (Let's Encrypt)...",
           sslStatusAuto: "Otomatis (Let's Encrypt)",
           dnsStatusVerified: "Terverifikasi",
+          verifiedLabel: "terverifikasi",
+          ipRestrictionSuffix: "Pembatasan IP",
         },
       },
       marketplace: {
+        card: {
+          officialVerified: "Resmi Terverifikasi",
+          deploy: "Deploy",
+        },
         launchDrawer: {
           deployHeading: "Deploy",
           official: "Resmi",
@@ -5750,6 +5855,7 @@ export const idMessages: AppMessages = {
       unifiedStudioBanner:
         "Editor alur kerja visual kini disatukan di AI Studio " +
         "(/console/ai/agents/[id]/canvas).",
+      aiStudioButton: "AI Studio",
       createNewButton: "Buat alur",
       loadingList: "Memuat alur...",
       emptyState: {
@@ -5876,6 +5982,9 @@ export const idMessages: AppMessages = {
         httpUrlLabel: "URL permintaan",
         httpVariableLabel: "Simpan respons sebagai",
         deleteNodeButton: "Hapus langkah",
+        deleteNodeAria: "Hapus node",
+        deleteEdgeAria: "Hapus edge",
+        templatePrefix: "Template:",
         doneEditingButton: "Selesai mengedit",
       },
       simulator: {
@@ -6138,7 +6247,9 @@ export const idMessages: AppMessages = {
         monthlyTraffic: "Lalu Lintas Bulanan",
         topCpuProcesses: "Proses CPU Teratas",
         topMemoryProcesses: "Proses Memori Teratas",
+        processUsage: "pid {pid} · CPU {cpu}% · MEM {memory}%",
         metricsUnavailable: "Metrik tidak tersedia.",
+        hintUsageOverTotal: "penggunaan / total",
         noVnstatData: "Tidak ada data vnStat.",
         noProcessData: "Tidak ada data proses.",
         openvpnUsersTitle: "Pengguna OpenVPN",
@@ -6367,6 +6478,7 @@ export const idMessages: AppMessages = {
       daysOption7: "7 Hari",
       daysOption14: "14 Hari",
       daysOption30: "30 Hari",
+      expiryPlaceholder: "Hari",
       cancel: "Batal",
       sendInvite: "Kirim Undangan",
       sending: "Mengirim...",
@@ -6433,6 +6545,10 @@ export const idMessages: AppMessages = {
       thCode: "Kode",
       thCountry: "Negara",
       thActiveClusters: "Cluster Aktif",
+      moreOptionsAria: "Opsi lainnya",
+      activeStatus: "Status Aktif",
+      inactiveRegionsHint:
+        "Region nonaktif tidak dapat dipilih untuk cluster atau paket baru.",
       thStatus: "Status",
       thActions: "Aksi",
       edit: "Edit",
@@ -6699,6 +6815,8 @@ export const idMessages: AppMessages = {
         noSlotsFallback: "Tanpa parameter slot tambahan",
         nameLabel: "Nama Aksi (Tool Name)",
         namePlaceholder: "Misal: Cek Hasil Lab Pasien",
+        parameterNamePlaceholder: "nama_parameter",
+        sampleReceiptNumber: "KW-12345",
         descriptionLabel: "Kapan Dipicu? (Deskripsi Tool untuk AI)",
         descriptionPlaceholder:
           "Misal: Saat pasien menanyakan jadwal atau status hasil" +
@@ -6819,6 +6937,22 @@ export const idMessages: AppMessages = {
         previewTitle: "Pratinjau Langsung Website",
         previewMockSite: "Website Toko / Klinik Customer",
         previewMockSub: "Simulasi tampilan widget di website Anda",
+        livePreviewBadge: "Pratinjau Langsung",
+        domainCount: "{count} domain",
+        navHome: "Beranda",
+        navCatalog: "Katalog",
+        navContact: "Kontak",
+        promoSpecial: "Promo Spesial",
+        welcomeHeading: "Selamat Datang di Website Resmi",
+        welcomeDescription:
+          "Belanja produk terpercaya dengan layanan asisten AI 24/7.",
+        onlineStatus: "Online",
+        closePreviewAria: "Tutup pratinjau chat",
+        previewInputPlaceholder: "Ketik pesan...",
+        togglePreviewAria: "Toggle widget launcher preview",
+        defaultStoreName: "Toko Resmi",
+        defaultAssistantName: "Asisten AI",
+        defaultWelcomeMessage: "Halo! Ada yang bisa kami bantu?",
         snippetTitle: "Kode Embed 1-Klik",
         snippetSubtitle:
           "Salin dan pasang kode ini sebelum tag penutup </body> di " +
@@ -6989,6 +7123,7 @@ export const idMessages: AppMessages = {
   pWhatsappTemplatesTemplateForm: {
     sectionGeneralConfigTitle: "1. Konfigurasi Umum",
     namePlaceholderExample: "Contoh: Order Status Update",
+    slugPlaceholderExample: "order_status_update",
     categoryFieldLabel: "Kategori",
     categoryUtilityOption: "Utilitas",
     categoryMarketingOption: "Pemasaran",
@@ -7279,6 +7414,7 @@ export const idMessages: AppMessages = {
     sshKeyLabel: "SSH Key",
     selectSshKeyPlaceholder: "Pilih SSH key",
     sshUserLabel: "Pengguna SSH",
+    sshUserPlaceholder: "root",
     locationLabel: "Lokasi (untuk penanda peta)",
     searchLocationPlaceholder: "Cari kota… Jakarta, Singapore",
     searchLocationAriaLabel: "Cari lokasi",
@@ -7625,6 +7761,8 @@ export const idMessages: AppMessages = {
       "Unggah atau tempel JSON ekspor katalog untuk memigrasikan konfigurasi dengan aman ke",
     uploadJsonFileLabel: "Unggah File JSON",
     orPasteJsonContentLabel: "Atau Tempel Konten JSON",
+    jsonPlaceholderExample:
+      '{ "schemaVersion": "2026-08.1", "catalogCode": "WHATSAPP", ... }',
     jsonErrorTitle: "Kesalahan JSON",
     sourceLabel: "Sumber:",
     productsLabel: "Produk",
@@ -7800,8 +7938,11 @@ export const idMessages: AppMessages = {
     liveOption: "Live",
     sandboxOption: "Sandbox",
     wabaIdLabel: "ID Akun Bisnis WhatsApp",
+    wabaIdPlaceholder: "WABA-xxxxxxxxxxxx",
     phoneIdLabel: "ID Nomor Telepon WhatsApp",
+    phoneIdPlaceholder: "Phone-xxxxxxxxxxxx",
     applicationIdLabel: "ID Aplikasi WhatsApp",
+    applicationIdPlaceholder: "App-xxxxxxxxxxxx",
     callbackUrlLabel: "URL Callback",
     cancelButton: "Batal",
   },
@@ -8027,6 +8168,7 @@ export const idMessages: AppMessages = {
     buildDeployDescription:
       "Konfigurasikan cara aplikasi Anda di-build dan di-deploy.",
     buildCommandLabel: "Perintah Build",
+    buildCommandPlaceholder: "npm run build",
     buildCommandHint:
       "Perintah build kustom. Kosongkan untuk menggunakan default yang terdeteksi otomatis.",
     rootDirectoryLabel: "Direktori Root",
@@ -8806,12 +8948,14 @@ export const idMessages: AppMessages = {
     dialogDescriptionPrefix:
       "Tambahkan kunci privat SSH untuk provisioning server VPN otomatis dan pemeriksaan kesehatan.",
     dialogDescriptionSuffix: "Kunci disimpan dengan aman.",
+    generationCommand: "ssh-keygen -t ed25519",
     fingerprint: "Fingerprint",
     name: "Nama",
     namePlaceholder: "mis. Kunci Deployment Produksi",
     noSshKeysYet:
       "Tidak ada kunci SSH ditemukan. Tambahkan satu untuk mengaktifkan manajemen server otomatis.",
     privateKeyLabel: "Kunci Privat (format PEM)",
+    privateKeyPlaceholder: "-----BEGIN OPENSSH PRIVATE KEY-----",
     saving: "Menyimpan...",
     usedBy: "Digunakan Oleh",
   },
@@ -9636,6 +9780,18 @@ export const idMessages: AppMessages = {
     pricingMetadataTitle: "Metadata harga",
     productIsActiveLabel: "Produk aktif",
   },
+  pPortalBillingCatalogBasicsTab: {
+    productCodeLabel: "Kode produk",
+    productNameLabel: "Nama produk *",
+    descriptionLabel: "Deskripsi",
+    descriptionPlaceholder:
+      "Jelaskan produk ini dan apa saja yang disertakan...",
+    activeLabel: "Aktif",
+    defaultCurrencyLabel: "Mata uang utama",
+    enabledCurrenciesLabel: "Mata uang aktif",
+    enabledCurrenciesHint:
+      "Setiap mata uang yang diaktifkan memerlukan baris harga untuk setiap jangka waktu aktif.",
+  },
   pPortalBillingCatalogPublishTab: {
     checkAddonsValidated: "Add-on telah tervalidasi",
     checkBasicsConfigured: "Informasi dasar produk terkonfigurasi",
@@ -9985,6 +10141,24 @@ export const idMessages: AppMessages = {
       description:
         "Tinjau riwayat pesan, balas, unggah lampiran, dan tutup tiket.",
     },
+    docs: {
+      heading: "Dokumentasi",
+      description: "Telusuri dan cari dokumentasi platform serta organisasi.",
+      searchPlaceholder: "Cari dokumentasi...",
+      lastUpdated: "Terakhir diperbarui:",
+      globalLabel: "Global",
+      noSearchResults: "Tidak ada dokumentasi yang cocok dengan pencarian.",
+      noDocumentation: "Belum ada dokumentasi yang tersedia.",
+    },
+    docsDetail: {
+      errorTitle: "Kesalahan",
+      backToDocs: "Kembali ke Dokumentasi",
+      purpose: "Tujuan",
+      howTo: "Cara Penggunaan",
+      notes: "Catatan",
+      lastUpdated: "Terakhir diperbarui:",
+      unknownUpdatedAt: "Tidak diketahui",
+    },
   },
   pAuthPages: {
     login: {
@@ -10023,6 +10197,22 @@ export const idMessages: AppMessages = {
     paginationAriaLabel: "Paginasi Dokumen",
     previous: "SEBELUMNYA",
     next: "SELANJUTNYA",
+    searchTrigger: "Cari dokumen...",
+    searchPlaceholder: "Cari di seluruh panduan, API, dan fitur...",
+    searchHintPrefix: "Ketik untuk mencari dokumentasi atau tekan",
+    searchHintSuffix: "untuk menutup.",
+    noResultsPrefix: "Tidak ada dokumen yang cocok dengan “",
+    searchInputPlaceholder: "Cari dokumentasi, panduan, parameter API... (⌘K)",
+    languageEnglish: "English",
+    languageIndonesian: "Bahasa Indonesia",
+    diagramViewer: "Penampil Diagram",
+    zoomIn: "Perbesar",
+    zoomOut: "Perkecil",
+    resetScale: "Atur Ulang Skala",
+    resetZoom: "Atur Ulang Zoom",
+    expandDiagram: "Buka Diagram di Modal",
+    openapiReference: "Referensi OpenAPI",
+    consoleLabel: "Konsol",
   },
   pSecurityArtifactsTab: {
     tabRegistry: "Registry Image & Rollback",
@@ -10487,5 +10677,401 @@ export const idMessages: AppMessages = {
     searchPlaceholder: "Cari organisasi...",
     previous: "Sebelumnya",
     next: "Berikutnya",
+  },
+  pDeployAiFeedEnvValuesDialog: {
+    autoGenerated: "Dibuat otomatis",
+    cancelLabel: "Batal",
+    description: "Isi nilai yang dibutuhkan plan ini.",
+    title: "Nilai environment",
+  },
+  pDeployAiFeedFeedShell: {
+    brand: "App Hosting",
+    newDeployment: "Deployment baru",
+    title: "Asisten deployment AI",
+  },
+  pDeployAiFeedManualSettingsDialog: {
+    cancelLabel: "Batal",
+    description: "Beri tahu cara build dan menjalankan aplikasi ini.",
+    dockerfilePathLabel: "Path Dockerfile",
+    portLabel: "Port *",
+    selectPlaceholder: "Pilih",
+    title: "Pengaturan build",
+    useDockerfile: "Gunakan Dockerfile",
+  },
+  pDeployAiFeedResourceSizeDialog: {
+    cancelLabel: "Batal",
+    largerThanRecommended: "Lebih besar dari rekomendasi",
+    otherOptions: "Opsi lainnya",
+    recommended: "Direkomendasikan",
+    title: "Pilih sumber daya",
+    useThis: "Gunakan ini",
+  },
+  pDeployAiFeedSourceComposer: {
+    submitAriaLabel: "Kirim URL repositori",
+  },
+  pDeployClusterTelemetrySparkline: {
+    emptyState: "Data telemetri tidak ada",
+  },
+  pDeployConfidenceBadge: {
+    detectionNotStarted: "Deteksi belum dimulai",
+    looksGood: "Tampak bagus!",
+    needHelp: "Butuh bantuan Anda",
+    verifySettings: "Silakan verifikasi pengaturan",
+  },
+  pDeployOperateLogColumnPicker: {
+    columnsLabel: "Kolom",
+    resetLabel: "Reset",
+    resetTitle: "Reset ke kolom bawaan",
+    searchHint:
+      "Pilih atribut JSON untuk ditampilkan sebagai kolom dinamis di tabel.",
+    searchPlaceholder: "Cari field (cth: status, pod)...",
+    title: "Kustomisasi Kolom Tabel",
+  },
+  pDeployOperateTroubleshooter: {
+    closeAriaLabel: "Tutup FAQ operasi",
+    closeLabel: "Tutup",
+    description: "Jawaban mandiri seputar operasi dan pemecahan masalah",
+    emptyState:
+      'Tidak ada hasil untuk kata kunci tersebut. Coba kata kunci seperti "SSL", "Cloudflare", "metrik", "replica", atau "privat".',
+    goToSetting: "Buka Pengaturan",
+    searchPlaceholder: "Cari pertanyaan pemecahan masalah...",
+    title: "FAQ Operasi Aplikasi",
+  },
+  pDeployOperateTrafficAudienceCard: {
+    browserDescription: "Top 5 klien browser",
+    browserTitle: "Browser",
+    deviceDescription: "Top 5 kelas perangkat",
+    deviceTitle: "Perangkat",
+    emptyState: "Belum ada data",
+    osDescription: "Top 5 sistem operasi",
+    osTitle: "Sistem Operasi",
+  },
+  pDeployOperateTrafficRequestQualityCard: {
+    description: "Komposisi status HTTP periode ini (termasuk aset statis)",
+    emptyState: "Data rinci status belum tersedia untuk periode ini",
+    reqUnit: "req",
+    title: "Kualitas Permintaan",
+  },
+  pDeployPodMultiSeriesSparkline: {
+    chartAriaLabel: "Grafik garis telemetri pod",
+    emptyState: "Data telemetri tidak tersedia",
+  },
+  pDeployRepositorySummaryBar: {
+    branch: "Cabang",
+    notSelected: "Belum dipilih",
+    owner: "Pemilik",
+    repository: "Repositori",
+    root: "Root",
+  },
+  pDeployResourcePlanSelector: {
+    recommendedLabel: "Direkomendasikan untuk situs ini",
+  },
+  pDeploySecurityArtifactsTabSection: {
+    loadingLabel: "Memuat artefak scan keamanan dan kontainer...",
+  },
+  sharedComponents: {
+    markdownEditor: {
+      writeTab: "Tulis",
+      previewTab: "Pratinjau",
+      bold: "Tebal",
+      italic: "Miring",
+      code: "Kode",
+      link: "Tautan",
+      bulletList: "Daftar Butir",
+    },
+    adminTopupForm: {
+      title: "Top Up Admin",
+      description: "Kreditkan saldo langsung ke organisasi ini",
+      amountLabel: "Jumlah (IDR)",
+      amountPlaceholder: "Masukkan jumlah",
+      reasonLabel: "Alasan",
+      reasonPlaceholder: "Alasan top up",
+    },
+    dataTable: {
+      columns: "Kolom",
+      toggleColumns: "Tampilkan/sembunyikan kolom",
+      page: "Halaman",
+      of: "dari",
+      previous: "Sebelumnya",
+      next: "Berikutnya",
+    },
+    verifyEmailForm: {
+      heading: "Verifikasi email Anda",
+      sentToPrefix: "Masukkan kode yang dikirim ke",
+      emailFallback: "email Anda",
+      codeLabel: "Kode verifikasi",
+      codePlaceholder: "Masukkan kode",
+      needNewCode: "Butuh kode baru?",
+      backToLogin: "Kembali ke halaman masuk",
+    },
+    uiSidebar: {
+      mobileTitle: "Bilah sisi",
+      mobileDescription: "Menampilkan bilah sisi di perangkat seluler.",
+      toggle: "Buka/tutup bilah sisi",
+    },
+    metaAppSelector: {
+      label: "MetaApp",
+      loading: "Memuat Meta Apps…",
+      empty: "Tidak ada Meta Apps aktif yang tersedia.",
+      metaAppId: "ID Meta App:",
+      callbackPath: "Path callback:",
+    },
+    notFound: {
+      title: "Halaman tidak ditemukan",
+      description: "Halaman {surface} ini tidak ada atau sudah tidak tersedia.",
+      goBack: "Kembali",
+      returnTo: "Kembali ke",
+    },
+    memberBillingTable: {
+      activeSuffix: "aktif",
+      viewBilling: "Lihat Penagihan",
+      searchPlaceholder: "Cari anggota...",
+      emptyMessage: "Tidak ada anggota ditemukan.",
+    },
+    invoiceActions: {
+      voidAction: "Batalkan",
+      voidTitle: "Batalkan Invoice",
+      voidDescription:
+        "Yakin ingin membatalkan invoice ini? Tindakan ini tidak dapat dibatalkan. Invoice akan ditandai sebagai batal dan tidak lagi berlaku untuk pembayaran.",
+      cancel: "Batal",
+    },
+    compactBalanceBadge: {
+      openTopUp: "Buka Isi Ulang Kilat",
+      quickTopUp: "Isi Ulang Kilat",
+      quickTopUpButton: "Tombol Isi Ulang Kilat",
+    },
+    pricingVariantsTable: {
+      deactivate: "Nonaktifkan",
+      searchPlaceholder: "Cari varian harga...",
+      emptyMessage: "Tidak ada varian harga ditemukan.",
+    },
+    orgSelector: {
+      loading: "Memuat organisasi...",
+      empty: "Tidak ada organisasi",
+      selectPlaceholder: "Pilih organisasi",
+    },
+    errorBoundary: {
+      message: "Terjadi kesalahan. Silakan coba lagi.",
+      retry: "Coba lagi",
+    },
+    breadcrumb: {
+      ariaLabel: "Breadcrumb",
+      more: "Lainnya",
+    },
+    cdnAsset: {
+      loadFailed: "Gagal memuat media",
+      download: "Unduh",
+    },
+    dialog: {
+      close: "Tutup",
+    },
+    sheet: {
+      close: "Tutup",
+    },
+    adjustmentTable: {
+      searchPlaceholder: "Cari penyesuaian...",
+      emptyMessage: "Tidak ada penyesuaian ditemukan.",
+    },
+    authPageShell: {
+      headlinePrefix: "Akses ruang kerja",
+      headlineSuffix: "Anda",
+    },
+    themeToggle: {
+      label: "Alihkan tema",
+    },
+    navProjects: {
+      label: "Proyek",
+    },
+    navMain: {
+      toggle: "Buka/tutup",
+    },
+    navSecondary: {
+      toggle: "Buka/tutup",
+    },
+    resourceSlider: {
+      estimatePrefix: "Perkiraan",
+    },
+  },
+  pPortalBillingOrgTabsInvoicesTab: {
+    thInvoice: "Invoice #",
+    thIssued: "Diterbitkan",
+    thDue: "Jatuh tempo",
+    thAmount: "Jumlah",
+    thStatus: "Status",
+    thActions: "Aksi",
+    loadFailed: "Gagal memuat invoice:",
+    searchPlaceholder: "Cari invoice...",
+  },
+  pPortalWhatsappCatalogsCatalogIdPageClient: {
+    notFound: "Katalog tidak ditemukan.",
+    back: "Kembali",
+    metaIdLabel: "ID Meta:",
+    productsCount: "{count} produk",
+    productsTitle: "Produk",
+    productsDesc:
+      "Produk di-cache dari Meta Commerce Manager. Klik sinkronisasi untuk menyegarkan.",
+    noProductsYet: "Belum ada produk yang disinkronkan.",
+    syncNow: "Sinkronkan Sekarang",
+  },
+  pPortalWhatsappTemplatesNewPageClient: {
+    loadingDuplicate: "Memuat template yang akan diduplikasi...",
+    backToTemplates: "Kembali ke Template",
+    noActiveDevicesTitle: "Tidak Ada Perangkat WhatsApp Aktif",
+    noActiveDevicesDesc:
+      "Anda memerlukan setidaknya satu perangkat WhatsApp aktif untuk membuat template.",
+    connectDevice: "Hubungkan perangkat",
+    detailsTitle: "Detail Template",
+    detailsDesc: "Atur nama template, kategori, dan varian bahasa.",
+  },
+  pPortalBillingOrgTabsBalanceTab: {
+    balanceTitle: "Saldo",
+    currencyLabel: "Mata uang:",
+    statusLabel: "| Status:",
+    lowBalanceWarning:
+      "Saldo mulai menipis. Isi ulang untuk menghindari gangguan layanan.",
+    recentInvoices: "Invoice Terbaru",
+    noInvoices: "Tidak ada invoice.",
+  },
+  pPortalWhatsappWebhookLogsPageClient: {
+    title: "Log Webhook",
+    description:
+      "Lihat dan periksa event webhook WhatsApp yang masuk dari semua perangkat.",
+    eventLogTitle: "Log Event",
+    eventLogDesc: "Event webhook untuk semua perangkat",
+    noDevicesOrgs: "Tidak ada perangkat atau organisasi.",
+  },
+  pPortalWhatsappEventsPageClient: {
+    title: "Event Webhook",
+    description:
+      "Lihat dan periksa event webhook WhatsApp yang masuk dari semua perangkat dan organisasi.",
+    eventLogTitle: "Log Event",
+    eventLogDesc: "Event webhook di semua perangkat dan organisasi.",
+    noDevicesOrgs: "Tidak ada perangkat atau organisasi.",
+  },
+  pPortalOrgsOverviewTab: {
+    voucherLogsTitle: "Log Pembuatan Voucher",
+    loading: "Memuat...",
+    loadVoucherFailed: "Gagal memuat log voucher:",
+    noVoucherLogs: "Tidak ada log pembuatan voucher untuk organisasi ini.",
+    claimedSuffix: "diklaim",
+  },
+  pPortalWhatsappDevicesNewStepOrganization: {
+    heading: "Organisasi & Nomor Telepon",
+    organizationLabel: "Organisasi",
+    phoneLabel: "Nomor Telepon",
+    phoneHint: "Format internasional E.164 dengan kode negara",
+  },
+  pPortalAppTemplatesIdPageClient: {
+    loading: "Memuat editor template...",
+    notFound: "Template tidak ditemukan.",
+    backToTemplates: "Kembali ke template",
+  },
+  pPortalBillingOverviewAllOrgsInvoicesFeed: {
+    loadFailed: "Gagal memuat invoice:",
+    title: "Invoice Terbaru (Semua Organisasi)",
+    noInvoices: "Tidak ada invoice.",
+  },
+  pPortalBillingOverviewPlatformUsageTrend: {
+    loadFailed: "Gagal memuat tren penggunaan:",
+    title: "Tren Penggunaan Platform (30 hari)",
+    noData: "Tidak ada data penggunaan.",
+  },
+  pPortalBillingOrgTabsSettingsTab: {
+    title: "Pengaturan Penagihan",
+    description:
+      "Pengaturan penagihan untuk organisasi ini akan tersedia di sini setelah konfigurasi pengaturan admin diimplementasikan.",
+    organizationIdLabel: "ID Organisasi:",
+  },
+  pPortalBillingOrgTabsAdjustmentsTab: {
+    loadFailed: "Gagal memuat penyesuaian:",
+    title: "Penyesuaian",
+    newAdjustment: "Penyesuaian Baru",
+  },
+  pPortalBillingOrgTabsAlertsTab: {
+    title: "Peringatan Penagihan",
+    description:
+      "Preferensi peringatan untuk organisasi ini akan tersedia di sini setelah konfigurasi peringatan admin diimplementasikan.",
+    organizationIdLabel: "ID Organisasi:",
+  },
+  pPortalWhatsappTemplatesIdPageClient: {
+    backToTemplates: "Kembali ke Template",
+    viewDevice: "Lihat Perangkat →",
+    editTemplate: "Ubah Template",
+  },
+  pPortalWhatsappDevicesNewDeviceCreateWizard: {
+    previous: "Sebelumnya",
+    next: "Berikutnya",
+  },
+  pPortalVpnProvisioningAuditModal: {
+    title: "Log Audit Provisioning",
+    close: "Tutup",
+  },
+  pPortalBillingOverviewPlatformStatsCards: {
+    loadFailed: "Gagal memuat statistik:",
+  },
+  pPortalBillingOrgTabsSubscriptionsTab: {
+    loadFailed: "Gagal memuat langganan:",
+  },
+  pPortalWhatsappDevicesDevicesUi: {
+    noDevices: "Tidak ada perangkat",
+  },
+  pPortalOrgsOrgOverviewStatsCards: {
+    loadFailed: "Gagal memuat statistik:",
+  },
+  pPortalVpnProvisioningTimeline: {
+    noAuditEvents: "Belum ada event audit",
+  },
+  pPortalOrgsOrgOverviewDashboard: {
+    loadFailed: "Gagal memuat organisasi:",
+    notFound: "Organisasi tidak ditemukan.",
+  },
+  pHomeServices: {
+    headingStart: "Semua yang Anda butuhkan untuk",
+    headingHighlight: "tumbuh & berkembang",
+    learnMore: "Pelajari lebih lanjut",
+  },
+  pHomeTestimonials: {
+    headingStart: "Infrastruktur yang dibangun untuk",
+    headingHighlight: "keberlanjutan bisnis",
+  },
+  pPortalSettingsEmailsEmailsView: {
+    subjectLabel: "Subjek:",
+  },
+  pWhatsappTemplatesTemplateCodeSnippetDialog: {
+    goTabLabel: "Go",
+  },
+  pBillingProvisioningAdaptersWhatsAppProvisionAdapter: {
+    title: "Provisioning WhatsApp",
+    description:
+      "Atur kuota pesan bulanan dan kemampuan perangkat untuk paket ini.",
+    quotaOutLabel: "Kuota keluar (pesan/bulan)",
+    quotaInLabel: "Kuota masuk (pesan/bulan)",
+    maxDevicesLabel: "Maksimum perangkat",
+    broadcastLabel: "Pesan massal",
+    broadcastDescription: "Izinkan paket ini mengirim kampanye broadcast.",
+  },
+  pBillingProvisioningAdaptersVpnProvisionAdapter: {
+    title: "Provisioning VPN",
+    description: "Pilih server aktif yang akan menyediakan paket ini.",
+    loadingServers: "Memuat server VPN...",
+    noServers: "Belum ada server VPN aktif yang tersedia.",
+    allowCustomUsername: "Izinkan username kustom",
+  },
+  pDocsDocumentationForm: {
+    pathLabel: "Path",
+    titleLabel: "Judul",
+    titlePlaceholder: "Ikhtisar Konsol",
+    purposeLabel: "Tujuan",
+    purposePlaceholder: "Jelaskan tujuan halaman ini.",
+    howToLabel: "Cara Penggunaan (satu langkah per baris)",
+    notesLabel: "Catatan (opsional, satu item per baris)",
+  },
+  pStorageDropzone: {
+    uploading: "Mengunggah ke S3...",
+    confirming: "Memverifikasi dan mengonfirmasi upload...",
+    retry: "Coba Lagi",
+  },
+  pTenantsSettingsHeader: {
+    forOrganization: "untuk",
   },
 }

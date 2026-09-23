@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowLeft } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { getMessages } from "@/lib/i18n/messages"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +35,8 @@ export default function PortalTemplateDetailPage() {
   const router = useRouter()
   const id = params.id as string
   const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappTemplatesIdPageClient
   const templatesBasePath = localizePathname({
     pathname: "/portal/whatsapp/templates",
     locale,
@@ -112,7 +115,7 @@ export default function PortalTemplateDetailPage() {
         <Button asChild variant="ghost" size="sm" className="w-fit px-0">
           <Link href={templatesBasePath}>
             <ArrowLeft className="mr-1 size-4" />
-            Back to Templates
+            {t.backToTemplates}
           </Link>
         </Button>
         {template?.whatsappDeviceId && (
@@ -120,7 +123,7 @@ export default function PortalTemplateDetailPage() {
             <Link
               href={`/portal/whatsapp/devices/${template.whatsappDeviceId}?tab=template`}
             >
-              View Device →
+              {t.viewDevice}
             </Link>
           </Button>
         )}
@@ -129,7 +132,7 @@ export default function PortalTemplateDetailPage() {
       {editing && template ? (
         <Card>
           <CardHeader>
-            <CardTitle>Edit Template</CardTitle>
+            <CardTitle>{t.editTemplate}</CardTitle>
             <CardDescription>
               {approvedTemplateLocked
                 ? "Approved templates are locked. Add a new language variant with the same content structure."

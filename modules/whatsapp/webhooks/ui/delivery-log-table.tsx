@@ -8,6 +8,7 @@
 "use client"
 import {
   formatWhatsAppText,
+  getWhatsAppText,
   WhatsAppText,
 } from "@/modules/whatsapp/ui/whatsapp-text"
 
@@ -115,7 +116,9 @@ export function DeliveryLogTable({
                 <TableHead>
                   <WhatsAppText id="s308" />
                 </TableHead>
-                <TableHead>Started</TableHead>
+                <TableHead>
+                  <WhatsAppText id="s441" />
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,7 +207,9 @@ export function DeliveryLogTable({
               <TableHead>
                 <WhatsAppText id="s308" />
               </TableHead>
-              <TableHead>Started</TableHead>
+              <TableHead>
+                <WhatsAppText id="s441" />
+              </TableHead>
               <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
@@ -260,7 +265,7 @@ export function DeliveryLogTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          title="Resend"
+                          title={getWhatsAppText("s442")}
                           onClick={(e) => {
                             e.stopPropagation()
                             onResend(log.id)

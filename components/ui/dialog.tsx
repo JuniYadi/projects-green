@@ -5,6 +5,7 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useMessages } from "@/components/use-messages"
 import { XIcon } from "lucide-react"
 
 function Dialog({
@@ -55,6 +56,7 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const t = useMessages().sharedComponents.dialog
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -75,7 +77,7 @@ function DialogContent({
               size="icon-sm"
             >
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{t.close}</span>
             </Button>
           </DialogPrimitive.Close>
         )}
@@ -102,6 +104,7 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const t = useMessages().sharedComponents.dialog
   return (
     <div
       data-slot="dialog-footer"
@@ -114,7 +117,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{t.close}</Button>
         </DialogPrimitive.Close>
       )}
     </div>

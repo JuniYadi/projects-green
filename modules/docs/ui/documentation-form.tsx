@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type {
@@ -61,6 +63,10 @@ export function DocumentationForm({
   initialData,
   onSuccess,
 }: DocumentationFormProps = {}) {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(
+    params?.lang
+  ).pDocsDocumentationForm
   const [form, setForm] = useState<FormState>(() =>
     formStateFromInitialData(initialData)
   )
@@ -126,9 +132,7 @@ export function DocumentationForm({
       })
 
       const payload = (await response.json().catch(() => null)) as
-        | UiDocSuccessResponse
-        | UiDocErrorResponse
-        | null
+        UiDocSuccessResponse | UiDocErrorResponse | null
 
       if (!response.ok || !payload || payload.ok !== true) {
         const payloadMessage =
@@ -155,7 +159,7 @@ export function DocumentationForm({
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="doc-path">
-          Path
+          {messages.pathLabel}
         </label>
         <Input
           id="doc-path"
@@ -169,7 +173,7 @@ export function DocumentationForm({
 
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="doc-title">
-          Title
+          {messages.titleLabel}
         </label>
         <Input
           id="doc-title"
@@ -177,13 +181,13 @@ export function DocumentationForm({
           onChange={(event) =>
             setForm((current) => ({ ...current, title: event.target.value }))
           }
-          placeholder="Console Overview"
+          placeholder={messages.titlePlaceholder}
         />
       </div>
 
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="doc-purpose">
-          Purpose
+          {messages.purposeLabel}
         </label>
         <textarea
           id="doc-purpose"
@@ -191,14 +195,14 @@ export function DocumentationForm({
           onChange={(event) =>
             setForm((current) => ({ ...current, purpose: event.target.value }))
           }
-          placeholder="Describe the purpose of this page."
+          placeholder={messages.purposePlaceholder}
           className="min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-hidden focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
         />
       </div>
 
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="doc-howto">
-          How To (one step per line)
+          {messages.howToLabel}
         </label>
         <textarea
           id="doc-howto"
@@ -218,7 +222,7 @@ export function DocumentationForm({
 
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="doc-notes">
-          Notes (optional, one item per line)
+          {messages.notesLabel}
         </label>
         <textarea
           id="doc-notes"

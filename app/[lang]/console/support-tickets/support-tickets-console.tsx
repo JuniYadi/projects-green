@@ -118,6 +118,8 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
 
   const loadTickets = async () => {
     setIsLoading(true)
@@ -130,7 +132,7 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to load support tickets."
+          : messages.console.supportTickets.loadError
       )
     } finally {
       setIsLoading(false)
@@ -147,8 +149,6 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
     }
   }, [])
 
-  const locale = resolveLocaleOrDefault(lang)
-  const messages = getMessages(locale)
   const createPath = localizePathname({
     pathname: "/console/support-tickets/new",
     locale,
@@ -158,9 +158,13 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
     <section className="grid gap-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-4 pb-3">
-          <CardTitle className="text-base">Ticket Queue</CardTitle>
+          <CardTitle className="text-base">
+            {messages.console.supportTickets.queueTitle}
+          </CardTitle>
           <Button asChild size="sm">
-            <Link href={createPath}>Open Ticket</Link>
+            <Link href={createPath}>
+              {messages.console.supportTickets.openTicket}
+            </Link>
           </Button>
         </CardHeader>
         <CardContent>
@@ -183,7 +187,9 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
                 organizationId: false,
                 requesterWorkosUserId: false,
               }}
-              searchPlaceholder="Filter by Ticket ID or Subject..."
+              searchPlaceholder={
+                messages.console.supportTickets.searchPlaceholder
+              }
               searchableColumns={["ticketNumber", "subject"]}
               facetFilters={[
                 {
@@ -250,7 +256,7 @@ export function SupportTicketsConsole({ lang }: SupportTicketsConsoleProps) {
                 },
               ]}
               initialSorting={[{ id: "ticketNumber", desc: true }]}
-              emptyMessage="No support tickets match your filters."
+              emptyMessage={messages.console.supportTickets.emptyMessage}
             />
           )}
         </CardContent>

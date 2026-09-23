@@ -492,11 +492,10 @@ export default function InvoiceDetailPage() {
                     {billing.invoices.providerName}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Jl. Bungurasih Tengah No 70, Waru, Sidoarjo, Jawa Timur
-                    61256
+                    {messages.console.invoices.pdf.companyAddress}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Email: support@pfnapp.id | Whatsapp: +6281216667996
+                    {messages.console.invoices.pdf.companyContact}
                   </p>
                 </div>
                 <div className="space-y-1 text-left sm:text-right">
