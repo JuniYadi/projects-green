@@ -151,8 +151,13 @@ mock.module("@/modules/deploy/deploy-builder.service", () => ({
   resolveStorageMounts: mock(() => []),
 }))
 
-const { listAdminStacks, adminSuspendStack, adminDeleteStack } =
-  await import("./admin-stacks.service")
+const {
+  listAdminStacks,
+  adminSuspendStack,
+  adminResumeStack,
+  adminDeleteStack,
+  processStackLifecycleJob,
+} = await import("./admin-stacks.service")
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -246,9 +251,20 @@ describe("listAdminStacks", () => {
 
     mockPrisma.applicationStack.findMany.mockClear()
 
-    await listAdminStacks({ status: "STOPPED" })
+    await listAdminStacks({ status: "INVALID_STATUS" })
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: {} })
+    )
+
+    mockPrisma.applicationStack.findMany.mockClear()
+
+    await listAdminStacks({ status: "STOPPED" })
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          metadataJson: { path: ["suspended"], equals: true },
+        }),
+      })
     )
 
     mockPrisma.applicationStack.findMany.mockClear()
@@ -293,6 +309,7 @@ describe("listAdminStacks", () => {
 
     const result3 = await listAdminStacks()
     expect(result3.data[0].suspended).toBe(true)
+    expect(result3.data[0].status).toBe("STOPPED")
     expect(result3.data[0].billingState).toBe("ACTIVE")
   })
 
@@ -461,6 +478,95 @@ describe("adminSuspendStack", () => {
         }),
       })
     )
+  })
+})
+
+// ─── describe adminResumeStack ────────────────────────────────────────────────
+
+describe("adminResumeStack", () => {
+  beforeEach(() => {
+    mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.update.mockClear()
+    mockResolveClusterIntegration.mockClear()
+    mockResolveAppHostingClusterForStack.mockClear()
+    mockCommitFiles.mockClear()
+    mockCommitFiles.mockImplementation(async () => {})
+
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      metadataJson: { suspended: true, previousReplicas: 2 },
+    }))
+    mockPrisma.applicationStack.update.mockImplementation(async () => ({
+      ...mockStackRecord,
+      metadataJson: { suspended: false, replicas: 2 },
+    }))
+    mockResolveClusterIntegration.mockImplementation(async () => null)
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => null)
+  })
+
+  it("throws NOT_FOUND when stack does not exist", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
+    await expect(adminResumeStack("stack_1")).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("restores replicas and clears suspended flag in DB when resumed", async () => {
+    const gitops = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+    mockResolveClusterIntegration.mockImplementation(
+      async (_id: string, type: string) => {
+        if (type === "GITOPS") return gitops
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    const result = await adminResumeStack("stack_1")
+    expect(result.gitopsPushed).toBe(true)
+    expect(mockCommitFiles).toHaveBeenCalledWith(
+      "my-org/gitops-repo",
+      expect.stringContaining("Resume"),
+      expect.any(Array)
+    )
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            suspended: false,
+            replicas: 2,
+          }),
+        }),
+      })
+    )
+  })
+})
+
+// ─── describe processStackLifecycleJob ────────────────────────────────────────
+
+describe("processStackLifecycleJob", () => {
+  beforeEach(() => {
+    mockCommitFiles.mockImplementation(async () => {})
+  })
+
+  it("processes suspend action", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(
+      async () => mockStackRecord
+    )
+    const result = await processStackLifecycleJob({
+      stackId: "stack_1",
+      action: "suspend",
+    })
+    expect(result).toHaveProperty("gitopsPushed")
+  })
+
+  it("processes resume action", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(
+      async () => mockStackRecord
+    )
+    const result = await processStackLifecycleJob({
+      stackId: "stack_1",
+      action: "resume",
+    })
+    expect(result).toHaveProperty("gitopsPushed")
   })
 })
 

@@ -32,6 +32,7 @@ import {
   ArrowsClockwise,
   MagnifyingGlass,
   PauseCircle,
+  PlayCircle,
   Trash,
 } from "@phosphor-icons/react"
 
@@ -99,6 +100,7 @@ export default function AdminStacksPage() {
   const [reloadTick, setReloadTick] = useState(0)
 
   const [suspendTarget, setSuspendTarget] = useState<AdminStackDTO | null>(null)
+  const [resumeTarget, setResumeTarget] = useState<AdminStackDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminStackDTO | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -204,6 +206,34 @@ export default function AdminStacksPage() {
     } finally {
       setActionLoading(null)
       setSuspendTarget(null)
+    }
+  }
+
+  const handleResume = async () => {
+    if (!resumeTarget) return
+    setActionLoading(resumeTarget.id)
+    try {
+      const { data: res } = await eden.api.admin["app-hosting"].stacks[
+        resumeTarget.id
+      ].resume.post({})
+      if (!res || !res.ok) {
+        throw new Error(messages.resumeFailed)
+      }
+      if (res.data && !res.data.gitopsPushed) {
+        toast.warning(
+          messages.resumePartial.replace("{stack}", resumeTarget.slug)
+        )
+      } else {
+        toast.success(
+          messages.resumeSuccess.replace("{stack}", resumeTarget.slug)
+        )
+      }
+      setReloadTick((v) => v + 1)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : messages.resumeFailed)
+    } finally {
+      setActionLoading(null)
+      setResumeTarget(null)
     }
   }
 
@@ -524,8 +554,19 @@ export default function AdminStacksPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1.5">
-                      {stack.status !== "STOPPED" &&
-                        stack.status !== "TERMINATED" && (
+                      {stack.status !== "TERMINATED" &&
+                        (stack.suspended || stack.status === "STOPPED" ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === stack.id}
+                            onClick={() => setResumeTarget(stack)}
+                            className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                          >
+                            <PlayCircle className="size-3.5" />
+                            {messages.resume}
+                          </Button>
+                        ) : (
                           <Button
                             variant="outline"
                             size="sm"
@@ -536,7 +577,7 @@ export default function AdminStacksPage() {
                             <PauseCircle className="size-3.5" />
                             {messages.suspend}
                           </Button>
-                        )}
+                        ))}
                       {stack.status !== "TERMINATED" && (
                         <Button
                           variant="outline"
@@ -580,6 +621,33 @@ export default function AdminStacksPage() {
               className="bg-amber-600 text-white hover:bg-amber-700"
             >
               {messages.suspendConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resume Confirm Dialog */}
+      <AlertDialog
+        open={!!resumeTarget}
+        onOpenChange={(open) => !open && setResumeTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{messages.resumeTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {messages.resumeDescription.replace(
+                "{stack}",
+                resumeTarget?.slug ?? ""
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{messages.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResume}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {messages.resumeConfirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -32,6 +32,14 @@ async function chargeActivePaygStacks(
   let errors = 0
 
   for (const stack of stacks) {
+    const meta =
+      typeof stack.metadataJson === "object" && stack.metadataJson !== null
+        ? (stack.metadataJson as Record<string, unknown>)
+        : {}
+    if (meta.suspended === true || meta.billingState === "SUSPENDED") {
+      continue
+    }
+
     try {
       const hourlyCost = new Prisma.Decimal(String(stack.hourlyCost))
       const now = new Date()

@@ -87,10 +87,25 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
     status &&
     status !== "ALL" &&
     status !== "undefined" &&
-    status !== "null" &&
-    (Object.values(StackStatus) as string[]).includes(status)
+    status !== "null"
   ) {
-    where.status = status as StackStatus
+    if (status === "STOPPED") {
+      where.metadataJson = {
+        path: ["suspended"],
+        equals: true,
+      }
+      where.status = { not: StackStatus.TERMINATED }
+    } else if (status === "RUNNING") {
+      where.status = StackStatus.RUNNING
+      where.NOT = {
+        metadataJson: {
+          path: ["suspended"],
+          equals: true,
+        },
+      }
+    } else if ((Object.values(StackStatus) as string[]).includes(status)) {
+      where.status = status as StackStatus
+    }
   }
 
   const query = params.query?.trim()
@@ -136,6 +151,10 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
           ? "PAYMENT_GRACE"
           : "ACTIVE"
 
+    const isSuspended = meta.suspended === true
+    const effectiveStatus =
+      isSuspended && s.status !== StackStatus.TERMINATED ? "STOPPED" : s.status
+
     return {
       id: s.id,
       slug: s.slug,
@@ -143,7 +162,7 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       framework: s.framework ?? null,
       organizationId: s.organizationId,
       organizationName: orgMap.get(s.organizationId)?.name ?? null,
-      status: s.status,
+      status: effectiveStatus,
       subdomain: s.subdomain ?? null,
       customDomain: s.customDomain ?? null,
       clusterName: s.cluster?.name ?? null,
@@ -153,7 +172,7 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       replicas: typeof meta.replicas === "number" ? meta.replicas : null,
       billingMode: s.billingMode ?? null,
       billingState,
-      suspended: meta.suspended === true,
+      suspended: isSuspended,
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
       lastDeployedAt: s.lastDeployedAt ? s.lastDeployedAt.toISOString() : null,
@@ -260,17 +279,18 @@ async function deleteArgoCdApplication(
   }
 }
 
-// ─── Shared helper: scale-to-0 via GitOps ────────────────────────────────────
+// ─── Shared helper: scale replicas via GitOps ────────────────────────────────
 
 /**
- * Shared private helper that builds helm values with replicas=0 and pushes
+ * Shared private helper that builds helm values with given replicas and pushes
  * them to the GitOps repository, then optionally triggers an ArgoCD sync.
  *
- * Used by both adminSuspendStack and adminDeleteStack (terminate).
+ * Used by adminSuspendStack (replicas=0), adminResumeStack (replicas=N),
+ * and adminDeleteStack (replicas=0).
  *
  * @returns { gitopsScaled, argocdSynced }
  */
-async function scaleToZeroViaGitOps(
+async function scaleReplicasViaGitOps(
   stack: Awaited<ReturnType<typeof prisma.applicationStack.findUnique>> & {
     template: {
       blueprintJson: import("@prisma/client").Prisma.JsonValue
@@ -279,6 +299,7 @@ async function scaleToZeroViaGitOps(
   },
   gitopsConfig: GitOpsClusterConfig,
   argocdConfig: ArgoCdClusterConfig | null,
+  replicas: number,
   commitMessage: string
 ): Promise<{ gitopsScaled: boolean; argocdSynced: boolean }> {
   let gitopsScaled = false
@@ -398,7 +419,7 @@ async function scaleToZeroViaGitOps(
         ? (stackMeta.args as string[])
         : undefined
 
-    // Build values with replicas = 0 (scale to zero)
+    // Build values with specified replicas
     const values = buildHelmValues({
       slug: stack.slug,
       imageRepository,
@@ -408,7 +429,7 @@ async function scaleToZeroViaGitOps(
       containerPort: runtimePort,
       servicePort: runtimePort,
       env: envVars,
-      replicas: 0,
+      replicas,
       cpu: stack.cpu,
       memory: stack.memory,
       domain: resolvedDomain,
@@ -492,7 +513,7 @@ async function scaleToZeroViaGitOps(
     }
   } catch (err) {
     console.error(
-      `[admin-stacks] scale-to-0 gitops push failed for ${stack.slug}:`,
+      `[admin-stacks] scale-replicas (${replicas}) gitops push failed for ${stack.slug}:`,
       err
     )
   }
@@ -500,20 +521,31 @@ async function scaleToZeroViaGitOps(
   return { gitopsScaled, argocdSynced }
 }
 
-// ─── Suspend (scale to 0) ─────────────────────────────────────────────────────
+async function scaleToZeroViaGitOps(
+  stack: Parameters<typeof scaleReplicasViaGitOps>[0],
+  gitopsConfig: GitOpsClusterConfig,
+  argocdConfig: ArgoCdClusterConfig | null,
+  commitMessage: string
+) {
+  return scaleReplicasViaGitOps(
+    stack,
+    gitopsConfig,
+    argocdConfig,
+    0,
+    commitMessage
+  )
+}
+
+// ─── Stack Lifecycle Execution (Queue Worker Handlers) ──────────────────────
 
 /**
- * Admin suspend — scales the deployment to 0 replicas by:
- *   1. Pushing value.yml with replicas=0 to the GitOps repo
- *   2. Triggering ArgoCD sync so the cluster reconciles immediately
- *   3. Marking metadataJson.suspended = true in DB
- *
- * GitOps/ArgoCD integrations are optional: if not configured the DB flag
- * is still set so the UI reflects the intent.
+ * Executes the GitOps scale-down to 0 and ArgoCD sync for a stack.
+ * Invoked by BullMQ AppHostingStackLifecycleJob worker or sync fallback.
  */
-export async function adminSuspendStack(
-  stackId: string
-): Promise<{ gitopsPushed: boolean; argocdSynced: boolean }> {
+export async function performSuspendScaleToZero(stackId: string): Promise<{
+  gitopsPushed: boolean
+  argocdSynced: boolean
+}> {
   const stack = await prisma.applicationStack.findUnique({
     where: { id: stackId },
     include: {
@@ -522,12 +554,6 @@ export async function adminSuspendStack(
     },
   })
   if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
-
-  if (stack.status === StackStatus.TERMINATED) {
-    throw new Error(
-      `ALREADY_TERMINATED: Stack ${stackId} is already terminated`
-    )
-  }
 
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
@@ -546,23 +572,260 @@ export async function adminSuspendStack(
     argocdSynced = result.argocdSynced
   }
 
-  // Always persist the suspended flag in DB regardless of gitops outcome
   const currentMeta =
     typeof stack.metadataJson === "object" && stack.metadataJson !== null
       ? (stack.metadataJson as Record<string, unknown>)
       : {}
+
   await prisma.applicationStack.update({
     where: { id: stackId },
     data: {
       metadataJson: {
         ...currentMeta,
         suspended: true,
-        suspendedAt: new Date().toISOString(),
+        suspending: false,
+        suspendedAt:
+          (currentMeta.suspendedAt as string) || new Date().toISOString(),
+        gitopsPushed,
+        argocdSynced,
       },
     },
   })
 
   return { gitopsPushed, argocdSynced }
+}
+
+/**
+ * Executes the GitOps scale-up to previous replicas and ArgoCD sync for a stack.
+ * Invoked by BullMQ AppHostingStackLifecycleJob worker or sync fallback.
+ */
+export async function performResumeScaleUp(stackId: string): Promise<{
+  gitopsPushed: boolean
+  argocdSynced: boolean
+}> {
+  const stack = await prisma.applicationStack.findUnique({
+    where: { id: stackId },
+    include: {
+      template: true,
+      deployments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  })
+  if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+
+  const targetReplicas =
+    typeof currentMeta.previousReplicas === "number" &&
+    currentMeta.previousReplicas > 0
+      ? currentMeta.previousReplicas
+      : 1
+
+  const { gitopsConfig, argocdConfig } =
+    await resolveGitOpsAndArgoConfig(stackId)
+
+  let gitopsPushed = false
+  let argocdSynced = false
+
+  if (gitopsConfig) {
+    const result = await scaleReplicasViaGitOps(
+      stack,
+      gitopsConfig,
+      argocdConfig,
+      targetReplicas,
+      `Resume ${stack.slug} (scale to ${targetReplicas})`
+    )
+    gitopsPushed = result.gitopsScaled
+    argocdSynced = result.argocdSynced
+  }
+
+  await prisma.applicationStack.update({
+    where: { id: stackId },
+    data: {
+      metadataJson: {
+        ...currentMeta,
+        suspended: false,
+        resuming: false,
+        resumedAt:
+          (currentMeta.resumedAt as string) || new Date().toISOString(),
+        replicas: targetReplicas,
+        gitopsPushed,
+        argocdSynced,
+      },
+    },
+  })
+
+  return { gitopsPushed, argocdSynced }
+}
+
+/**
+ * Worker handler invoked by AppHostingStackLifecycleJob.
+ */
+export async function processStackLifecycleJob(data: {
+  stackId: string
+  action: "suspend" | "resume"
+}): Promise<{ gitopsPushed: boolean; argocdSynced: boolean }> {
+  if (data.action === "suspend") {
+    return performSuspendScaleToZero(data.stackId)
+  }
+  if (data.action === "resume") {
+    return performResumeScaleUp(data.stackId)
+  }
+  throw new Error(`Unsupported lifecycle action: ${data.action}`)
+}
+
+// ─── Suspend (scale to 0) ─────────────────────────────────────────────────────
+
+/**
+ * Admin suspend — scales the deployment to 0 replicas by:
+ *   1. Marking metadataJson.suspended = true, replicas = 0 in DB immediately
+ *   2. Enqueueing AppHostingStackLifecycleJob to scale GitOps manifests and sync ArgoCD
+ *   3. If worker unavailable, gracefully falls back to synchronous execution
+ */
+export async function adminSuspendStack(
+  stackId: string,
+  options: { sync?: boolean } = {}
+): Promise<{ gitopsPushed: boolean; argocdSynced: boolean; queued?: boolean }> {
+  const stack = await prisma.applicationStack.findUnique({
+    where: { id: stackId },
+    include: {
+      template: true,
+      deployments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  })
+  if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  if (stack.status === StackStatus.TERMINATED) {
+    throw new Error(
+      `ALREADY_TERMINATED: Stack ${stackId} is already terminated`
+    )
+  }
+
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+  const previousReplicas =
+    typeof currentMeta.replicas === "number" && currentMeta.replicas > 0
+      ? currentMeta.replicas
+      : 1
+
+  // Always persist the suspended flag in DB immediately
+  await prisma.applicationStack.update({
+    where: { id: stackId },
+    data: {
+      metadataJson: {
+        ...currentMeta,
+        suspended: true,
+        suspending: true,
+        suspendedAt: new Date().toISOString(),
+        previousReplicas,
+        replicas: 0,
+      },
+    },
+  })
+
+  const shouldSync = options.sync ?? process.env.NODE_ENV === "test"
+  if (shouldSync) {
+    return performSuspendScaleToZero(stackId)
+  }
+
+  try {
+    const { enqueueStackLifecycle } =
+      await import("@/lib/queue/app-hosting-stack-lifecycle")
+    const enqueued = await enqueueStackLifecycle({
+      stackId,
+      action: "suspend",
+    })
+    if (enqueued) {
+      return { gitopsPushed: true, argocdSynced: true, queued: true }
+    }
+  } catch (err) {
+    console.warn(
+      `[admin-stacks] Failed to enqueue suspend job for ${stackId}, running sync:`,
+      err
+    )
+  }
+
+  return performSuspendScaleToZero(stackId)
+}
+
+// ─── Resume (scale back up) ───────────────────────────────────────────────────
+
+/**
+ * Admin resume — restores deployment replicas by:
+ *   1. Restoring metadataJson.suspended = false, replicas = previousReplicas in DB
+ *   2. Enqueueing AppHostingStackLifecycleJob to scale GitOps manifests and sync ArgoCD
+ *   3. If worker unavailable, gracefully falls back to synchronous execution
+ */
+export async function adminResumeStack(
+  stackId: string,
+  options: { sync?: boolean } = {}
+): Promise<{ gitopsPushed: boolean; argocdSynced: boolean; queued?: boolean }> {
+  const stack = await prisma.applicationStack.findUnique({
+    where: { id: stackId },
+    include: {
+      template: true,
+      deployments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  })
+  if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
+
+  if (stack.status === StackStatus.TERMINATED) {
+    throw new Error(
+      `ALREADY_TERMINATED: Stack ${stackId} is already terminated`
+    )
+  }
+
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+  const targetReplicas =
+    typeof currentMeta.previousReplicas === "number" &&
+    currentMeta.previousReplicas > 0
+      ? currentMeta.previousReplicas
+      : 1
+
+  // Update DB immediately
+  await prisma.applicationStack.update({
+    where: { id: stackId },
+    data: {
+      metadataJson: {
+        ...currentMeta,
+        suspended: false,
+        resuming: true,
+        resumedAt: new Date().toISOString(),
+        replicas: targetReplicas,
+      },
+    },
+  })
+
+  const shouldSync = options.sync ?? process.env.NODE_ENV === "test"
+  if (shouldSync) {
+    return performResumeScaleUp(stackId)
+  }
+
+  try {
+    const { enqueueStackLifecycle } =
+      await import("@/lib/queue/app-hosting-stack-lifecycle")
+    const enqueued = await enqueueStackLifecycle({
+      stackId,
+      action: "resume",
+    })
+    if (enqueued) {
+      return { gitopsPushed: true, argocdSynced: true, queued: true }
+    }
+  } catch (err) {
+    console.warn(
+      `[admin-stacks] Failed to enqueue resume job for ${stackId}, running sync:`,
+      err
+    )
+  }
+
+  return performResumeScaleUp(stackId)
 }
 
 // ─── Terminate (soft-delete: scale to 0, schedule purge in 30 days) ──────────

@@ -4841,6 +4841,15 @@ export const enMessages: AppMessages = {
         suspendFailed: "Failed to suspend stack",
         suspendPartial:
           "Stack {stack} marked as suspended but GitOps push failed — runtime may not scale down immediately",
+        resume: "Resume",
+        resumeTitle: "Resume App Hosting",
+        resumeDescription:
+          "This will reactivate stack {stack}. ArgoCD/Helm reconciliation will restore the deployment.",
+        resumeConfirm: "Resume",
+        resumeSuccess: "Stack {stack} resumed successfully",
+        resumeFailed: "Failed to resume stack",
+        resumePartial:
+          "Stack {stack} marked as active but GitOps push failed — runtime may not scale up immediately",
         terminateTitle: "Terminate App Stack",
         terminateDescription:
           "Stack {stack} will be scaled to 0 immediately. All data (deployments, logs, env vars) will be kept for 30 days for audit, then permanently deleted. This action cannot be undone.",

@@ -9,6 +9,7 @@ import type {
   AdminStackDTO,
   listAdminStacks,
   adminSuspendStack,
+  adminResumeStack,
   adminDeleteStack,
   adminPurgeTerminatedStack,
 } from "@/modules/deploy/admin-stacks.service"
@@ -27,6 +28,7 @@ const { createAdminStacksRoutes } = await import("./admin-stacks.route")
 type GuardFn = typeof requireSuperAdmin
 type ListStacksFn = typeof listAdminStacks
 type SuspendStackFn = typeof adminSuspendStack
+type ResumeStackFn = typeof adminResumeStack
 type DeleteStackFn = typeof adminDeleteStack
 type PurgeStackFn = typeof adminPurgeTerminatedStack
 
@@ -69,6 +71,11 @@ const mockSuspendStack = mock(async () => ({
   argocdSynced: true,
 }))
 
+const mockResumeStack = mock(async () => ({
+  gitopsPushed: true,
+  argocdSynced: true,
+}))
+
 const mockDeleteStack = mock(async () => ({
   gitopsScaled: true,
   argocdSynced: true,
@@ -92,6 +99,7 @@ const mockGuard = mock<() => Promise<AdminActorContext | AdminApiError>>(
 beforeEach(() => {
   mockListAdminStacks.mockClear()
   mockSuspendStack.mockClear()
+  mockResumeStack.mockClear()
   mockDeleteStack.mockClear()
   mockPurgeStack.mockClear()
   mockGuard.mockClear()
@@ -108,6 +116,7 @@ function makeApp() {
       requireSuperAdmin: mockGuard as unknown as GuardFn,
       listAdminStacks: mockListAdminStacks as unknown as ListStacksFn,
       adminSuspendStack: mockSuspendStack as unknown as SuspendStackFn,
+      adminResumeStack: mockResumeStack as unknown as ResumeStackFn,
       adminDeleteStack: mockDeleteStack as unknown as DeleteStackFn,
       adminPurgeTerminatedStack: mockPurgeStack as unknown as PurgeStackFn,
     })
@@ -244,6 +253,45 @@ describe("POST /admin/app-hosting/stacks/:id/suspend", () => {
     const body = (await res.json()) as { ok: boolean; error: string }
     expect(body.ok).toBe(false)
     expect(body.error).toBe("NOT_FOUND")
+  })
+})
+
+describe("POST /admin/app-hosting/stacks/:id/resume", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockGuard.mockResolvedValueOnce({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Authentication required",
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/resume", {
+        method: "POST",
+      })
+    )
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
+  })
+
+  it("resumes stack and returns result", async () => {
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/resume", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      message: string
+      data: { gitopsPushed: boolean; argocdSynced: boolean }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.gitopsPushed).toBe(true)
+    expect(body.data.argocdSynced).toBe(true)
+    expect(body.message).toBe("Stack resumed successfully")
+    expect(mockResumeStack).toHaveBeenCalledWith("stack_1")
   })
 })
 

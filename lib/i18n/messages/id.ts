@@ -4882,6 +4882,15 @@ export const idMessages: AppMessages = {
         suspendFailed: "Gagal me-suspend stack",
         suspendPartial:
           "Stack {stack} ditandai suspended tapi GitOps push gagal — runtime mungkin belum scale down",
+        resume: "Lanjutkan",
+        resumeTitle: "Lanjutkan App Hosting",
+        resumeDescription:
+          "Ini akan mengaktifkan kembali stack {stack}. Rekonsiliasi ArgoCD/Helm akan menjalankan kembali deployment.",
+        resumeConfirm: "Lanjutkan",
+        resumeSuccess: "Stack {stack} berhasil diaktifkan kembali",
+        resumeFailed: "Gagal mengaktifkan kembali stack",
+        resumePartial:
+          "Stack {stack} ditandai aktif tapi GitOps push gagal — runtime mungkin belum scale up",
         terminateTitle: "Terminasi App Stack",
         terminateDescription:
           "Stack {stack} akan di-scale-to-0 sekarang. Semua data (deployment, log, env var) disimpan 30 hari untuk audit, lalu dihapus permanen. Tindakan ini tidak dapat dibatalkan.",

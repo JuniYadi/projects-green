@@ -16,6 +16,7 @@
  *     - quota-reconciliation (concurrency: 4)
  *     - whatsapp-broadcast (concurrency: 4)
  *     - whatsapp-template-sync (concurrency: 2)
+ *     - app-hosting-stack-lifecycle (concurrency: 2)
  *
  *   Interval-based (cron-style):
  *     - deploy-monitor (every 60s)
@@ -40,6 +41,7 @@ import { GithubEventJob } from "@/modules/github/jobs/github-event.job"
 
 import { AdminWhatsappAnalyticsService } from "@/modules/whatsapp/analytics/admin-whatsapp-analytics.service"
 import { DeployPipelineJob } from "@/lib/queue/deploy-pipeline"
+import { AppHostingStackLifecycleJob } from "@/lib/queue/app-hosting-stack-lifecycle"
 // ── Billing Cron ───────────────────────────────────────────────────────────
 import {
   BILLING_DAILY_RESET_QUEUE,
@@ -586,6 +588,11 @@ allWorkers.push(deployMonitorQueueWorker)
 // ── Deploy Pipeline Worker (processes event-driven queue triggers) ───────────
 const deployPipelineWorker = DeployPipelineJob.createWorker()
 allWorkers.push(deployPipelineWorker)
+
+// ── App Hosting Stack Lifecycle Worker ─────────────────────────────────────
+const appHostingStackLifecycleWorker =
+  AppHostingStackLifecycleJob.createWorker()
+allWorkers.push(appHostingStackLifecycleWorker)
 
 // ── Event Logging (shared across all workers) ──────────────────────────────
 for (const worker of allWorkers) {
