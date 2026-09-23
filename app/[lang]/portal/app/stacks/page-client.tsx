@@ -201,11 +201,11 @@ export default function AdminStacksPage() {
         )
       }
       setReloadTick((v) => v + 1)
+      setSuspendTarget(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : messages.suspendFailed)
     } finally {
       setActionLoading(null)
-      setSuspendTarget(null)
     }
   }
 
@@ -229,11 +229,11 @@ export default function AdminStacksPage() {
         )
       }
       setReloadTick((v) => v + 1)
+      setResumeTarget(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : messages.resumeFailed)
     } finally {
       setActionLoading(null)
-      setResumeTarget(null)
     }
   }
 
@@ -251,11 +251,11 @@ export default function AdminStacksPage() {
         messages.terminateScheduledPurge.replace("{stack}", deleteTarget.slug)
       )
       setReloadTick((v) => v + 1)
+      setDeleteTarget(null)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : messages.terminateFailed)
     } finally {
       setActionLoading(null)
-      setDeleteTarget(null)
     }
   }
 

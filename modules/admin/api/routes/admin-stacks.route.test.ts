@@ -293,6 +293,58 @@ describe("POST /admin/app-hosting/stacks/:id/resume", () => {
     expect(body.message).toBe("Stack resumed successfully")
     expect(mockResumeStack).toHaveBeenCalledWith("stack_1")
   })
+
+  it("returns partial warning message when gitops push failed", async () => {
+    mockResumeStack.mockResolvedValueOnce({
+      gitopsPushed: false,
+      argocdSynced: false,
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/resume", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean; message: string }
+    expect(body.ok).toBe(true)
+    expect(body.message).toContain("GitOps push failed")
+  })
+
+  it("returns 404 when stack not found", async () => {
+    mockResumeStack.mockRejectedValueOnce(
+      new Error("NOT_FOUND: Stack stack_x not found")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_x/resume", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("returns 409 when stack already terminated", async () => {
+    mockResumeStack.mockRejectedValueOnce(
+      new Error("ALREADY_TERMINATED: Stack stack_1 is already terminated")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/resume", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ALREADY_TERMINATED")
+  })
 })
 
 describe("DELETE /admin/app-hosting/stacks/:id", () => {
@@ -495,6 +547,23 @@ describe("500 INTERNAL_ERROR paths", () => {
 
     const res = await makeApp().handle(
       new Request("http://localhost/admin/app-hosting/stacks/stack_1/suspend", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(500)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_ERROR")
+  })
+
+  it("returns 500 when resumeStack throws non-NOT_FOUND error", async () => {
+    mockResumeStack.mockRejectedValueOnce(
+      new Error("GitOps repo not accessible")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/resume", {
         method: "POST",
       })
     )

@@ -36,7 +36,7 @@ async function chargeActivePaygStacks(
       typeof stack.metadataJson === "object" && stack.metadataJson !== null
         ? (stack.metadataJson as Record<string, unknown>)
         : {}
-    if (meta.suspended === true || meta.billingState === "SUSPENDED") {
+    if (meta.suspended === true) {
       continue
     }
 

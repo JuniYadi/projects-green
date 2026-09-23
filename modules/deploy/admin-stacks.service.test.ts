@@ -151,12 +151,20 @@ mock.module("@/modules/deploy/deploy-builder.service", () => ({
   resolveStorageMounts: mock(() => []),
 }))
 
+const mockEnqueueStackLifecycle = mock(async () => true)
+
+mock.module("@/lib/queue/app-hosting-stack-lifecycle", () => ({
+  enqueueStackLifecycle: mockEnqueueStackLifecycle,
+}))
+
 const {
   listAdminStacks,
   adminSuspendStack,
   adminResumeStack,
   adminDeleteStack,
   processStackLifecycleJob,
+  performSuspendScaleToZero,
+  performResumeScaleUp,
 } = await import("./admin-stacks.service")
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -269,6 +277,23 @@ describe("listAdminStacks", () => {
 
     mockPrisma.applicationStack.findMany.mockClear()
 
+    await listAdminStacks({ status: "RUNNING" })
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "RUNNING",
+          NOT: {
+            metadataJson: {
+              path: ["suspended"],
+              equals: true,
+            },
+          },
+        }),
+      })
+    )
+
+    mockPrisma.applicationStack.findMany.mockClear()
+
     await listAdminStacks({ status: "ALL" })
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: {} })
@@ -311,6 +336,18 @@ describe("listAdminStacks", () => {
     expect(result3.data[0].suspended).toBe(true)
     expect(result3.data[0].status).toBe("STOPPED")
     expect(result3.data[0].billingState).toBe("ACTIVE")
+
+    mockPrisma.applicationStack.findMany.mockImplementation(async () => [
+      {
+        ...mockStackRecord,
+        status: "TERMINATED",
+        metadataJson: { suspended: true },
+      },
+    ])
+
+    const result4 = await listAdminStacks()
+    expect(result4.data[0].status).toBe("TERMINATED")
+    expect(result4.data[0].suspended).toBe(true)
   })
 
   it("returns null lastDeployedAt when missing", async () => {
@@ -332,6 +369,8 @@ describe("adminSuspendStack", () => {
     mockResolveClusterIntegration.mockClear()
     mockResolveAppHostingClusterForStack.mockClear()
     mockCommitFiles.mockClear()
+    mockEnqueueStackLifecycle.mockClear()
+    mockEnqueueStackLifecycle.mockResolvedValue(true)
 
     mockPrisma.applicationStack.findUnique.mockImplementation(
       async () => mockStackRecord
@@ -353,6 +392,44 @@ describe("adminSuspendStack", () => {
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
 
     await expect(adminSuspendStack("stack_1")).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("throws ALREADY_TERMINATED when stack is already terminated", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+    }))
+
+    await expect(adminSuspendStack("stack_1")).rejects.toThrow(
+      "ALREADY_TERMINATED"
+    )
+  })
+
+  it("enqueues lifecycle job when sync is false and queue succeeds", async () => {
+    mockEnqueueStackLifecycle.mockResolvedValueOnce(true)
+
+    const result = await adminSuspendStack("stack_1", { sync: false })
+
+    expect(result).toEqual({
+      gitopsPushed: true,
+      argocdSynced: true,
+      queued: true,
+    })
+    expect(mockEnqueueStackLifecycle).toHaveBeenCalledWith({
+      stackId: "stack_1",
+      action: "suspend",
+    })
+  })
+
+  it("falls back to synchronous execution when enqueue fails", async () => {
+    mockEnqueueStackLifecycle.mockRejectedValueOnce(new Error("Queue error"))
+
+    const result = await adminSuspendStack("stack_1", { sync: false })
+
+    expect(result).toEqual({
+      gitopsPushed: false,
+      argocdSynced: false,
+    })
   })
 
   it("sets suspended flag in DB when no gitops configured", async () => {
@@ -491,6 +568,8 @@ describe("adminResumeStack", () => {
     mockResolveAppHostingClusterForStack.mockClear()
     mockCommitFiles.mockClear()
     mockCommitFiles.mockImplementation(async () => {})
+    mockEnqueueStackLifecycle.mockClear()
+    mockEnqueueStackLifecycle.mockResolvedValue(true)
 
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
       ...mockStackRecord,
@@ -507,6 +586,64 @@ describe("adminResumeStack", () => {
   it("throws NOT_FOUND when stack does not exist", async () => {
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
     await expect(adminResumeStack("stack_1")).rejects.toThrow("NOT_FOUND")
+  })
+
+  it("throws ALREADY_TERMINATED when stack is already terminated", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+    }))
+
+    await expect(adminResumeStack("stack_1")).rejects.toThrow(
+      "ALREADY_TERMINATED"
+    )
+  })
+
+  it("defaults to 1 replica when previousReplicas is not set or invalid", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      metadataJson: { suspended: true, previousReplicas: 0 },
+    }))
+
+    await adminResumeStack("stack_1")
+
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadataJson: expect.objectContaining({
+            replicas: 1,
+            suspended: false,
+          }),
+        }),
+      })
+    )
+  })
+
+  it("enqueues lifecycle job when sync is false and queue succeeds", async () => {
+    mockEnqueueStackLifecycle.mockResolvedValueOnce(true)
+
+    const result = await adminResumeStack("stack_1", { sync: false })
+
+    expect(result).toEqual({
+      gitopsPushed: true,
+      argocdSynced: true,
+      queued: true,
+    })
+    expect(mockEnqueueStackLifecycle).toHaveBeenCalledWith({
+      stackId: "stack_1",
+      action: "resume",
+    })
+  })
+
+  it("falls back to synchronous execution when enqueue fails", async () => {
+    mockEnqueueStackLifecycle.mockRejectedValueOnce(new Error("Queue error"))
+
+    const result = await adminResumeStack("stack_1", { sync: false })
+
+    expect(result).toEqual({
+      gitopsPushed: false,
+      argocdSynced: false,
+    })
   })
 
   it("restores replicas and clears suspended flag in DB when resumed", async () => {
@@ -567,6 +704,33 @@ describe("processStackLifecycleJob", () => {
       action: "resume",
     })
     expect(result).toHaveProperty("gitopsPushed")
+  })
+
+  it("throws error for unsupported action", async () => {
+    await expect(
+      processStackLifecycleJob({
+        stackId: "stack_1",
+        action: "unknown" as never,
+      })
+    ).rejects.toThrow("Unsupported lifecycle action: unknown")
+  })
+})
+
+// ─── describe performSuspendScaleToZero & performResumeScaleUp ───────────────
+
+describe("performSuspendScaleToZero and performResumeScaleUp direct execution", () => {
+  it("performSuspendScaleToZero throws NOT_FOUND when stack does not exist", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
+    await expect(performSuspendScaleToZero("missing_stack")).rejects.toThrow(
+      "NOT_FOUND"
+    )
+  })
+
+  it("performResumeScaleUp throws NOT_FOUND when stack does not exist", async () => {
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => null)
+    await expect(performResumeScaleUp("missing_stack")).rejects.toThrow(
+      "NOT_FOUND"
+    )
   })
 })
 

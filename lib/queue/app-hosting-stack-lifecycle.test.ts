@@ -7,10 +7,12 @@ import {
 describe("AppHostingStackLifecycleJob", () => {
   const originalHandler = AppHostingStackLifecycleJob.handler
   const originalDispatch = AppHostingStackLifecycleJob.dispatch
+  const originalEnqueue = AppHostingStackLifecycleJob.enqueue
 
   beforeEach(() => {
     AppHostingStackLifecycleJob.handler = originalHandler
     AppHostingStackLifecycleJob.dispatch = originalDispatch
+    AppHostingStackLifecycleJob.enqueue = originalEnqueue
   })
 
   it("configures expected queue settings with app-hosting prefix", () => {
@@ -19,6 +21,28 @@ describe("AppHostingStackLifecycleJob", () => {
     )
     expect(AppHostingStackLifecycleJob.workerConcurrency).toBe(2)
     expect(AppHostingStackLifecycleJob.attempts).toBe(3)
+  })
+
+  it("dispatches job with formatted jobId via enqueue", async () => {
+    const mockEnqueue = mock(async () => undefined as never)
+    AppHostingStackLifecycleJob.enqueue = mockEnqueue
+
+    await AppHostingStackLifecycleJob.dispatch({
+      stackId: "stack-777",
+      action: "resume",
+    })
+
+    expect(mockEnqueue).toHaveBeenCalledWith(
+      { stackId: "stack-777", action: "resume" },
+      { jobId: "app-hosting-stack-lifecycle_resume_stack-777" }
+    )
+  })
+
+  it("executes default handler delegating to processStackLifecycleJob", async () => {
+    // Calling originalHandler executes the dynamic import and handler body
+    await expect(
+      originalHandler({ stackId: "missing-stack", action: "suspend" })
+    ).rejects.toThrow()
   })
 
   it("processes lifecycle action in handle", async () => {
