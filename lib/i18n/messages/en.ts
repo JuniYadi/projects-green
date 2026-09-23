@@ -4843,10 +4843,15 @@ export const enMessages: AppMessages = {
           "Stack {stack} marked as suspended but GitOps push failed — runtime may not scale down immediately",
         terminateTitle: "Terminate App Stack",
         terminateDescription:
-          "This will permanently delete the stack record for {stack} and release any managed database stock. The ArgoCD/Helm chart will be removed on the next reconciliation. This action cannot be undone.",
+          "Stack {stack} will be scaled to 0 immediately. All data (deployments, logs, env vars) will be kept for 30 days for audit, then permanently deleted. This action cannot be undone.",
         terminateConfirm: "Terminate",
-        terminateSuccess: "Stack {stack} terminated and removed",
+        terminateSuccess:
+          "Stack {stack} terminated. Infrastructure scaled to 0. Data purge scheduled in 30 days.",
         terminateFailed: "Failed to terminate stack",
+        terminateScheduledPurge:
+          "Stack {stack} marked for termination. Data will be permanently deleted in 30 days.",
+        statusTerminated: "Terminated",
+        purgedLabel: "PURGE IN {days}d",
       },
       clusters: {
         tabs: {

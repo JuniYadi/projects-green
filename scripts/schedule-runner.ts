@@ -28,6 +28,10 @@ import {
 } from "@/lib/queue/app-hosting-log-rollup"
 import { RegistryGcJob } from "@/lib/queue/registry-gc"
 import { WhatsAppHealthJob } from "@/lib/queue/whatsapp-health"
+import {
+  APP_HOSTING_TERMINATED_PURGE_QUEUE,
+  APP_HOSTING_TERMINATED_PURGE_JOB,
+} from "@/lib/queue/app-hosting-terminated-purge"
 export interface ScheduledJobDefinition {
   name: string
   queueName: string
@@ -200,6 +204,13 @@ export const scheduledJobsRegistry: ScheduledJobDefinition[] = [
     jobName: RegistryGcJob.jobName,
     expression: "0 3 * * *",
     buildJobId: (d) => `registry-gc-${d.toISOString().slice(0, 10)}`,
+  },
+  {
+    name: "app-hosting-terminated-purge",
+    queueName: APP_HOSTING_TERMINATED_PURGE_QUEUE,
+    jobName: APP_HOSTING_TERMINATED_PURGE_JOB,
+    expression: "0 3 * * *", // 03:00 UTC = 10:00 WIB daily
+    buildJobId: (d) => `terminated-purge-${d.toISOString().slice(0, 10)}`,
   },
 ]
 

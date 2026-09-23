@@ -4410,6 +4410,9 @@ export type AppMessages = {
         terminateConfirm: string
         terminateSuccess: string
         terminateFailed: string
+        terminateScheduledPurge: string
+        statusTerminated: string
+        purgedLabel: string
       }
       clusters: {
         tabs: {
