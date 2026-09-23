@@ -4436,6 +4436,7 @@ export type AppMessages = {
         terminateSuccess: string
         terminateFailed: string
         terminatePartial: string
+        retryCleanup: string
         terminateScheduledPurge: string
         statusTerminated: string
         purgedLabel: string

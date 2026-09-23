@@ -856,15 +856,39 @@ describe("adminDeleteStack", () => {
     await expect(adminDeleteStack("stack_1")).rejects.toThrow("NOT_FOUND")
   })
 
-  it("throws ALREADY_TERMINATED when stack is already terminated", async () => {
+  it("throws ALREADY_TERMINATED when stack is already terminated and cleaned up", async () => {
     mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
       ...mockStackRecord,
       status: "TERMINATED",
+      metadataJson: { gitopsDeleted: true },
     }))
 
     await expect(adminDeleteStack("stack_1")).rejects.toThrow(
       "ALREADY_TERMINATED"
     )
+  })
+
+  it("allows re-terminating a TERMINATED stack when gitopsDeleted is false", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+
+    mockPrisma.applicationStack.findUnique.mockImplementation(async () => ({
+      ...mockStackRecord,
+      status: "TERMINATED",
+      metadataJson: { gitopsDeleted: false },
+    }))
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    const result = await adminDeleteStack("stack_1")
+    expect(result.gitopsDeleted).toBe(true)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
 
   it("terminates: deletes manifests in GitOps, triggers ArgoCD delete, releases stock, and retains DB record", async () => {
@@ -946,6 +970,17 @@ describe("adminDeleteStack", () => {
   })
 
   it("handles releaseManagedStock failure during terminate gracefully", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
     mockReleaseManagedStock.mockImplementationOnce(async () => {
       throw new Error("Vault error")
     })
@@ -963,21 +998,12 @@ describe("adminDeleteStack", () => {
     )
   })
 
-  it("updates DB with TERMINATED status even when GitOps is not configured", async () => {
-    const result = await adminDeleteStack("stack_1")
+  it("fails and throws CONFIG_MISSING when GitOps is not configured", async () => {
+    mockResolveClusterIntegration.mockImplementation(async () => {
+      throw new Error("No integration configured")
+    })
 
-    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "stack_1" },
-        data: expect.objectContaining({
-          status: "TERMINATED",
-          terminatedAt: expect.any(Date),
-          scheduledPurgeAt: null,
-        }),
-      })
-    )
-    expect(result.gitopsDeleted).toBe(false)
-    expect(result.stockReleased).toBe(true)
-    expect(mockPrisma.applicationStack.delete).not.toHaveBeenCalled()
+    await expect(adminDeleteStack("stack_1")).rejects.toThrow("CONFIG_MISSING")
+    expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
   })
 })

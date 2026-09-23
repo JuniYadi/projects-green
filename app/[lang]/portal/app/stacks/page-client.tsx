@@ -512,6 +512,22 @@ export default function AdminStacksPage() {
           const isTerminated = stack.status === "TERMINATED"
 
           if (isTerminated) {
+            if (!stack.gitopsCleanedUp) {
+              return (
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={actionLoading === stack.id}
+                    onClick={() => setDeleteTarget(stack)}
+                    className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
+                  >
+                    <Trash className="size-3.5" />
+                    {messages.retryCleanup}
+                  </Button>
+                </div>
+              )
+            }
             return (
               <div className="text-right">
                 <span className="text-xs text-muted-foreground">

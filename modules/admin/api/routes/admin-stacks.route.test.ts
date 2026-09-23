@@ -58,6 +58,7 @@ const mockStack: AdminStackDTO = {
   deploymentsCount: 3,
   terminatedAt: null,
   scheduledPurgeAt: null,
+  gitopsCleanedUp: false,
 }
 
 const mockListAdminStacks = mock(async () => ({
@@ -517,6 +518,23 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     const body = (await res.json()) as { ok: boolean; error: string }
     expect(body.ok).toBe(false)
     expect(body.error).toBe("GITOPS_DELETE_FAILED")
+  })
+
+  it("returns 422 when gitops configuration is missing", async () => {
+    mockDeleteStack.mockRejectedValueOnce(
+      new Error("CONFIG_MISSING: GitOps configuration unavailable")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("CONFIG_MISSING")
   })
 
   it("returns 404 when stack not found", async () => {

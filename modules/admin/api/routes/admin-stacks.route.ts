@@ -262,6 +262,14 @@ export const createAdminStacksRoutes = (deps: AdminStacksRouteDeps = {}) => {
               message: "Stack is already terminated",
             }
           }
+          if (msg.startsWith("CONFIG_MISSING")) {
+            set.status = 422
+            return {
+              ok: false as const,
+              error: "CONFIG_MISSING",
+              message: msg,
+            }
+          }
           if (msg.startsWith("GITOPS_DELETE_FAILED")) {
             set.status = 502
             return {

@@ -4923,6 +4923,7 @@ export const idMessages: AppMessages = {
         terminateFailed: "Gagal menterminasi platform",
         terminatePartial:
           "Platform {stack} diterminasi, namun sebagian tugas pembersihan (ArgoCD/Vault) tidak lengkap — periksa log cluster",
+        retryCleanup: "Coba Lagi Pembersihan",
         terminateScheduledPurge:
           "Platform {stack} langsung diterminasi. Resource GitOps dihapus.",
         statusTerminated: "Diterminasi",

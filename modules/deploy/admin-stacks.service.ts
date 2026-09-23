@@ -56,6 +56,7 @@ export type AdminStackDTO = {
   deploymentsCount: number
   terminatedAt: string | null
   scheduledPurgeAt: string | null
+  gitopsCleanedUp: boolean
 }
 
 export type AdminStacksListQuery = {
@@ -183,6 +184,11 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       scheduledPurgeAt: s.scheduledPurgeAt
         ? s.scheduledPurgeAt.toISOString()
         : null,
+      gitopsCleanedUp: Boolean(
+        typeof s.metadataJson === "object" &&
+        s.metadataJson !== null &&
+        (s.metadataJson as Record<string, unknown>).gitopsDeleted
+      ),
     }
   })
 
@@ -913,51 +919,63 @@ export async function adminDeleteStack(stackId: string): Promise<{
   })
   if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
 
-  if (stack.status === StackStatus.TERMINATED) {
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+
+  if (
+    stack.status === StackStatus.TERMINATED &&
+    Boolean(currentMeta.gitopsDeleted)
+  ) {
     throw new Error(
-      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated`
+      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated and cleaned up`
     )
   }
 
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
 
+  if (!gitopsConfig) {
+    throw new Error(
+      `CONFIG_MISSING: GitOps configuration unavailable for stack ${stack.slug}. Configure cluster GitOps integration before terminating.`
+    )
+  }
+
   let gitopsDeleted = false
   let argocdDeleted = false
   let stockReleased = false
 
   // 1. Delete GitOps manifests immediately
-  if (gitopsConfig) {
-    try {
-      const { serviceDir, helmPath, valuePath, argocdProjectPath } =
-        resolveGitOpsManifestPaths({
-          slug: stack.slug,
-          organizationId: stack.organizationId,
-          basePath: gitopsConfig.basePath,
-        })
-
-      const gitops = new GitOpsRepositoryService({
-        pat: gitopsConfig.pat,
-        branch: gitopsConfig.branch,
+  try {
+    const { serviceDir, helmPath, valuePath, argocdProjectPath } =
+      resolveGitOpsManifestPaths({
+        slug: stack.slug,
+        organizationId: stack.organizationId,
+        basePath: gitopsConfig.basePath,
       })
 
-      await gitops.commitFiles(
-        gitopsConfig.repo,
-        `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
-        [],
-        [serviceDir, helmPath, valuePath, argocdProjectPath]
-      )
+    const gitops = new GitOpsRepositoryService({
+      pat: gitopsConfig.pat,
+      branch: gitopsConfig.branch,
+    })
 
-      gitopsDeleted = true
-    } catch (err) {
-      console.error(
-        `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
-        err
-      )
-      throw new Error(
-        `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
-      )
-    }
+    await gitops.commitFiles(
+      gitopsConfig.repo,
+      `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
+      [],
+      [serviceDir, helmPath, valuePath, argocdProjectPath]
+    )
+
+    gitopsDeleted = true
+  } catch (err) {
+    console.error(
+      `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
+      err
+    )
+    throw new Error(
+      `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
+    )
   }
 
   // 2. Delete ArgoCD Application (cascade=true triggers resources-finalizer)
@@ -978,10 +996,6 @@ export async function adminDeleteStack(stackId: string): Promise<{
     })
 
   // 4. Update the DB: mark as TERMINATED, clear scheduledPurgeAt, KEEP record in DB
-  const currentMeta =
-    typeof stack.metadataJson === "object" && stack.metadataJson !== null
-      ? (stack.metadataJson as Record<string, unknown>)
-      : {}
   await prisma.applicationStack.update({
     where: { id: stackId },
     data: {
@@ -992,6 +1006,9 @@ export async function adminDeleteStack(stackId: string): Promise<{
         ...currentMeta,
         terminated: true,
         terminatedAt: new Date().toISOString(),
+        gitopsDeleted: true,
+        argocdDeleted,
+        stockReleased,
       },
     },
   })
