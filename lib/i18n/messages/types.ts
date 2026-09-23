@@ -4378,6 +4378,7 @@ export type AppMessages = {
         reset: string
         status: string
         statusAll: string
+        statusIdle: string
         statusRunning: string
         statusBuilding: string
         statusDeploying: string
@@ -4396,9 +4397,15 @@ export type AppMessages = {
         empty: string
         loadFailed: string
         suspend: string
+        deploy: string
         terminate: string
         cancel: string
         suspendedLabel: string
+        deployTitle: string
+        deployDescription: string
+        deployConfirm: string
+        deploySuccess: string
+        deployFailed: string
         suspendTitle: string
         suspendDescription: string
         suspendConfirm: string

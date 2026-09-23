@@ -9,6 +9,7 @@ import type {
   AdminStackDTO,
   listAdminStacks,
   adminSuspendStack,
+  adminDeployStack,
   adminDeleteStack,
   adminPurgeTerminatedStack,
 } from "@/modules/deploy/admin-stacks.service"
@@ -27,6 +28,7 @@ const { createAdminStacksRoutes } = await import("./admin-stacks.route")
 type GuardFn = typeof requireSuperAdmin
 type ListStacksFn = typeof listAdminStacks
 type SuspendStackFn = typeof adminSuspendStack
+type DeployStackFn = typeof adminDeployStack
 type DeleteStackFn = typeof adminDeleteStack
 type PurgeStackFn = typeof adminPurgeTerminatedStack
 
@@ -69,6 +71,11 @@ const mockSuspendStack = mock(async () => ({
   argocdSynced: true,
 }))
 
+const mockDeployStack = mock(async () => ({
+  deploymentId: "deploy_123",
+  status: "QUEUED",
+}))
+
 const mockDeleteStack = mock(async () => ({
   gitopsScaled: true,
   argocdSynced: true,
@@ -92,6 +99,7 @@ const mockGuard = mock<() => Promise<AdminActorContext | AdminApiError>>(
 beforeEach(() => {
   mockListAdminStacks.mockClear()
   mockSuspendStack.mockClear()
+  mockDeployStack.mockClear()
   mockDeleteStack.mockClear()
   mockPurgeStack.mockClear()
   mockGuard.mockClear()
@@ -108,6 +116,7 @@ function makeApp() {
       requireSuperAdmin: mockGuard as unknown as GuardFn,
       listAdminStacks: mockListAdminStacks as unknown as ListStacksFn,
       adminSuspendStack: mockSuspendStack as unknown as SuspendStackFn,
+      adminDeployStack: mockDeployStack as unknown as DeployStackFn,
       adminDeleteStack: mockDeleteStack as unknown as DeleteStackFn,
       adminPurgeTerminatedStack: mockPurgeStack as unknown as PurgeStackFn,
     })
@@ -244,6 +253,81 @@ describe("POST /admin/app-hosting/stacks/:id/suspend", () => {
     const body = (await res.json()) as { ok: boolean; error: string }
     expect(body.ok).toBe(false)
     expect(body.error).toBe("NOT_FOUND")
+  })
+})
+
+describe("POST /admin/app-hosting/stacks/:id/deploy", () => {
+  it("returns 401 when unauthenticated", async () => {
+    mockGuard.mockResolvedValueOnce({
+      ok: false,
+      error: "UNAUTHORIZED",
+      message: "Authentication required",
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/deploy", {
+        method: "POST",
+      })
+    )
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("UNAUTHORIZED")
+  })
+
+  it("triggers deployment for stack and returns deployment data", async () => {
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/deploy", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      message: string
+      data: { deploymentId: string; status: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.deploymentId).toBe("deploy_123")
+    expect(body.data.status).toBe("QUEUED")
+    expect(mockDeployStack).toHaveBeenCalledWith("stack_1")
+  })
+
+  it("returns 404 when stack not found", async () => {
+    mockDeployStack.mockRejectedValueOnce(
+      new Error("NOT_FOUND: Stack stack_x not found")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_x/deploy", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("returns 409 when stack is already terminated", async () => {
+    mockDeployStack.mockRejectedValueOnce(
+      new Error("ALREADY_TERMINATED: Stack stack_term is already terminated")
+    )
+
+    const res = await makeApp().handle(
+      new Request(
+        "http://localhost/admin/app-hosting/stacks/stack_term/deploy",
+        {
+          method: "POST",
+        }
+      )
+    )
+
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("ALREADY_TERMINATED")
   })
 })
 
@@ -447,6 +531,23 @@ describe("500 INTERNAL_ERROR paths", () => {
 
     const res = await makeApp().handle(
       new Request("http://localhost/admin/app-hosting/stacks/stack_1/suspend", {
+        method: "POST",
+      })
+    )
+
+    expect(res.status).toBe(500)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("INTERNAL_ERROR")
+  })
+
+  it("returns 500 when deployStack throws non-NOT_FOUND error", async () => {
+    mockDeployStack.mockRejectedValueOnce(
+      new Error("Pipeline worker unavailable")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1/deploy", {
         method: "POST",
       })
     )
