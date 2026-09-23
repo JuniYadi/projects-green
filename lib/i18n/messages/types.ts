@@ -373,7 +373,13 @@ export type AppMessages = {
         exportJson: string
         moreActions: string
         syncFromManifest: string
+        syncFromManifestTitle: string
         syncing: string
+        syncSuccess: string
+        syncAlreadyUpToDate: string
+        syncManifestFetchError: string
+        syncManifestNotFound: string
+        syncError: string
         approve: string
         reject: string
         delete: string

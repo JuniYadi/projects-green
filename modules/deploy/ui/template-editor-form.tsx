@@ -459,14 +459,16 @@ export function TemplateEditorForm({
         `/api/admin/runtimes/manifests?framework=${encodeURIComponent(targetQuery)}`
       )
       if (!res.ok) {
-        throw new Error(`Gagal mengambil manifest (${res.status})`)
+        throw new Error(
+          messages.syncManifestFetchError.replace(
+            "{status}",
+            String(res.status)
+          )
+        )
       }
       const json = await res.json()
       if (!json.ok || !json.data || !Array.isArray(json.data.tunables)) {
-        throw new Error(
-          json.message ||
-            "Manifest tidak ditemukan atau tidak memiliki tunables"
-        )
+        throw new Error(json.message || messages.syncManifestNotFound)
       }
       const tunables = json.data.tunables as Array<{
         key: string
@@ -537,18 +539,15 @@ export function TemplateEditorForm({
       if (addedCount > 0) {
         setEnvSchema((prev) => [...prev, ...newItems])
         toast.success(
-          `${addedCount} environment variable berhasil disinkronkan dari manifest ${
-            json.data.framework || targetQuery
-          }!`
+          messages.syncSuccess
+            .replace("{count}", String(addedCount))
+            .replace("{framework}", json.data.framework || targetQuery)
         )
       } else {
-        toast.info(
-          "Semua environment variable dari runtime manifest sudah terpasang."
-        )
+        toast.info(messages.syncAlreadyUpToDate)
       }
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Gagal sinkronisasi manifest"
+      const msg = err instanceof Error ? err.message : messages.syncError
       toast.error(msg)
     } finally {
       setIsSyncingManifest(false)
@@ -1846,14 +1845,13 @@ export function TemplateEditorForm({
                   onClick={handleSyncFromManifest}
                   disabled={isSyncingManifest}
                   className="gap-1.5 text-xs"
-                  title="Tarik environment variables / tunables dari runtime manifest image ini"
+                  title={messages.syncFromManifestTitle}
                 >
                   <CloudArrowDown className="size-3.5" />
                   <span>
                     {isSyncingManifest
-                      ? messages.syncing || "Menyinkronkan..."
-                      : messages.syncFromManifest ||
-                        "Sync dari Runtime Manifest"}
+                      ? messages.syncing
+                      : messages.syncFromManifest}
                   </span>
                 </Button>
                 <Button

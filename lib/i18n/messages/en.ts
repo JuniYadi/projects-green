@@ -498,7 +498,16 @@ export const enMessages: AppMessages = {
         exportJson: "Export JSON",
         moreActions: "More Actions",
         syncFromManifest: "Sync from Runtime Manifest",
+        syncFromManifestTitle:
+          "Fetch environment variables and tunables from this runtime manifest image",
         syncing: "Syncing...",
+        syncSuccess:
+          "{count} environment variable(s) successfully synced from manifest {framework}!",
+        syncAlreadyUpToDate:
+          "All environment variables from runtime manifest are already present.",
+        syncManifestFetchError: "Failed to fetch runtime manifest ({status})",
+        syncManifestNotFound: "Manifest not found or contains no tunables",
+        syncError: "Failed to sync manifest",
         approve: "Approve",
         reject: "Reject",
         delete: "Delete",

@@ -177,7 +177,6 @@ export class RuntimeManifestService {
   private getBaseImageDirs(): string[] {
     return [
       process.env.BASE_IMAGE_PATH,
-      "/home/juniyadi/pfnapp/base-image",
       path.resolve(process.cwd(), "../base-image"),
       path.resolve(process.cwd(), "../../base-image"),
     ].filter(Boolean) as string[]
@@ -211,55 +210,6 @@ export class RuntimeManifestService {
     return null
   }
 
-  async scanAndSyncLocalBaseImages(): Promise<AppRuntimeManifestRecordDTO[]> {
-    const candidates = this.getBaseImageDirs()
-    const syncedRecords: AppRuntimeManifestRecordDTO[] = []
-    const subdirs = ["patches"]
-    const processedRuntimes = new Set<string>()
-
-    for (const baseDir of candidates) {
-      if (!fs.existsSync(baseDir)) continue
-      for (const sub of subdirs) {
-        const dirPath = path.join(baseDir, sub)
-        if (!fs.existsSync(dirPath)) continue
-        try {
-          const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-          for (const ent of entries) {
-            if (ent.isDirectory()) {
-              const manifestFile = path.join(
-                dirPath,
-                ent.name,
-                "runtime-manifest.json"
-              )
-              if (fs.existsSync(manifestFile)) {
-                try {
-                  const content = JSON.parse(
-                    fs.readFileSync(manifestFile, "utf8")
-                  )
-                  const validated = RuntimeManifestSchema.safeParse(content)
-                  if (validated.success) {
-                    const normId = normalizeFrameworkId(validated.data.runtime)
-                    if (!processedRuntimes.has(normId)) {
-                      const record = await this.upsertManifest(validated.data)
-                      syncedRecords.push(record)
-                      processedRuntimes.add(normId)
-                    }
-                  }
-                } catch {
-                  // Skip invalid manifest
-                }
-              }
-            }
-          }
-        } catch {
-          // Skip inaccessible dir
-        }
-      }
-    }
-
-    return syncedRecords
-  }
-
   async getRuntimeManifest(
     frameworkId?: string | null
   ): Promise<RuntimeManifestDTO> {
@@ -284,7 +234,9 @@ export class RuntimeManifestService {
       if (localManifest) {
         const validated = RuntimeManifestSchema.safeParse(localManifest)
         if (validated.success) {
-          await this.upsertManifest(validated.data).catch(() => {})
+          await this.upsertManifest(validated.data).catch((e) =>
+            console.warn("manifest upsert failed", e)
+          )
           return toRuntimeManifestDTO(validated.data)
         }
       }

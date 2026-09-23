@@ -501,7 +501,17 @@ export const idMessages: AppMessages = {
         exportJson: "Ekspor JSON",
         moreActions: "Aksi Lainnya",
         syncFromManifest: "Sync dari Runtime Manifest",
+        syncFromManifestTitle:
+          "Tarik environment variables / tunables dari runtime manifest image ini",
         syncing: "Menyinkronkan...",
+        syncSuccess:
+          "{count} environment variable berhasil disinkronkan dari manifest {framework}!",
+        syncAlreadyUpToDate:
+          "Semua environment variable dari runtime manifest sudah terpasang.",
+        syncManifestFetchError: "Gagal mengambil manifest ({status})",
+        syncManifestNotFound:
+          "Manifest tidak ditemukan atau tidak memiliki tunables",
+        syncError: "Gagal sinkronisasi manifest",
         approve: "Setujui",
         reject: "Tolak",
         delete: "Hapus",
