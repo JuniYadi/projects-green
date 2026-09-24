@@ -1,5 +1,8 @@
 import { useId } from "react"
+import { useParams } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type SparklineDataPoint = {
   label: string
@@ -39,6 +42,10 @@ export function ClusterTelemetrySparkline({
 }: ClusterTelemetrySparklineProps) {
   const rawId = useId()
   const gradientId = `sparkline-grad-${rawId.replace(/[^a-zA-Z0-9-_]/g, "")}`
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployClusterTelemetrySparkline
 
   if (!data || data.length === 0) {
     return (
@@ -49,7 +56,7 @@ export function ClusterTelemetrySparkline({
         )}
         style={{ height }}
       >
-        No telemetry data
+        {t.emptyState}
       </div>
     )
   }

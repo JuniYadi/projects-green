@@ -7,6 +7,9 @@ import {
 } from "@phosphor-icons/react"
 import type { VpnServerAccountEntry } from "./vpn-admin-client"
 import { Badge } from "@/components/ui/badge"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type AuditEventType =
   | "PROVISIONING_STARTED"
@@ -64,13 +67,17 @@ const EVENT_CONFIG: Record<
 }
 
 export function ProvisioningTimeline({ account, events }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalVpnProvisioningTimeline
   if (events.length === 0) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Badge variant={getStatusVariant(account.provisioningStatus)}>
           {account.provisioningStatus}
         </Badge>
-        <span>No audit events yet</span>
+        <span>{t.noAuditEvents}</span>
       </div>
     )
   }

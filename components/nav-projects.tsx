@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import { useMessages } from "@/components/use-messages"
 
 export function NavProjects({
   projects,
@@ -21,9 +22,10 @@ export function NavProjects({
     onClick?: () => void
   }[]
 }) {
+  const t = useMessages().sharedComponents.navProjects
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Projects</SidebarGroupLabel>
+      <SidebarGroupLabel>{t.label}</SidebarGroupLabel>
       <SidebarMenu>
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>

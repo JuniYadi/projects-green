@@ -268,10 +268,10 @@ export function StepSource({
   return (
     <Card className="border border-border bg-card shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl font-bold">{messages.deploySource}</CardTitle>
-        <CardDescription>
-          {messages.deploySourceDesc}
-        </CardDescription>
+        <CardTitle className="text-xl font-bold">
+          {messages.deploySource}
+        </CardTitle>
+        <CardDescription>{messages.deploySourceDesc}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <Tabs
@@ -970,7 +970,7 @@ export function StepSource({
                       <Input
                         value={appName}
                         onChange={(e) => onAppNameChange(e.target.value)}
-                        placeholder="my-app-name"
+                        placeholder={messages.appNamePlaceholder}
                         className="h-9 text-xs"
                       />
                       <p className="text-[10px] text-muted-foreground">

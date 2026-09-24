@@ -13,6 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import type { WizardData } from "./device-create-wizard"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Organization = { id: string; name: string }
 
@@ -23,6 +26,10 @@ type Props = {
 }
 
 export function StepOrganization({ data, updateData, errors }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalWhatsappDevicesNewStepOrganization
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -46,9 +53,9 @@ export function StepOrganization({ data, updateData, errors }: Props) {
 
   return (
     <div className="grid gap-4">
-      <h2 className="text-lg font-semibold">Organization & Phone</h2>
+      <h2 className="text-lg font-semibold">{t.heading}</h2>
       <div className="grid gap-2">
-        <Label htmlFor="org">Organization</Label>
+        <Label htmlFor="org">{t.organizationLabel}</Label>
         <Select
           value={data.organizationId}
           onValueChange={(v) => updateData({ organizationId: v })}
@@ -74,7 +81,7 @@ export function StepOrganization({ data, updateData, errors }: Props) {
         )}
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="phone">Phone Number</Label>
+        <Label htmlFor="phone">{t.phoneLabel}</Label>
         <Input
           id="phone"
           value={data.phoneNumber}
@@ -86,9 +93,7 @@ export function StepOrganization({ data, updateData, errors }: Props) {
         {errors.phoneNumber && (
           <p className="text-xs text-destructive">{errors.phoneNumber}</p>
         )}
-        <p className="text-xs text-muted-foreground">
-          E.164 international format with country code
-        </p>
+        <p className="text-xs text-muted-foreground">{t.phoneHint}</p>
       </div>
     </div>
   )

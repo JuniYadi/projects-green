@@ -282,7 +282,9 @@ export function AddDeviceDialog() {
               onChange={(e) =>
                 setForm({ ...form, whatsappBusinessAccountId: e.target.value })
               }
-              placeholder="WABA-xxxxxxxxxxxx"
+              placeholder={
+                messages.pPortalWhatsappDevicesAddDeviceDialog.wabaIdPlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">
@@ -295,7 +297,10 @@ export function AddDeviceDialog() {
               onChange={(e) =>
                 setForm({ ...form, whatsappPhoneId: e.target.value })
               }
-              placeholder="Phone-xxxxxxxxxxxx"
+              placeholder={
+                messages.pPortalWhatsappDevicesAddDeviceDialog
+                  .phoneIdPlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">
@@ -311,7 +316,10 @@ export function AddDeviceDialog() {
               onChange={(e) =>
                 setForm({ ...form, whatsappApplicationId: e.target.value })
               }
-              placeholder="App-xxxxxxxxxxxx"
+              placeholder={
+                messages.pPortalWhatsappDevicesAddDeviceDialog
+                  .applicationIdPlaceholder
+              }
             />
           </div>
           <div className="grid gap-2">

@@ -2,6 +2,9 @@
 
 import React from "react"
 
+import { useMessages } from "@/components/use-messages"
+import type { AppMessages } from "@/lib/i18n/messages/types"
+
 type ErrorBoundaryProps = {
   children: React.ReactNode
   fallback?: React.ReactNode
@@ -12,11 +15,13 @@ type ErrorBoundaryState = {
   error: Error | null
 }
 
-export class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
+type ErrorBoundaryMessages = AppMessages["sharedComponents"]["errorBoundary"]
+
+export class ErrorBoundaryImpl extends React.Component<
+  ErrorBoundaryProps & { messages: ErrorBoundaryMessages },
   ErrorBoundaryState
 > {
-  constructor(props: ErrorBoundaryProps) {
+  constructor(props: ErrorBoundaryProps & { messages: ErrorBoundaryMessages }) {
     super(props)
     this.state = { hasError: false, error: null }
   }
@@ -34,14 +39,14 @@ export class ErrorBoundary extends React.Component<
       return (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <p className="mb-2 text-sm text-destructive" role="alert">
-            Something went wrong. Please try again.
+            {this.props.messages.message}
           </p>
           <button
             type="button"
             className="text-sm text-primary underline hover:no-underline"
             onClick={() => this.setState({ hasError: false, error: null })}
           >
-            Try again
+            {this.props.messages.retry}
           </button>
         </div>
       )
@@ -49,4 +54,10 @@ export class ErrorBoundary extends React.Component<
 
     return this.props.children
   }
+}
+
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  const messages = useMessages().sharedComponents.errorBoundary
+
+  return <ErrorBoundaryImpl {...props} messages={messages} />
 }

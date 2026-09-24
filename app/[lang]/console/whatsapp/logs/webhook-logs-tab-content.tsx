@@ -318,7 +318,7 @@ export function WebhookLogsTabContent({
       {
         accessorKey: "waMessageId",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="WA Message ID" />
+          <DataTableColumnHeader column={column} title={t.drawer.waMessageId} />
         ),
         cell: ({ row }) => (
           <span className="font-mono text-[11px] text-muted-foreground">

@@ -8,6 +8,9 @@ import {
   type EdgeProps,
 } from "@xyflow/react"
 import { X } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export type DeletableEdgeData = {
   onDelete?: (id: string) => void
@@ -28,6 +31,9 @@ export const DeletableEdge = memo(function DeletableEdge({
   label,
   selected,
 }: EdgeProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).console.whatsappWorkflows.inspector
   const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
@@ -56,8 +62,7 @@ export const DeletableEdge = memo(function DeletableEdge({
         <div
           style={{
             position: "absolute",
-            transform:
-              `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             pointerEvents: "all",
           }}
           className="nodrag nopan flex items-center gap-1"
@@ -91,8 +96,8 @@ export const DeletableEdge = memo(function DeletableEdge({
                 "shadow-sm transition-all hover:scale-110 " +
                 "hover:border-destructive hover:bg-destructive"
               }
-              title="Delete edge"
-              aria-label="Delete edge"
+              title={t.deleteEdgeAria}
+              aria-label={t.deleteEdgeAria}
             >
               <X className="h-2.5 w-2.5" weight="bold" />
             </button>

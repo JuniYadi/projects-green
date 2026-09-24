@@ -190,7 +190,9 @@ export function SshKeysTable() {
             </DialogTitle>
             <DialogDescription>
               {messages.pPortalVpnSshKeysTable.dialogDescriptionPrefix}
-              <code className="text-xs">ssh-keygen -t ed25519</code>
+              <code className="text-xs">
+                {messages.pPortalVpnSshKeysTable.generationCommand}
+              </code>
               {messages.pPortalVpnSshKeysTable.dialogDescriptionSuffix}
             </DialogDescription>
           </DialogHeader>
@@ -214,7 +216,9 @@ export function SshKeysTable() {
                 id="key-material"
                 value={privateKey}
                 onChange={(e) => setPrivateKey(e.target.value)}
-                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
+                placeholder={
+                  messages.pPortalVpnSshKeysTable.privateKeyPlaceholder
+                }
                 rows={6}
                 className="font-mono text-xs"
               />

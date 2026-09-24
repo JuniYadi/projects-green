@@ -507,7 +507,9 @@ export default function WhatsAppBroadcastDetailPage() {
                     </span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Template ID</span>
+                    <span className="text-muted-foreground">
+                      {t.detail.templateId}
+                    </span>
                     <span className="font-mono text-xs text-muted-foreground">
                       {broadcast.templateId ?? "—"}
                     </span>

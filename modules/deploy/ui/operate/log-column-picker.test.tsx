@@ -1,5 +1,10 @@
 import { cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, mock } from "bun:test"
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "id" }),
+}))
+
 import { LogColumnPicker } from "./log-column-picker"
 
 describe("LogColumnPicker", () => {

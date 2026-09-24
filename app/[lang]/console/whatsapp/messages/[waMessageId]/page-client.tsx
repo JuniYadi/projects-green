@@ -26,12 +26,16 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { WhatsappMessageJourneyDTO } from "@/modules/whatsapp/messages/messages.dto"
 import { MessageJourneyTimeline } from "@/modules/whatsapp/messages/ui/message-journey-timeline"
 import { MessageChatPreview } from "@/modules/whatsapp/messages/ui/message-chat-preview"
 
 export default function ConsoleWhatsAppMessageJourneyPage() {
   const params = useParams<{ lang: string; waMessageId: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).console.whatsapp.messages
   const router = useRouter()
   const waMessageId = params?.waMessageId
     ? decodeURIComponent(params.waMessageId)
@@ -249,13 +253,15 @@ export default function ConsoleWhatsAppMessageJourneyPage() {
                 </CardHeader>
                 <CardContent className="space-y-2.5 text-xs">
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Direction:</span>
+                    <span className="text-muted-foreground">
+                      {t.direction}:
+                    </span>
                     <span className="font-mono font-medium">
                       {journey.message.direction}
                     </span>
                   </div>
                   <div className="flex justify-between border-b pb-2">
-                    <span className="text-muted-foreground">Type:</span>
+                    <span className="text-muted-foreground">{t.typeLabel}</span>
                     <span className="font-mono font-medium">
                       {journey.message.messageType}
                     </span>

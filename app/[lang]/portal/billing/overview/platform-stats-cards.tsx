@@ -11,8 +11,15 @@ import {
 } from "@phosphor-icons/react"
 import { getAdminStats, type AdminStats } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function PlatformStatsCards() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOverviewPlatformStatsCards
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,7 +53,7 @@ export function PlatformStatsCards() {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load stats: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )

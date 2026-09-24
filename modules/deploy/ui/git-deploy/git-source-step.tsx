@@ -341,7 +341,7 @@ export function GitSourceStep({
                 </label>
                 <div className="mt-1 flex items-center">
                   <Input
-                    placeholder="main"
+                    placeholder={sourceMessages.branchPlaceholder}
                     value={branch}
                     onChange={(e) => setBranch(e.target.value)}
                   />

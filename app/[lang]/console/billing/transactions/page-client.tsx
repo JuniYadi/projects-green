@@ -143,7 +143,7 @@ export default function TransactionsPage() {
               </p>
               {row.original.invoice && (
                 <p className="text-xs text-muted-foreground">
-                  Invoice:{" "}
+                  {transactionMessages.invoice}:{" "}
                   <Link
                     href={`/${locale}/console/billing/invoices/${row.original.invoice.id}`}
                     className="text-primary hover:underline"

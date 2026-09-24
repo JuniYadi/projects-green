@@ -906,7 +906,9 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, phoneNumber: e.target.value })
                 }
-                placeholder="+1234567890"
+                placeholder={
+                  messages.console.whatsapp.contacts.phoneNumberPlaceholder
+                }
               />
             </div>
             <div className="grid gap-2">
@@ -919,7 +921,7 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="John Doe"
+                placeholder={messages.console.whatsapp.contacts.namePlaceholder}
               />
             </div>
             <div className="grid gap-2">
@@ -933,7 +935,9 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                placeholder="john@example.com"
+                placeholder={
+                  messages.console.whatsapp.contacts.emailPlaceholder
+                }
               />
             </div>
             <div className="grid gap-2">
@@ -1031,7 +1035,9 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, phoneNumber: e.target.value })
                 }
-                placeholder="+1234567890"
+                placeholder={
+                  messages.console.whatsapp.contacts.phoneNumberPlaceholder
+                }
               />
             </div>
             <div className="grid gap-2">
@@ -1044,7 +1050,7 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="John Doe"
+                placeholder={messages.console.whatsapp.contacts.namePlaceholder}
               />
             </div>
             <div className="grid gap-2">
@@ -1058,7 +1064,9 @@ export default function WhatsAppContactsPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                placeholder="john@example.com"
+                placeholder={
+                  messages.console.whatsapp.contacts.emailPlaceholder
+                }
               />
             </div>
             <div className="grid gap-2">

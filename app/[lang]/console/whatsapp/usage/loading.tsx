@@ -1,8 +1,17 @@
+"use client"
+
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function WhatsAppUsageLoading() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).console.whatsapp.usage.loading
+
   return (
     <div className="space-y-6">
       <header className="space-y-1">
@@ -24,7 +33,9 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inbound Count</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {t.inboundCount}
+            </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>
@@ -34,7 +45,7 @@ export default function WhatsAppUsageLoading() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Outbound Count
+              {t.outboundCount}
             </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
@@ -59,7 +70,7 @@ export default function WhatsAppUsageLoading() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Monthly Quota Used
+              {t.monthlyQuotaUsed}
             </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
@@ -70,7 +81,7 @@ export default function WhatsAppUsageLoading() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Remaining Quota
+              {t.remainingQuota}
             </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
@@ -81,7 +92,7 @@ export default function WhatsAppUsageLoading() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Projected Cost
+              {t.projectedCost}
             </CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
@@ -91,7 +102,7 @@ export default function WhatsAppUsageLoading() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">{t.balance}</CardTitle>
             <Skeleton className="size-4" />
           </CardHeader>
           <CardContent>

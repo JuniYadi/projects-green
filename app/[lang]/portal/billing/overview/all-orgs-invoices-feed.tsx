@@ -11,6 +11,8 @@ import {
   type AdminInvoiceListItem,
 } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("id-ID", {
@@ -22,6 +24,9 @@ function formatDate(dateStr: string): string {
 
 export function AllOrgsInvoicesFeed() {
   const params = useParams<{ lang: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOverviewAllOrgsInvoicesFeed
   const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +55,7 @@ export function AllOrgsInvoicesFeed() {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load invoices: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )
@@ -59,12 +64,12 @@ export function AllOrgsInvoicesFeed() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Invoices (All Organizations)</CardTitle>
+        <CardTitle>{t.title}</CardTitle>
       </CardHeader>
       <CardContent>
         {invoices.length === 0 ? (
           <p className="py-8 text-center text-muted-foreground">
-            No invoices found.
+            {t.noInvoices}
           </p>
         ) : (
           <div className="space-y-3">

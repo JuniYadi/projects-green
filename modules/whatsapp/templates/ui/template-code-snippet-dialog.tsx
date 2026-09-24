@@ -9,10 +9,13 @@
 import { WhatsAppText } from "@/modules/whatsapp/ui/whatsapp-text"
 
 import * as React from "react"
+import { useParams } from "next/navigation"
 import { Check, Copy, Code } from "@phosphor-icons/react"
 import { toast } from "sonner"
 
 import { getApiBaseUrl } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -144,6 +147,9 @@ export function TemplateCodeSnippetDialog({
   recipientPhone = "+6281234567890",
   apiBaseUrl,
 }: TemplateCodeSnippetDialogProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
   const [copied, setCopied] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState("curl")
 
@@ -294,7 +300,10 @@ func main() {
                 PHP
               </TabsTrigger>
               <TabsTrigger value="go" className="text-xs">
-                Go
+                {
+                  messages.pWhatsappTemplatesTemplateCodeSnippetDialog
+                    .goTabLabel
+                }
               </TabsTrigger>
             </TabsList>
 
@@ -307,7 +316,7 @@ func main() {
               {copied ? (
                 <>
                   <Check className="size-3.5 text-emerald-500" />
-                  Copied
+                  <WhatsAppText id="s359" />
                 </>
               ) : (
                 <>

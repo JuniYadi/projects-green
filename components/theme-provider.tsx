@@ -3,13 +3,17 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
+// next-themes only accepts its own fixed attribute strategies — "class" is a
+// library enum value, not a translatable label.
+const THEME_ATTRIBUTE = "class"
+
 function ThemeProvider({
   children,
   ...props
 }: React.ComponentProps<typeof NextThemesProvider>) {
   return (
     <NextThemesProvider
-      attribute="class"
+      attribute={THEME_ATTRIBUTE}
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange

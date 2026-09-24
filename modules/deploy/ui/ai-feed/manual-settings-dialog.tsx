@@ -19,6 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { ManualBuildSettings } from "./ai-deploy.types"
 
 type Props = {
@@ -47,6 +50,10 @@ export function ManualSettingsDialog({
   initialValues = {},
   isSaving,
 }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployAiFeedManualSettingsDialog
   const [values, setValues] = useState<ManualBuildSettings>({
     language: "",
     framework: "",
@@ -74,10 +81,8 @@ export function ManualSettingsDialog({
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Build settings</DialogTitle>
-          <DialogDescription>
-            Tell us how to build and run this app.
-          </DialogDescription>
+          <DialogTitle>{t.title}</DialogTitle>
+          <DialogDescription>{t.description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid grid-cols-2 gap-4">
@@ -94,7 +99,7 @@ export function ManualSettingsDialog({
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder={t.selectPlaceholder} />
                   </SelectTrigger>
                   <SelectContent>
                     {(options as string[]).map((o) => (
@@ -127,7 +132,7 @@ export function ManualSettingsDialog({
             </div>
           ))}
           <div className="grid gap-2">
-            <Label>Port *</Label>
+            <Label>{t.portLabel}</Label>
             <Input
               type="number"
               value={values.port}
@@ -140,11 +145,11 @@ export function ManualSettingsDialog({
               checked={values.useDockerfile}
               onChange={(e) => set("useDockerfile", e.target.checked)}
             />
-            Use a Dockerfile
+            {t.useDockerfile}
           </label>
           {values.useDockerfile && (
             <div className="grid gap-2">
-              <Label>Dockerfile path</Label>
+              <Label>{t.dockerfilePathLabel}</Label>
               <Input
                 value={values.dockerfilePath ?? ""}
                 onChange={(e) => set("dockerfilePath", e.target.value)}
@@ -154,7 +159,7 @@ export function ManualSettingsDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            {t.cancelLabel}
           </Button>
           <Button
             disabled={Boolean(isSaving) || !valid}

@@ -148,8 +148,9 @@ export function StepReviewV2({
             </dt>
             <dd className="font-medium">
               {resourcePlanLabels[resourcePlanId]} (
-              {cpu ?? recommendation.cpu ?? 0} CPU /{" "}
-              {memory ?? recommendation.memory ?? 0} MiB)
+              {cpu ?? recommendation.cpu ?? 0} {messages.review.cpuUnit} /{" "}
+              {memory ?? recommendation.memory ?? 0}{" "}
+              {messages.review.memoryUnit})
             </dd>
           </div>
           <div>

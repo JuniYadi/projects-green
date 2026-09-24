@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react"
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import { Button } from "@/components/ui/button"
 import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -311,6 +312,8 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
   const isTemplate =
     stack.sourceType === "TEMPLATE" || Boolean(stack.templateId)
   const t = COPY[locale.startsWith("id") ? "id" : "en"]
+  const telemetryMessages =
+    getMessagesForMaybeLocale(locale).console.deploy.clusterTelemetryCards
 
   const { data: telemetry } = useQuery<ClusterTelemetrySummary>({
     queryKey: ["deploy", "app-health", stack.slug],
@@ -465,8 +468,10 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                 </strong>
               </p>
               <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-                Rx {formatThroughput(telemetry?.network?.currentRxBytes ?? 0)} •
-                Tx {formatThroughput(telemetry?.network?.currentTxBytes ?? 0)}
+                {telemetryMessages.rx}{" "}
+                {formatThroughput(telemetry?.network?.currentRxBytes ?? 0)}{" "}
+                {telemetryMessages.txWithBullet}{" "}
+                {formatThroughput(telemetry?.network?.currentTxBytes ?? 0)}
               </p>
             </CardContent>
           </Card>

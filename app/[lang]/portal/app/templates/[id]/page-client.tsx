@@ -7,12 +7,17 @@ import { TemplateEditorForm } from "@/modules/deploy/ui/template-editor-form"
 import { eden } from "@/lib/eden"
 import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_components/template-inspector-drawer"
 import { Spinner } from "@phosphor-icons/react"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export default function PortalEditAppTemplatePage() {
   const router = useRouter()
   const params = useParams<{ lang?: string; id?: string }>()
   const id = params?.id as string
   const lang = params?.lang || "en"
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalAppTemplatesIdPageClient
 
   const [template, setTemplate] = useState<AdminTemplateRecord | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -149,9 +154,7 @@ export default function PortalEditAppTemplatePage() {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3">
         <Spinner className="size-6 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">
-          Loading template editor...
-        </p>
+        <p className="text-sm text-muted-foreground">{t.loading}</p>
       </div>
     )
   }
@@ -159,13 +162,13 @@ export default function PortalEditAppTemplatePage() {
   if (!template) {
     return (
       <div className="flex h-96 flex-col items-center justify-center gap-3">
-        <p className="text-sm text-destructive">Template not found.</p>
+        <p className="text-sm text-destructive">{t.notFound}</p>
         <button
           type="button"
           onClick={() => router.push(`/${lang}/portal/app/templates`)}
           className="text-xs text-primary underline"
         >
-          Back to templates
+          {t.backToTemplates}
         </button>
       </div>
     )

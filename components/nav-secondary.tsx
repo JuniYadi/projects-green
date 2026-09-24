@@ -19,6 +19,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { CaretRightIcon } from "@phosphor-icons/react"
+import { useMessages } from "@/components/use-messages"
 
 export type NavSecondaryItem = {
   title: string
@@ -38,6 +39,7 @@ export function NavSecondary({
 }: {
   items: NavSecondaryItem[]
 } & React.ComponentPropsWithoutRef<typeof SidebarGroup>) {
+  const t = useMessages().sharedComponents.navSecondary
   return (
     <SidebarGroup {...props}>
       <SidebarGroupContent>
@@ -63,7 +65,7 @@ export function NavSecondary({
                       <CollapsibleTrigger asChild>
                         <SidebarMenuAction className="data-[state=open]:rotate-90">
                           <CaretRightIcon />
-                          <span className="sr-only">Toggle</span>
+                          <span className="sr-only">{t.toggle}</span>
                         </SidebarMenuAction>
                       </CollapsibleTrigger>
                       <CollapsibleContent>

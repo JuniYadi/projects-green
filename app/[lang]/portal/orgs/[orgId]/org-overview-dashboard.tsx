@@ -13,6 +13,8 @@ import { SubscriptionsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/s
 import { AdjustmentsTab } from "@/app/[lang]/portal/billing/org/[orgId]/tabs/adjustments-tab"
 import { MembersTable } from "@/app/[lang]/portal/admin/organizations/[id]/members-table"
 import { SupportTicketsPortal } from "@/app/[lang]/portal/support-tickets/support-tickets-portal"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type OrgOverviewDashboardProps = {
   lang: string
@@ -38,6 +40,9 @@ export function OrgOverviewDashboard({
   orgId,
   defaultPage,
 }: OrgOverviewDashboardProps) {
+  const locale = resolveLocaleOrDefault(lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalOrgsOrgOverviewDashboard
   const router = useRouter()
   const [orgDetail, setOrgDetail] = useState<AdminOrgDetail | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -84,7 +89,7 @@ export function OrgOverviewDashboard({
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load organization: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )
@@ -94,7 +99,7 @@ export function OrgOverviewDashboard({
     return (
       <Card>
         <CardContent className="py-6 text-center text-muted-foreground">
-          Organization not found.
+          {t.notFound}
         </CardContent>
       </Card>
     )

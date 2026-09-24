@@ -9,6 +9,9 @@ import {
   getVpnProvisioningAudit,
 } from "./vpn-admin-client"
 import { ProvisioningTimeline, type AuditEvent } from "./provisioning-timeline"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type Props = {
   account: VpnServerAccountEntry
@@ -17,6 +20,10 @@ type Props = {
 }
 
 export function ProvisioningAuditModal({ account, open, onClose }: Props) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalVpnProvisioningAuditModal
   const [events, setEvents] = useState<AuditEvent[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +102,7 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Provisioning Audit Log</h2>
+          <h2 className="text-lg font-semibold">{t.title}</h2>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -116,7 +123,7 @@ export function ProvisioningAuditModal({ account, open, onClose }: Props) {
 
         <div className="mt-4 flex justify-end">
           <Button variant="outline" onClick={onClose}>
-            Close
+            {t.close}
           </Button>
         </div>
       </div>

@@ -6,6 +6,9 @@ import {
   CardDescription,
 } from "@/components/ui/card"
 import { DeviceMobile, Compass, Desktop } from "@phosphor-icons/react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { AudienceBucket } from "../../opensearch/opensearch-traffic.types"
 
 export interface TrafficAudienceCardProps {
@@ -14,11 +17,17 @@ export interface TrafficAudienceCardProps {
   os: AudienceBucket[]
 }
 
-function AudienceBucketList({ buckets }: { buckets: AudienceBucket[] }) {
+function AudienceBucketList({
+  buckets,
+  emptyLabel,
+}: {
+  buckets: AudienceBucket[]
+  emptyLabel: string
+}) {
   if (buckets.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center rounded-lg border border-dashed border-border text-xs text-muted-foreground">
-        Belum ada data
+        {emptyLabel}
       </div>
     )
   }
@@ -51,6 +60,10 @@ export function TrafficAudienceCard({
   browser,
   os,
 }: TrafficAudienceCardProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployOperateTrafficAudienceCard
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <Card className="border-border bg-card">
@@ -59,16 +72,16 @@ export function TrafficAudienceCard({
             <DeviceMobile size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Perangkat
+                {t.deviceTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Top 5 kelas perangkat
+                {t.deviceDescription}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <AudienceBucketList buckets={device} />
+          <AudienceBucketList buckets={device} emptyLabel={t.emptyState} />
         </CardContent>
       </Card>
 
@@ -78,16 +91,16 @@ export function TrafficAudienceCard({
             <Compass size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Browser
+                {t.browserTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Top 5 klien browser
+                {t.browserDescription}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <AudienceBucketList buckets={browser} />
+          <AudienceBucketList buckets={browser} emptyLabel={t.emptyState} />
         </CardContent>
       </Card>
 
@@ -97,16 +110,16 @@ export function TrafficAudienceCard({
             <Desktop size={18} className="text-muted-foreground" />
             <div>
               <CardTitle className="text-sm font-semibold text-foreground">
-                Sistem Operasi
+                {t.osTitle}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
-                Top 5 sistem operasi
+                {t.osDescription}
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <AudienceBucketList buckets={os} />
+          <AudienceBucketList buckets={os} emptyLabel={t.emptyState} />
         </CardContent>
       </Card>
     </div>

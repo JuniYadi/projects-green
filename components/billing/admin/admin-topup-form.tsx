@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useMessages } from "@/components/use-messages"
 import { adminTopup } from "@/lib/billing-client"
 import { toast } from "sonner"
 
@@ -23,6 +24,7 @@ type AdminTopupFormProps = {
 
 export function AdminTopupForm({ orgId, onSuccess }: AdminTopupFormProps) {
   const router = useRouter()
+  const t = useMessages().sharedComponents.adminTopupForm
   const [amount, setAmount] = useState("")
   const [reason, setReason] = useState("Admin topup")
   const [isLoading, setIsLoading] = useState(false)
@@ -64,15 +66,13 @@ export function AdminTopupForm({ orgId, onSuccess }: AdminTopupFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Admin Top Up</CardTitle>
-        <CardDescription>
-          Credit balance directly to this organization
-        </CardDescription>
+        <CardTitle>{t.title}</CardTitle>
+        <CardDescription>{t.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field data-invalid={!!amountError}>
-            <FieldLabel htmlFor="amount">Amount (IDR)</FieldLabel>
+            <FieldLabel htmlFor="amount">{t.amountLabel}</FieldLabel>
             <div className="flex flex-wrap gap-2">
               {presets.map((preset) => (
                 <Button
@@ -90,7 +90,7 @@ export function AdminTopupForm({ orgId, onSuccess }: AdminTopupFormProps) {
               id="amount"
               name="amount"
               type="number"
-              placeholder="Enter amount"
+              placeholder={t.amountPlaceholder}
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value)
@@ -103,11 +103,11 @@ export function AdminTopupForm({ orgId, onSuccess }: AdminTopupFormProps) {
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="reason">Reason</FieldLabel>
+            <FieldLabel htmlFor="reason">{t.reasonLabel}</FieldLabel>
             <Textarea
               id="reason"
               name="reason"
-              placeholder="Reason for topup"
+              placeholder={t.reasonPlaceholder}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}

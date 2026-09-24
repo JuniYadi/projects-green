@@ -14,6 +14,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useMessages } from "@/components/use-messages"
 
 type VerifyEmailFormProps = React.ComponentProps<"div"> & {
   email?: string
@@ -29,6 +30,7 @@ export function VerifyEmailForm({
   ...props
 }: VerifyEmailFormProps) {
   const router = useRouter()
+  const t = useMessages().sharedComponents.verifyEmailForm
   const encodedNext = encodeURIComponent(nextPath)
   const signInPath = `/login?next=${encodedNext}`
 
@@ -95,10 +97,10 @@ export function VerifyEmailForm({
       >
         <FieldGroup>
           <div className="flex flex-col gap-1 text-center">
-            <h1 className="text-xl font-bold">Verify your email</h1>
+            <h1 className="text-xl font-bold">{t.heading}</h1>
             <FieldDescription>
-              Enter the code sent to{" "}
-              {email ? <strong>{email}</strong> : "your email"}.
+              {t.sentToPrefix}{" "}
+              {email ? <strong>{email}</strong> : t.emailFallback}.
             </FieldDescription>
           </div>
 
@@ -115,13 +117,13 @@ export function VerifyEmailForm({
           ) : null}
 
           <Field data-invalid={codeErrors.length > 0 ? "true" : "false"}>
-            <FieldLabel htmlFor="code">Verification code</FieldLabel>
+            <FieldLabel htmlFor="code">{t.codeLabel}</FieldLabel>
             <Input
               id="code"
               name="code"
               type="text"
               value={code}
-              placeholder="Enter the code"
+              placeholder={t.codePlaceholder}
               aria-invalid={codeErrors.length > 0}
               onChange={(event) => {
                 setServerFieldErrors({})
@@ -140,7 +142,7 @@ export function VerifyEmailForm({
               {isSubmitting ? "Verifying..." : "Verify email"}
             </Button>
             <FieldDescription className="text-center">
-              Need a new code? <a href={signInPath}>Back to login</a>
+              {t.needNewCode} <a href={signInPath}>{t.backToLogin}</a>
             </FieldDescription>
           </Field>
         </FieldGroup>

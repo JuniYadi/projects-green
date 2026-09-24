@@ -12,17 +12,13 @@ import {
   FileCode,
 } from "@phosphor-icons/react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useMessages } from "@/components/use-messages"
 import { eden } from "@/lib/eden"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type CDNAssetType =
-  | "auto"
-  | "image"
-  | "sticker"
-  | "document"
-  | "audio"
-  | "video"
+  "auto" | "image" | "sticker" | "document" | "audio" | "video"
 
 export interface CDNAssetProps extends React.HTMLAttributes<HTMLDivElement> {
   url?: string | null
@@ -132,6 +128,7 @@ export function CDNAsset({
 }: CDNAssetProps) {
   const needsPresign = isPrivateCdnUrl(url)
   const resolvedType = type === "auto" ? detectAssetType(url, filename) : type
+  const t = useMessages().sharedComponents.cdnAsset
 
   const {
     data: resolvedUrl,
@@ -208,7 +205,7 @@ export function CDNAsset({
         {...props}
       >
         <ImageBroken className="size-5 shrink-0" />
-        <span className="text-[10px] leading-tight">Gagal memuat media</span>
+        <span className="text-[10px] leading-tight">{t.loadFailed}</span>
       </div>
     )
   }
@@ -254,7 +251,7 @@ export function CDNAsset({
             download={displayFilename}
           >
             <DownloadSimple className="size-3.5" />
-            <span>Unduh</span>
+            <span>{t.download}</span>
           </a>
         </Button>
       </div>

@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { useMessages } from "@/components/use-messages"
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ declare global {
 
 export function MermaidRenderer() {
   const { resolvedTheme } = useTheme()
+  const t = useMessages().pDocs
   const [modalSvg, setModalSvg] = React.useState<string | null>(null)
   const [modalScale, setModalScale] = React.useState(1.25)
 
@@ -212,13 +214,13 @@ export function MermaidRenderer() {
         <DialogContent className="flex h-[80vh] w-[80vw] max-w-[85vw] flex-col gap-4 p-6 sm:max-w-[80vw]">
           <DialogHeader className="flex flex-row items-center justify-between border-b pb-3">
             <DialogTitle className="text-base font-semibold">
-              Diagram Viewer
+              {t.diagramViewer}
             </DialogTitle>
             <div className="mr-6 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setModalScale((s) => Math.min(s + 0.2, 3.0))}
-                title="Zoom In"
+                title={t.zoomIn}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-foreground transition-colors hover:bg-muted"
               >
                 <MagnifyingGlassPlus size={16} />
@@ -226,7 +228,7 @@ export function MermaidRenderer() {
               <button
                 type="button"
                 onClick={() => setModalScale((s) => Math.max(s - 0.2, 0.6))}
-                title="Zoom Out"
+                title={t.zoomOut}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-foreground transition-colors hover:bg-muted"
               >
                 <MagnifyingGlassMinus size={16} />
@@ -234,7 +236,7 @@ export function MermaidRenderer() {
               <button
                 type="button"
                 onClick={() => setModalScale(1.2)}
-                title="Reset Scale"
+                title={t.resetScale}
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-foreground transition-colors hover:bg-muted"
               >
                 <ArrowCounterClockwise size={16} />

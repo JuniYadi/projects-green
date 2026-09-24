@@ -1,6 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { SecurityArtifactsTab } from "./security-artifacts-tab"
 import type {
   ContainerImageDTO,
@@ -27,6 +30,10 @@ export function SecurityArtifactsTabSection({
   const [loading, setLoading] = useState(true)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const [reloadTrigger, setReloadTrigger] = useState(0)
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeploySecurityArtifactsTabSection
 
   useEffect(() => {
     let active = true
@@ -143,7 +150,7 @@ export function SecurityArtifactsTabSection({
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-card p-8 text-center text-xs text-muted-foreground">
-        Loading security scan and container artifacts...
+        {t.loadingLabel}
       </div>
     )
   }

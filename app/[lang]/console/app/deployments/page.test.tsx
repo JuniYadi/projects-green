@@ -27,6 +27,9 @@ mock.module("@/lib/i18n/messages", () => ({
           historyDescription: "Previous deployment attempts",
           loadingHistory: "Loading deployment history…",
           noAttempts: "No deployment attempts yet.",
+          pageOf: "Page {page} of {total}",
+          previous: "Previous",
+          next: "Next",
           table: {
             status: "Status",
             attempt: "Attempt",
@@ -38,6 +41,17 @@ mock.module("@/lib/i18n/messages", () => ({
           },
         },
       },
+    },
+    pAppWorkspaceHeader: {
+      switchApplication: "Switch application",
+      source: "Source",
+      plan: "Plan",
+      cluster: "Cluster",
+      syncTooltip: "Sync configuration",
+      syncing: "Syncing...",
+      syncConfig: "Sync Config",
+      workspaceTabsAria: "Application workspace tabs",
+      liveTerminalSession: "Live terminal session",
     },
   })),
 }))

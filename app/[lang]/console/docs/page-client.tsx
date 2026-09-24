@@ -1,11 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { MagnifyingGlass } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
 import { eden } from "@/lib/eden"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Input } from "@/components/ui/input"
 import {
   Card,
@@ -25,6 +28,9 @@ type DocListing = {
 }
 
 export default function DocsPage() {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params.lang)
+  const t = getMessages(locale).pConsolePages.docs
   const [inputValue, setInputValue] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
 
@@ -59,16 +65,14 @@ export default function DocsPage() {
   return (
     <div className="flex flex-1 flex-col gap-6 p-6 pt-0">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>
-        <p className="text-muted-foreground">
-          Browse and search through platform and organization documentation.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{t.heading}</h1>
+        <p className="text-muted-foreground">{t.description}</p>
       </div>
 
       <div className="relative max-w-md">
         <MagnifyingGlass className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search documentation..."
+          placeholder={t.searchPlaceholder}
           className="pl-8"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
@@ -95,10 +99,11 @@ export default function DocsPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-xs text-muted-foreground">
-                    Last updated: {new Date(doc.updatedAt).toLocaleDateString()}
+                    {t.lastUpdated}{" "}
+                    {new Date(doc.updatedAt).toLocaleDateString(locale)}
                     {doc.isGlobal && (
                       <span className="ml-2 inline-flex items-center rounded-full border border-transparent bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground transition-colors focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-none">
-                        Global
+                        {t.globalLabel}
                       </span>
                     )}
                   </p>
@@ -108,9 +113,7 @@ export default function DocsPage() {
           ))}
           {docs.length === 0 && (
             <div className="col-span-full py-12 text-center text-muted-foreground">
-              {debouncedSearch
-                ? "No documentation found matching your search."
-                : "No documentation available."}
+              {debouncedSearch ? t.noSearchResults : t.noDocumentation}
             </div>
           )}
         </div>

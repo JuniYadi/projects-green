@@ -19,6 +19,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { CaretRightIcon, LockSimple } from "@phosphor-icons/react"
+import { useMessages } from "@/components/use-messages"
 
 export function NavMain({
   items,
@@ -39,6 +40,7 @@ export function NavMain({
   }[]
   label?: string
 }) {
+  const t = useMessages().sharedComponents.navMain
   return (
     <SidebarGroup data-tour="sidebar-menu">
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
@@ -81,7 +83,7 @@ export function NavMain({
                     <CollapsibleTrigger asChild>
                       <SidebarMenuAction className="data-[state=open]:rotate-90">
                         <CaretRightIcon />
-                        <span className="sr-only">Toggle</span>
+                        <span className="sr-only">{t.toggle}</span>
                       </SidebarMenuAction>
                     </CollapsibleTrigger>
                     <CollapsibleContent>

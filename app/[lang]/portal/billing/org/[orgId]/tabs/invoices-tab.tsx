@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,6 +14,8 @@ import { DataTable } from "@/components/data-table"
 import { DataTableColumnHeader } from "@/components/data-table-column-header"
 import type { ColumnDef } from "@tanstack/react-table"
 import { formatBillingMoney } from "@/modules/billing/format-money"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type InvoicesTabProps = {
   orgId: string
@@ -37,6 +39,10 @@ function formatDate(dateStr: string | null): string {
 }
 
 export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
+  const params = useParams<{ lang?: string }>()
+  const locale = resolveLocaleOrDefault(params?.lang)
+  const messages = getMessages(locale)
+  const t = messages.pPortalBillingOrgTabsInvoicesTab
   const router = useRouter()
   const [invoices, setInvoices] = useState<AdminInvoiceListItem[]>(
     recentInvoices ? (recentInvoices as AdminInvoiceListItem[]) : []
@@ -106,7 +112,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       {
         accessorKey: "invoiceNumber",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Invoice #" />
+          <DataTableColumnHeader column={column} title={t.thInvoice} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">{row.original.invoiceNumber}</span>
@@ -115,7 +121,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       {
         accessorKey: "issuedAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Issued" />
+          <DataTableColumnHeader column={column} title={t.thIssued} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -126,7 +132,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       {
         accessorKey: "dueAt",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Due" />
+          <DataTableColumnHeader column={column} title={t.thDue} />
         ),
         cell: ({ row }) => (
           <span className="text-muted-foreground">
@@ -137,7 +143,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       {
         accessorKey: "totalAmountIdr",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Amount" />
+          <DataTableColumnHeader column={column} title={t.thAmount} />
         ),
         cell: ({ row }) => (
           <span className="font-medium">
@@ -151,13 +157,13 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
       {
         accessorKey: "status",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
+          <DataTableColumnHeader column={column} title={t.thStatus} />
         ),
         cell: ({ row }) => <InvoiceStatusBadge status={row.original.status} />,
       },
       {
         id: "actions",
-        header: () => <span className="sr-only">Actions</span>,
+        header: () => <span className="sr-only">{t.thActions}</span>,
         cell: ({ row }) => (
           <div className="flex items-center justify-end gap-1">
             {row.original.status === "DRAFT" && (
@@ -186,7 +192,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
         enableHiding: false,
       },
     ],
-    [actionLoading, handleStatusChange]
+    [actionLoading, handleStatusChange, t]
   )
 
   if (isLoading) {
@@ -197,7 +203,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
     return (
       <Card>
         <CardContent className="py-6 text-center text-destructive">
-          Failed to load invoices: {error}
+          {t.loadFailed} {error}
         </CardContent>
       </Card>
     )
@@ -209,7 +215,7 @@ export function InvoicesTab({ orgId, recentInvoices }: InvoicesTabProps) {
           tableId="portal-billing-org-invoices"
           columns={invoiceColumns}
           data={invoices}
-          searchPlaceholder="Search invoices..."
+          searchPlaceholder={t.searchPlaceholder}
           searchableColumns={["invoiceNumber"]}
           defaultColumnVisibility={{ dueAt: false }}
         />

@@ -1,5 +1,8 @@
 "use client"
 
+import { useParams } from "next/navigation"
+
+import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
 import {
   Table,
   TableBody,
@@ -11,15 +14,19 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function InvoicesTableSkeleton() {
+  const params = useParams<{ lang?: string }>()
+  const messages = getMessagesForMaybeLocale(params?.lang).console.billing
+    .invoiceTable
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Invoice ID</TableHead>
-          <TableHead>Issued</TableHead>
-          <TableHead>Due</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>{messages.columnInvoice}</TableHead>
+          <TableHead>{messages.columnIssuedDate}</TableHead>
+          <TableHead>{messages.columnDueDate}</TableHead>
+          <TableHead>{messages.columnAmount}</TableHead>
+          <TableHead>{messages.columnStatus}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

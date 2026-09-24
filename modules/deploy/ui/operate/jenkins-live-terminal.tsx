@@ -320,11 +320,7 @@ export function JenkinsLiveTerminal({
 
   // Autoscroll logic
   useEffect(() => {
-    if (
-      autoScroll &&
-      !selectedJenkinsStage &&
-      terminalContainerRef.current
-    ) {
+    if (autoScroll && !selectedJenkinsStage && terminalContainerRef.current) {
       terminalContainerRef.current.scrollTop =
         terminalContainerRef.current.scrollHeight
     }
@@ -445,58 +441,58 @@ export function JenkinsLiveTerminal({
             </span>
           )}
           <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              userInteractedTabRef.current = true
-              setActiveTab("jenkins")
-              onTabChange?.("jenkins")
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              activeTab === "jenkins"
-                ? "border border-border bg-background text-foreground shadow-2xs"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Terminal className="size-3.5" />
-            <span>{t.tabJenkins}</span>
-            {isStreaming && (
-              <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              userInteractedTabRef.current = true
-              setActiveTab("gitops")
-              onTabChange?.("gitops")
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              activeTab === "gitops"
-                ? "border border-border bg-background text-foreground shadow-2xs"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <span>{t.tabGitOps}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              userInteractedTabRef.current = true
-              setActiveTab("app")
-              onTabChange?.("app")
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-              activeTab === "app"
-                ? "border border-border bg-background text-foreground shadow-2xs"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <span>{t.tabRuntime}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                userInteractedTabRef.current = true
+                setActiveTab("jenkins")
+                onTabChange?.("jenkins")
+              }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                activeTab === "jenkins"
+                  ? "border border-border bg-background text-foreground shadow-2xs"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Terminal className="size-3.5" />
+              <span>{t.tabJenkins}</span>
+              {isStreaming && (
+                <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                userInteractedTabRef.current = true
+                setActiveTab("gitops")
+                onTabChange?.("gitops")
+              }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                activeTab === "gitops"
+                  ? "border border-border bg-background text-foreground shadow-2xs"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <span>{t.tabGitOps}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                userInteractedTabRef.current = true
+                setActiveTab("app")
+                onTabChange?.("app")
+              }}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                activeTab === "app"
+                  ? "border border-border bg-background text-foreground shadow-2xs"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <span>{t.tabRuntime}</span>
+            </button>
           </div>
         </div>
 
@@ -514,7 +510,7 @@ export function JenkinsLiveTerminal({
             size="sm"
             onClick={() => setAutoScroll((prev) => !prev)}
             className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-            title="Toggle autoscroll"
+            title={t.toggleAutoscrollTitle}
           >
             {autoScroll ? t.autoscrollOn : t.autoscrollOff}
           </Button>
@@ -524,7 +520,7 @@ export function JenkinsLiveTerminal({
             size="sm"
             onClick={handleCopy}
             className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            title="Copy log to clipboard"
+            title={t.copyLogTitle}
           >
             {copied ? (
               <>
@@ -644,13 +640,13 @@ export function JenkinsLiveTerminal({
         className={cn(
           "relative overflow-auto bg-zinc-950 p-3 font-mono text-[10px] leading-[14px] text-zinc-100 selection:bg-zinc-800",
           isFullscreen
-            ? "h-full min-h-0 max-h-none flex-1"
-            : "h-[420px] min-h-[420px] max-h-[420px] flex-none lg:h-auto lg:min-h-0 lg:max-h-none lg:flex-1"
+            ? "h-full max-h-none min-h-0 flex-1"
+            : "h-[420px] max-h-[420px] min-h-[420px] flex-none lg:h-auto lg:max-h-none lg:min-h-0 lg:flex-1"
         )}
       >
         {fetchError && !authFailed && (
           <div className="mb-3 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-300">
-            [Warning] Stream connection issue: {fetchError}
+            {t.streamWarningPrefix} {fetchError}
           </div>
         )}
 

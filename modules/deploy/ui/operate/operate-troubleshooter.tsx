@@ -5,6 +5,9 @@ import { MagnifyingGlass, Wrench, ArrowRight } from "@phosphor-icons/react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useParams } from "next/navigation"
+import { getMessages } from "@/lib/i18n/messages"
+import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import type { OperateTabId } from "@/modules/deploy/operate.constants"
 
@@ -96,6 +99,10 @@ export function OperateTroubleshooter({
   onClose,
   onDeepLink,
 }: OperateTroubleshooterProps) {
+  const params = useParams<{ lang?: string }>()
+  const t = getMessages(
+    resolveLocaleOrDefault(params?.lang)
+  ).pDeployOperateTroubleshooter
   const [troubleshooterSearch, setTroubleshooterSearch] = useState("")
   const dialogRef = useRef<HTMLDivElement>(null)
   const lastFocusedElementRef = useRef<HTMLElement | null>(null)
@@ -147,21 +154,18 @@ export function OperateTroubleshooter({
               id="operate-faq-title"
               className="flex items-center gap-2 text-base font-bold text-white"
             >
-              <Wrench size={18} className="text-primary" /> Application
-              Operations FAQ
+              <Wrench size={18} className="text-primary" /> {t.title}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              Self-serve answers to operations and troubleshooting
-            </p>
+            <p className="text-xs text-muted-foreground">{t.description}</p>
           </div>
           <Button
             type="button"
             variant="ghost"
             onClick={onClose}
-            aria-label="Close operations FAQ"
+            aria-label={t.closeAriaLabel}
             className="text-muted-foreground hover:text-white"
           >
-            Close
+            {t.closeLabel}
           </Button>
         </div>
 
@@ -173,7 +177,7 @@ export function OperateTroubleshooter({
           />
           <Input
             type="text"
-            placeholder="Search troubleshooting questions..."
+            placeholder={t.searchPlaceholder}
             value={troubleshooterSearch}
             onChange={(e) => setTroubleshooterSearch(e.target.value)}
             className="h-8 bg-black/50 pl-9 text-xs"
@@ -200,16 +204,14 @@ export function OperateTroubleshooter({
                 size="xs"
                 className="mt-1 h-auto p-0 text-[10px]"
               >
-                Go to Setting <ArrowRight size={10} />
+                {t.goToSetting} <ArrowRight size={10} />
               </Button>
             </div>
           ))}
 
           {filteredFaqs.length === 0 && (
             <div className="p-8 text-center text-xs text-muted-foreground">
-              No matches for search terms. Try keywords like &quot;SSL&quot;,
-              &quot;Cloudflare&quot;, &quot;metrics&quot;, &quot;replica&quot;,
-              or &quot;private&quot;.
+              {t.emptyState}
             </div>
           )}
         </div>
