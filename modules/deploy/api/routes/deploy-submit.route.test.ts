@@ -673,4 +673,145 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.ok).toBe(true)
     expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
+
+  it("returns 422 INSUFFICIENT_PLAN_STORAGE when template requires storage but no resourcePlanId is provided", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValue({
+      id: "tpl-large-storage",
+      name: "Storage App",
+      version: "1.0.0",
+      blueprintJson: {
+        runtime: { image: "storage-app:latest" },
+        storage: {
+          enabled: true,
+          mountPath: "/data",
+          sizeGbDefault: 10,
+        },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "tpl-large-storage",
+      billingMode: "PAYG",
+    })
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string; message: string }
+    expect(body.error).toBe("INSUFFICIENT_PLAN_STORAGE")
+    expect(body.message).toContain("no resource plan was selected")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 INSUFFICIENT_PLAN_STORAGE when template requires storage but selected plan cannot be resolved", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValue({
+      id: "tpl-large-storage",
+      name: "Storage App",
+      version: "1.0.0",
+      blueprintJson: {
+        runtime: { image: "storage-app:latest" },
+        storage: {
+          enabled: true,
+          mountPath: "/data",
+          sizeGbDefault: 10,
+        },
+      },
+    } as never)
+    mockPrisma.servicePlan.findFirst.mockResolvedValue(null as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "tpl-large-storage",
+      resourcePlanId: "nonexistent-plan",
+      billingMode: "PAYG",
+    })
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string; message: string }
+    expect(body.error).toBe("INSUFFICIENT_PLAN_STORAGE")
+    expect(body.message).toContain("could not be resolved")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 INSUFFICIENT_PLAN_STORAGE when plan provides zero storage for template requiring storage", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValue({
+      id: "tpl-large-storage",
+      name: "Storage App",
+      version: "1.0.0",
+      blueprintJson: {
+        runtime: { image: "storage-app:latest" },
+        storage: {
+          enabled: true,
+          mountPath: "/data",
+          sizeGbDefault: 10,
+        },
+      },
+    } as never)
+
+    mockPrisma.servicePlan.findFirst.mockResolvedValue({
+      id: "plan-nostorage",
+      code: "CUSTOM",
+      name: "No Storage Plan",
+      resources: {
+        provisioning: {
+          storage: 0,
+        },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "tpl-large-storage",
+      resourcePlanId: "plan-nostorage",
+      billingMode: "PACKAGE",
+    })
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string; message: string }
+    expect(body.error).toBe("INSUFFICIENT_PLAN_STORAGE")
+    expect(body.message).toContain("0 GB")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("syncs blueprint from DB template and validates storage for managed templates", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+      id: "tpl-n8n-db",
+      slug: "n8n",
+      name: "n8n",
+      blueprintJson: {
+        runtime: {
+          image: "docker.io/n8nio/n8n",
+          defaultPort: 5678,
+        },
+        storage: {
+          enabled: true,
+          sizeGbDefault: 10,
+        },
+        envSchema: [{ key: "N8N_KEY", isSecret: true }],
+      },
+    } as never)
+
+    mockPrisma.servicePlan.findFirst.mockResolvedValueOnce({
+      id: "plan-small",
+      code: "SMALL",
+      name: "Small",
+      resources: {
+        provisioning: {
+          storage: 5,
+        },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "n8n",
+      resourcePlanId: "small",
+      billingMode: "PACKAGE",
+      cpu: 500,
+      memory: 512,
+    })
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe("INSUFFICIENT_PLAN_STORAGE")
+  })
 })

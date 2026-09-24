@@ -216,5 +216,16 @@ describe("catalog-plan-utils", () => {
         'Selected plan "Small" provides 5 GB storage, but template requires 10 GB. Please choose a larger plan.'
       )
     })
+
+    it("treats zero or unknown storage capacity as insufficient when storage is required", () => {
+      const res = validatePlanStorageForTemplate({
+        requiredStorageGb: 5,
+        planStorageGb: 0,
+      })
+      expect(res.valid).toBe(false)
+      expect(res.error).toBe(
+        "Selected plan provides 0 GB storage, but template requires 5 GB. Please choose a larger plan."
+      )
+    })
   })
 })

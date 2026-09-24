@@ -190,7 +190,7 @@ export class AppHostingBillingService {
       throw new Error("STACK_QUOTA_EXCEEDED")
     }
 
-    if (input.stackId && subscription.plan) {
+    if (input.stackId) {
       const targetStack = await this.prisma.applicationStack.findUnique({
         where: { id: input.stackId },
         select: {
@@ -203,13 +203,13 @@ export class AppHostingBillingService {
         targetStack?.template?.blueprintJson
       )
       if (requiredStorageGb > 0) {
+        if (!subscription.plan) {
+          throw new Error("INSUFFICIENT_PLAN_STORAGE")
+        }
         const planResources = getPlanResources(
           subscription.plan as unknown as CatalogPlan
         )
-        if (
-          planResources.storage > 0 &&
-          requiredStorageGb > planResources.storage
-        ) {
+        if (planResources.storage < requiredStorageGb) {
           throw new Error("INSUFFICIENT_PLAN_STORAGE")
         }
       }

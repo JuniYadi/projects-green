@@ -328,18 +328,30 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       name = connection.repoName || body.name || slug
     }
 
-    const resourcePlanId = body.resourcePlanId
+    const rawResourcePlanId = body.resourcePlanId?.trim() || null
 
     // Validate storage requirement between template and selected plan
     const requiredStorageGb = getTemplateRequiredStorageGb(
       resolvedTemplateBlueprint
     )
 
-    if (requiredStorageGb > 0 && resourcePlanId) {
+    if (requiredStorageGb > 0) {
+      if (!rawResourcePlanId) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INSUFFICIENT_PLAN_STORAGE",
+          message: `This template requires ${requiredStorageGb} GB storage, but no resource plan was selected. Please choose a plan with sufficient storage.`,
+        }
+      }
+
       const plan = await prisma.servicePlan.findFirst({
         where: {
           package: { code: "APP_HOSTING" },
-          OR: [{ id: resourcePlanId }, { code: resourcePlanId.toUpperCase() }],
+          OR: [
+            { id: rawResourcePlanId },
+            { code: rawResourcePlanId.toUpperCase() },
+          ],
         },
         select: {
           id: true,
@@ -349,13 +361,20 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         },
       })
 
-      const planResources = getPlanResources(
-        plan ? (plan as unknown as CatalogPlan) : undefined
-      )
+      if (!plan) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INSUFFICIENT_PLAN_STORAGE",
+          message: `Selected plan "${rawResourcePlanId}" could not be resolved or provides insufficient storage for template requirement (${requiredStorageGb} GB).`,
+        }
+      }
+
+      const planResources = getPlanResources(plan as unknown as CatalogPlan)
       const validation = validatePlanStorageForTemplate({
         requiredStorageGb,
         planStorageGb: planResources.storage,
-        planName: plan?.name || resourcePlanId,
+        planName: plan.name || rawResourcePlanId,
       })
       if (!validation.valid) {
         set.status = 422
@@ -366,6 +385,8 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         }
       }
     }
+
+    const resourcePlanId = rawResourcePlanId ?? "payg"
 
     const billingMode = body.billingMode ?? "PAYG"
     const hourlyCost = computeHourlyCostDecimal({
@@ -625,7 +646,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       secondaryEngine: t.Optional(t.String()),
       secondaryEngineVersion: t.Optional(t.String()),
       defaultPort: t.Optional(t.Number()),
-      resourcePlanId: t.String({ minLength: 1 }),
+      resourcePlanId: t.Optional(t.String()),
       billingMode: t.Optional(
         t.Union([t.Literal("PAYG"), t.Literal("PACKAGE")])
       ),

@@ -78,10 +78,7 @@ export function validatePlanStorageForTemplate(params: {
   planName?: string
 }): { valid: boolean; error?: string } {
   if (params.requiredStorageGb <= 0) return { valid: true }
-  if (
-    params.planStorageGb > 0 &&
-    params.requiredStorageGb > params.planStorageGb
-  ) {
+  if (params.planStorageGb < params.requiredStorageGb) {
     const planLabel = params.planName ? ` "${params.planName}"` : ""
     return {
       valid: false,

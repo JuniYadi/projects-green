@@ -615,5 +615,35 @@ describe("AppHostingBillingService", () => {
         })
       ).rejects.toThrow("INSUFFICIENT_PLAN_STORAGE")
     })
+
+    it("throws INSUFFICIENT_PLAN_STORAGE when subscription plan has no or zero storage but template requires storage", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        id: "sub_1",
+        organizationId: "org_1",
+        status: "ACTIVE",
+        quantity: decimal("1"),
+        allocatedConfig: { maxStacks: 2 },
+        plan: null,
+      })
+      mockPrisma.applicationStack.count.mockResolvedValue(0)
+      mockPrisma.applicationStack.findUnique.mockResolvedValue({
+        id: "stack_new",
+        template: {
+          blueprintJson: {
+            storage: {
+              enabled: true,
+              sizeGbDefault: 10,
+            },
+          },
+        },
+      })
+
+      await expect(
+        service.assertCanDeploySubscription({
+          organizationId: "org_1",
+          stackId: "stack_new",
+        })
+      ).rejects.toThrow("INSUFFICIENT_PLAN_STORAGE")
+    })
   })
 })
