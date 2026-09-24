@@ -23,10 +23,17 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,12 +52,13 @@ import { usePersistedColumnVisibility } from "@/hooks/use-persisted-column-visib
 import type { AdminStackDTO } from "@/modules/deploy/admin-stacks.service"
 import {
   ArrowsClockwise,
+  ArrowSquareOut,
   CaretDown,
+  DotsThreeVertical,
   Globe,
   MagnifyingGlass,
-  PauseCircle,
+  Pause,
   Play,
-  PlayCircle,
   SlidersHorizontal,
   Trash,
 } from "@phosphor-icons/react"
@@ -129,7 +137,10 @@ export default function AdminStacksPage() {
 
   const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
     "portal-admin-stacks-table",
-    {}
+    {
+      cluster: false,
+      resources: false,
+    }
   )
 
   useEffect(() => {
@@ -401,7 +412,15 @@ export default function AdminStacksPage() {
               {domain && (
                 <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
                   <Globe size={11} className="shrink-0" />
-                  <span className="max-w-[220px] truncate">{domain}</span>
+                  <a
+                    href={`https://${domain}`}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex max-w-[220px] items-center gap-1 truncate hover:text-foreground hover:underline"
+                  >
+                    <span className="truncate">{domain}</span>
+                    <ArrowSquareOut size={10} className="shrink-0 opacity-70" />
+                  </a>
                 </div>
               )}
             </div>
@@ -431,6 +450,54 @@ export default function AdminStacksPage() {
               {stack.billingState && stack.billingState !== "ACTIVE" && (
                 <div className="mt-0.5 text-[10px] text-amber-500">
                   {stack.billingState}
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "infrastructure",
+        header: messages.tableInfrastructure,
+        enableHiding: true,
+        cell: ({ row }) => {
+          const stack = row.original
+          const hasCluster = Boolean(stack.clusterName || stack.clusterCode)
+          const hasSpecs = Boolean(
+            stack.cpu || stack.memory || stack.replicas !== null
+          )
+
+          if (!hasCluster && !hasSpecs) {
+            return <span className="text-muted-foreground">—</span>
+          }
+
+          return (
+            <div className="space-y-1 text-xs">
+              {hasCluster && (
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-foreground">
+                    {stack.clusterName ?? stack.clusterCode}
+                  </span>
+                  {stack.clusterCode && (
+                    <Badge
+                      variant="outline"
+                      className="h-4 px-1 font-mono text-[9px] text-muted-foreground"
+                    >
+                      {stack.clusterCode}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {hasSpecs && (
+                <div className="flex flex-wrap items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                  {stack.cpu && <span>{stack.cpu}m CPU</span>}
+                  {stack.cpu && stack.memory && <span>•</span>}
+                  {stack.memory && <span>{stack.memory}Mi RAM</span>}
+                  {stack.replicas !== null && (
+                    <span className="text-[10px]">
+                      ({stack.replicas} {messages.replicas})
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -510,21 +577,31 @@ export default function AdminStacksPage() {
         cell: ({ row }) => {
           const stack = row.original
           const isTerminated = stack.status === "TERMINATED"
+          const isSuspendedOrStopped =
+            stack.suspended || stack.status === "STOPPED"
+          const canDeploy = stack.status === "IDLE" || stack.status === "FAILED"
 
           if (isTerminated) {
             if (!stack.gitopsCleanedUp) {
               return (
-                <div className="flex items-center justify-end gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={actionLoading === stack.id}
-                    onClick={() => setDeleteTarget(stack)}
-                    className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
-                  >
-                    <Trash className="size-3.5" />
-                    {messages.retryCleanup}
-                  </Button>
+                <div className="flex items-center justify-end">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={actionLoading === stack.id}
+                          onClick={() => setDeleteTarget(stack)}
+                          className="size-8 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+                          aria-label={messages.retryCleanup}
+                        >
+                          <Trash className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{messages.retryCleanup}</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               )
             }
@@ -538,54 +615,75 @@ export default function AdminStacksPage() {
           }
 
           return (
-            <div className="flex items-center justify-end gap-1.5">
-              {stack.suspended || stack.status === "STOPPED" ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={actionLoading === stack.id}
-                  onClick={() => setResumeTarget(stack)}
-                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                >
-                  <PlayCircle className="size-3.5" />
-                  {messages.resume}
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={actionLoading === stack.id}
-                  onClick={() => setSuspendTarget(stack)}
-                  className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700"
-                >
-                  <PauseCircle className="size-3.5" />
-                  {messages.suspend}
-                </Button>
-              )}
+            <div className="flex items-center justify-end gap-1">
+              {/* Quick Primary Action: Resume or Suspend */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {isSuspendedOrStopped ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={actionLoading === stack.id}
+                        onClick={() => setResumeTarget(stack)}
+                        className="size-8 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:hover:bg-emerald-950/30"
+                        aria-label={messages.resume}
+                      >
+                        <Play className="size-4" weight="fill" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={actionLoading === stack.id}
+                        onClick={() => setSuspendTarget(stack)}
+                        className="size-8 text-amber-600 hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
+                        aria-label={messages.suspend}
+                      >
+                        <Pause className="size-4" weight="bold" />
+                      </Button>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isSuspendedOrStopped ? messages.resume : messages.suspend}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              {(stack.status === "IDLE" || stack.status === "FAILED") && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={actionLoading === stack.id}
-                  onClick={() => setDeployTarget(stack)}
-                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                >
-                  <Play className="size-3.5" />
-                  {messages.deploy}
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={actionLoading === stack.id}
-                onClick={() => setDeleteTarget(stack)}
-                className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
-              >
-                <Trash className="size-3.5" />
-                {messages.terminate}
-              </Button>
+              {/* Secondary Actions in Kebab Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={actionLoading === stack.id}
+                    className="size-8 text-muted-foreground hover:text-foreground"
+                    aria-label={messages.moreActions}
+                  >
+                    <DotsThreeVertical className="size-4" weight="bold" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  {canDeploy && (
+                    <DropdownMenuItem
+                      onClick={() => setDeployTarget(stack)}
+                      className="cursor-pointer gap-2 text-emerald-600 focus:text-emerald-600"
+                    >
+                      <Play className="size-3.5" />
+                      <span>{messages.deploy}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {canDeploy && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    onClick={() => setDeleteTarget(stack)}
+                    variant="destructive"
+                    className="cursor-pointer gap-2"
+                  >
+                    <Trash className="size-3.5" />
+                    <span>{messages.terminate}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )
         },
@@ -609,6 +707,7 @@ export default function AdminStacksPage() {
     organization: messages.tableOrganization,
     platform: messages.tableStack,
     status: messages.tableStatus,
+    infrastructure: messages.tableInfrastructure,
     cluster: messages.tableCluster,
     resources: messages.tableResources,
     createdAt: messages.tableCreated,
