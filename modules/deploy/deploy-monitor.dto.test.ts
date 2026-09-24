@@ -21,6 +21,7 @@ describe("deploy-monitor.dto", () => {
       expect(mapStackStatusToDeployStatus("DEPLOYING")).toBe("deploying")
       expect(mapStackStatusToDeployStatus("RUNNING")).toBe("running")
       expect(mapStackStatusToDeployStatus("FAILED")).toBe("failed")
+      expect(mapStackStatusToDeployStatus("TERMINATED")).toBe("terminated")
       expect(mapStackStatusToDeployStatus("IDLE")).toBe("idle")
     })
 
@@ -605,6 +606,44 @@ describe("deploy-monitor.dto", () => {
         countryCode: "SG",
       })
       expect(dto.dockerVersion).toBe("0.5.75")
+    })
+
+    it("resolves suspended and terminated status correctly from metadata and stack status", () => {
+      const suspendedDto = toStackSummaryDTO({
+        id: "stack-suspended",
+        name: "Laravel Test",
+        slug: "laravel-test",
+        status: "IDLE",
+        framework: "Laravel",
+        branchName: "main",
+        subdomain: "laravel-test",
+        customDomain: null,
+        resourcePlanId: "small",
+        billingMode: "PAYG",
+        metadataJson: { suspended: true, replicas: 0 },
+        lastDeployedAt: null,
+      })
+
+      expect(suspendedDto.status).toBe("suspended")
+      expect(suspendedDto.suspended).toBe(true)
+
+      const terminatedDto = toStackSummaryDTO({
+        id: "stack-terminated",
+        name: "Hermes Terminated",
+        slug: "hermes-terminated",
+        status: "TERMINATED",
+        framework: null,
+        branchName: "main",
+        subdomain: "hermes-term",
+        customDomain: null,
+        resourcePlanId: "small",
+        billingMode: "PAYG",
+        metadataJson: { suspended: true, terminated: true },
+        lastDeployedAt: null,
+      })
+
+      expect(terminatedDto.status).toBe("terminated")
+      expect(terminatedDto.terminated).toBe(true)
     })
   })
 })

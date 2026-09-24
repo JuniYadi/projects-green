@@ -131,6 +131,8 @@ export type DeployStatus =
   | "deploying"
   | "running"
   | "failed"
+  | "suspended"
+  | "terminated"
 
 export type DeployLogScope = "all" | "build" | "runtime"
 

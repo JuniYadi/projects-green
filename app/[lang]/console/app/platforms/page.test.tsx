@@ -70,6 +70,25 @@ const mockApps = [
     currentStepIndex: 4,
     currentStepStartedAt: "2026-09-10T00:00:00.000Z",
   },
+  {
+    id: "stack-4",
+    name: "Laravel Test App",
+    slug: "laravel-test-app",
+    status: "suspended",
+    suspended: true,
+    framework: "Laravel 13.x",
+    branchName: "main",
+    subdomain: "laravel-test-app",
+    customDomain: null,
+    resourcePlanId: "small",
+    billingMode: "PAYG",
+    billingState: "ACTIVE",
+    lastDeployedAt: null,
+    latestDeploymentId: null,
+    currentStepLabel: null,
+    currentStepIndex: null,
+    currentStepStartedAt: null,
+  },
 ]
 
 mock.module("@/lib/eden", () => ({
@@ -109,17 +128,26 @@ describe("PlatformsFleetPage (/console/app/platforms)", () => {
     })
   })
 
-  it("filters platforms by status tabs (Running, Queued)", async () => {
+  it("filters platforms by status tabs (Running, Queued, Suspended)", async () => {
     const { getByRole, queryByText } = render(<PlatformsFleetPage />)
 
     await waitFor(() => {
       expect(queryByText("Hermes Comet")).toBeDefined()
+      expect(queryByText("Laravel Test App")).toBeDefined()
     })
 
     const runningFilterBtn = getByRole("button", { name: /^Running/i })
     fireEvent.click(runningFilterBtn)
 
     expect(queryByText("Hermes Comet")).toBeDefined()
+    expect(queryByText("n8n Workflow")).toBeNull()
+    expect(queryByText("Laravel Test App")).toBeNull()
+
+    const suspendedFilterBtn = getByRole("button", { name: /^Suspended/i })
+    fireEvent.click(suspendedFilterBtn)
+
+    expect(queryByText("Laravel Test App")).toBeDefined()
+    expect(queryByText("Hermes Comet")).toBeNull()
     expect(queryByText("n8n Workflow")).toBeNull()
   })
 

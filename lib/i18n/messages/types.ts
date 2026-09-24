@@ -4306,6 +4306,8 @@ export type AppMessages = {
             deploying: string
             running: string
             failed: string
+            suspended: string
+            terminated: string
           }
         }
         logs: {
@@ -5277,6 +5279,7 @@ export type AppMessages = {
         allTab: string
         runningTab: string
         queuedTab: string
+        suspendedTab: string
         failedTab: string
         searchPlaceholder: string
         loadingFleet: string
@@ -5286,6 +5289,7 @@ export type AppMessages = {
         deployApplication: string
         noMatchFilter: string
         colPlatform: string
+        colPlatformStack: string
         colStatus: string
         colRegion: string
         colFramework: string

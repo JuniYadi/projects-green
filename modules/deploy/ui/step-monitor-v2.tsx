@@ -53,7 +53,8 @@ export function StepMonitorV2({
             {appName || messages.monitor.yourApp}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {messages.monitor.activity[status]}
+            {messages.monitor.activity[status] ??
+              messages.monitor.activity.idle}
           </p>
         </div>
         {previewHref && (

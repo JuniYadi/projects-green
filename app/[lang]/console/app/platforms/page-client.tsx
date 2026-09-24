@@ -12,7 +12,6 @@ import {
   MagnifyingGlass,
   ArrowSquareOut,
   DotsThreeVertical,
-  Globe,
   GlobeHemisphereWest,
   GitBranch,
   Cube,
@@ -36,7 +35,7 @@ import {
 } from "@/modules/deploy/deploy.constants"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 
-type StatusFilter = "ALL" | "RUNNING" | "QUEUED" | "FAILED"
+type StatusFilter = "ALL" | "RUNNING" | "QUEUED" | "SUSPENDED" | "FAILED"
 
 const formatRelativeTime = (timestamp: string, locale: string) => {
   const elapsedMs = new Date(timestamp).getTime() - Date.now()
@@ -89,6 +88,15 @@ const getAppType = (app: StackSummaryDTO) => {
 }
 
 const getDeploymentStatusText = (app: StackSummaryDTO, locale: string) => {
+  if (app.status === "suspended") {
+    return locale === "id" ? "Ditangguhkan" : "Suspended"
+  }
+  if (app.status === "terminated") {
+    return locale === "id" ? "Dihentikan" : "Terminated"
+  }
+  if (app.status === "idle") {
+    return "—"
+  }
   if (app.status === "running") {
     if (
       app.currentStepLabel &&
@@ -106,7 +114,13 @@ const getDeploymentStatusText = (app: StackSummaryDTO, locale: string) => {
       ? `Live — ${formatRelativeTime(app.lastDeployedAt, locale)}`
       : "Application live"
   }
-  if (app.currentStepLabel) {
+  if (
+    (app.status === "building" ||
+      app.status === "deploying" ||
+      app.status === "queued" ||
+      app.status === "failed") &&
+    app.currentStepLabel
+  ) {
     return `${app.currentStepLabel}${
       app.currentStepStartedAt
         ? ` — ${formatRelativeTime(app.currentStepStartedAt, locale)}`
@@ -174,6 +188,12 @@ export default function PlatformsFleetPage() {
         app.status !== "deploying"
       )
         return false
+      if (
+        statusFilter === "SUSPENDED" &&
+        app.status !== "suspended" &&
+        app.status !== "terminated"
+      )
+        return false
       if (statusFilter === "FAILED" && app.status !== "failed") return false
 
       // Filter by search query
@@ -217,6 +237,9 @@ export default function PlatformsFleetPage() {
       a.status === "queued" ||
       a.status === "building" ||
       a.status === "deploying"
+  ).length
+  const suspendedCount = apps.filter(
+    (a) => a.status === "suspended" || a.status === "terminated"
   ).length
   const failedCount = apps.filter((a) => a.status === "failed").length
 
@@ -293,6 +316,15 @@ export default function PlatformsFleetPage() {
           >
             {messages.queuedTab}
             {queuedCount})
+          </Button>
+          <Button
+            variant={statusFilter === "SUSPENDED" ? "default" : "outline"}
+            size="xs"
+            onClick={() => setStatusFilter("SUSPENDED")}
+            className="h-7 text-xs"
+          >
+            {messages.suspendedTab}
+            {suspendedCount})
           </Button>
           <Button
             variant={statusFilter === "FAILED" ? "default" : "outline"}
@@ -372,19 +404,13 @@ export default function PlatformsFleetPage() {
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-left text-xs tracking-wide text-muted-foreground uppercase">
                   <th className="px-4 py-3 font-medium">
-                    {messages.colPlatform}
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    {messages.colStatus}
+                    {messages.colPlatformStack}
                   </th>
                   <th className="px-4 py-3 font-medium">
                     {messages.colRegion}
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    {messages.colFramework}
-                  </th>
-                  <th className="px-4 py-3 font-medium">
-                    {messages.colSource}
+                    {messages.colStatus}
                   </th>
                   <th className="px-4 py-3 font-medium">
                     {messages.colLastDeployed}
@@ -415,49 +441,55 @@ export default function PlatformsFleetPage() {
                       className="border-b border-border transition-colors hover:bg-muted/20"
                     >
                       <td className="px-4 py-3">
-                        <div className="space-y-0.5">
+                        <div className="space-y-1">
                           <Link
                             href={overviewHref}
                             className="font-medium text-foreground hover:underline"
                           >
                             {app.name}
                           </Link>
-                          {targetDomain ? (
-                            <div>
-                              <a
-                                href={`https://${targetDomain}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <Cube
+                                size={12}
+                                className="shrink-0 text-muted-foreground"
+                              />
+                              <span className="font-medium text-foreground/80">
+                                {typeInfo.label}
+                              </span>
+                            </span>
+                            {typeInfo.isTemplate ? (
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {messages.templateBadge}
+                              </span>
+                            ) : null}
+                            <span className="text-muted-foreground/40">•</span>
+                            {app.sourceType === "TEMPLATE" ? (
+                              <span
+                                className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
+                                title={`Docker / Template: ${
+                                  app.dockerVersion ?? "latest"
+                                }`}
                               >
-                                <Globe size={12} className="shrink-0" />
-                                <span className="max-w-[200px] truncate">
-                                  {targetDomain}
+                                <span>
+                                  {app.dockerVersion
+                                    ? `v${app.dockerVersion.replace(/^v/, "")}`
+                                    : "latest"}
                                 </span>
-                                <ArrowSquareOut
-                                  size={11}
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
+                                title={`Git Branch: ${app.branchName}`}
+                              >
+                                <GitBranch
+                                  size={12}
                                   className="shrink-0 text-muted-foreground"
                                 />
-                              </a>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
-                              STATUS_TONE[app.status] ?? STATUS_TONE.idle
-                            }`}
-                          >
-                            <span className="size-1.5 rounded-full bg-current" />
-                            {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
-                          </span>
-                          {app.status !== "running" && app.currentStepLabel ? (
-                            <div className="text-[11px] text-muted-foreground">
-                              {deploymentStatusText}
-                            </div>
-                          ) : null}
+                                <span>{app.branchName}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -485,51 +517,21 @@ export default function PlatformsFleetPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5 text-xs">
-                          <Cube
-                            size={13}
-                            className="shrink-0 text-muted-foreground"
-                          />
-                          <span className="font-medium text-foreground">
-                            {typeInfo.label}
-                          </span>
-                          {typeInfo.isTemplate ? (
-                            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                              {messages.templateBadge}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {app.sourceType === "TEMPLATE" ? (
+                        <div className="space-y-1">
                           <span
-                            className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
-                            title={`Docker / Template: ${
-                              app.dockerVersion ?? "latest"
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
+                              STATUS_TONE[app.status] ?? STATUS_TONE.idle
                             }`}
                           >
-                            <Cube
-                              size={12}
-                              className="shrink-0 text-muted-foreground"
-                            />
-                            <span>
-                              {app.dockerVersion
-                                ? `v${app.dockerVersion.replace(/^v/, "")}`
-                                : "latest"}
-                            </span>
+                            <span className="size-1.5 rounded-full bg-current" />
+                            {DEPLOY_STATUS_LABELS[app.status] ?? app.status}
                           </span>
-                        ) : (
-                          <span
-                            className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground"
-                            title={`Git Branch: ${app.branchName}`}
-                          >
-                            <GitBranch
-                              size={12}
-                              className="shrink-0 text-muted-foreground"
-                            />
-                            <span>{app.branchName}</span>
-                          </span>
-                        )}
+                          {app.status !== "running" && app.status !== "idle" && (
+                            <div className="text-[11px] text-muted-foreground">
+                              {deploymentStatusText}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">
                         {formatDate(app.lastDeployedAt, locale)}
@@ -547,6 +549,10 @@ export default function PlatformsFleetPage() {
                                 href={`https://${targetDomain}`}
                                 target="_blank"
                                 rel="noreferrer"
+                                title={targetDomain}
+                                aria-label={`${
+                                  locale === "id" ? "Buka Web" : "Open App"
+                                }: ${targetDomain}`}
                               >
                                 <ArrowSquareOut
                                   size={13}
