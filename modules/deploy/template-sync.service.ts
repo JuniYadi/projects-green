@@ -318,8 +318,28 @@ export async function syncStackFromParentTemplate(params: {
     }
   }
 
-  const mergedEnvVars = [...userEnvs, ...newTemplateEnvs]
+  const sanitizedUserEnvs = userEnvs.map((entry) => {
+    if (entry && typeof entry === "object" && typeof entry.key === "string") {
+      if (entry.type === "secret_shared_ref") {
+        return entry
+      }
+      return {
+        ...entry,
+        value: "",
+        type: "secret_ref",
+        vaultPath:
+          typeof entry.vaultPath === "string" && entry.vaultPath.length > 0
+            ? entry.vaultPath
+            : targetVaultPath,
+        vaultKey: entry.vaultKey ?? entry.key,
+        masked: true,
+        isStoredSecret: true,
+      }
+    }
+    return entry
+  })
 
+  const mergedEnvVars = [...sanitizedUserEnvs, ...newTemplateEnvs]
   // 3. Write secrets to Vault first so a Vault write failure preserves unmigrated state in Postgres
   if (Object.keys(plainSecretsToVault).length > 0) {
     const vaultService = new VaultSecretsService()
