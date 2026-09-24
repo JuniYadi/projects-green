@@ -120,34 +120,7 @@ const PORTAL_CONTEXTS: SidebarContextConfig[] = [
     context: "admin",
     matches: (path) => startsWithRoute(path, "/portal/admin"),
     navMainLabel: "Admin",
-    getProjects: (path, locale) => [
-      {
-        name: "Organizations",
-        url: localizePathname({
-          pathname: "/portal/admin/organizations",
-          locale,
-        }),
-        icon: <BuildingsIcon />,
-        isActive: startsWithRoute(path, "/portal/admin/organizations"),
-      },
-      {
-        name: "Users",
-        url: localizePathname({
-          pathname: "/portal/admin/users",
-          locale,
-        }),
-        icon: <UsersIcon />,
-        isActive: startsWithRoute(path, "/portal/admin/users"),
-      },
-      {
-        name: "Invitations",
-        url: localizePathname({
-          pathname: "/portal/admin/invitations",
-          locale,
-        }),
-        icon: <EnvelopeSimpleIcon />,
-        isActive: startsWithRoute(path, "/portal/admin/invitations"),
-      },
+    getProjects: (_path, locale) => [
       {
         name: "Back to Portal",
         url: localizePathname({ pathname: "/portal", locale }),
