@@ -5116,6 +5116,9 @@ export type AppMessages = {
           selfContainedFallback: string
           persistentVolumeLabel: string
           gbMountedAt: string
+          insufficientStorageTitle: string
+          insufficientStorageDescription: string
+          insufficientStorageBadge: string
           envConfigHeading: string
           autoPopulated: string
           enabledLabel: string

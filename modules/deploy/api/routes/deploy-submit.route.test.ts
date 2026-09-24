@@ -154,6 +154,9 @@ const mockPrisma = {
   appTemplate: {
     findFirst: mock(async () => null),
   },
+  servicePlan: {
+    findFirst: mock(async () => null),
+  },
 }
 
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
@@ -238,6 +241,8 @@ const resetPrisma = () => {
   ] as never)
   mockPrisma.appHostingCluster.findUnique.mockClear()
   mockPrisma.appHostingCluster.findUnique.mockResolvedValue(null as never)
+  mockPrisma.servicePlan.findFirst.mockClear()
+  mockPrisma.servicePlan.findFirst.mockResolvedValue(null as never)
 }
 
 describe("deploySubmitRoutes /submit", () => {
@@ -587,5 +592,85 @@ describe("deploySubmitRoutes /submit", () => {
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe("APP_HOSTING_CLUSTER_NOT_CONFIGURED")
     expect(mockPrisma.applicationDeployment.create).not.toHaveBeenCalled()
+  })
+
+  it("returns 422 INSUFFICIENT_PLAN_STORAGE when selected plan storage is less than template required storage", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValue({
+      id: "tpl-large-storage",
+      name: "Storage App",
+      version: "1.0.0",
+      blueprintJson: {
+        runtime: { image: "storage-app:latest" },
+        storage: {
+          enabled: true,
+          mountPath: "/data",
+          sizeGbDefault: 10,
+        },
+      },
+    } as never)
+
+    mockPrisma.servicePlan.findFirst.mockResolvedValue({
+      id: "plan-small",
+      code: "SMALL",
+      name: "Small",
+      resources: {
+        provisioning: {
+          storage: 5,
+        },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "tpl-large-storage",
+      resourcePlanId: "small",
+      billingMode: "PACKAGE",
+    })
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { error: string; message: string }
+    expect(body.error).toBe("INSUFFICIENT_PLAN_STORAGE")
+    expect(body.message).toContain("10 GB")
+    expect(body.message).toContain("5 GB")
+    expect(mockPrisma.applicationStack.create).not.toHaveBeenCalled()
+  })
+
+  it("allows deployment when selected plan storage satisfies template required storage", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValue({
+      id: "tpl-large-storage",
+      name: "Storage App",
+      version: "1.0.0",
+      blueprintJson: {
+        runtime: { image: "storage-app:latest" },
+        storage: {
+          enabled: true,
+          mountPath: "/data",
+          sizeGbDefault: 10,
+        },
+      },
+    } as never)
+
+    mockPrisma.servicePlan.findFirst.mockResolvedValue({
+      id: "plan-medium",
+      code: "MEDIUM",
+      name: "Medium",
+      resources: {
+        provisioning: {
+          storage: 20,
+        },
+      },
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "tpl-large-storage",
+      resourcePlanId: "medium",
+      billingMode: "PACKAGE",
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean }
+    expect(body.ok).toBe(true)
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalled()
   })
 })

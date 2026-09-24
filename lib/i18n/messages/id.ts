@@ -5660,6 +5660,11 @@ export const idMessages: AppMessages = {
           selfContainedFallback: "Mandiri / Tersedia",
           persistentVolumeLabel: "Volume Persisten:",
           gbMountedAt: "GB dipasang di",
+          insufficientStorageTitle: "Kapasitas Storage Paket Tidak Cukup",
+          insufficientStorageDescription:
+            "Paket yang dipilih menyediakan {planStorage} GB storage, tetapi template ini membutuhkan minimal {requiredStorage} GB. Silakan pilih paket dengan kapasitas lebih besar.",
+          insufficientStorageBadge:
+            "Storage {planStorage} GB < {requiredStorage} GB",
           envConfigHeading: "Konfigurasi Lingkungan (",
           autoPopulated: "Terisi Otomatis",
           enabledLabel: "Aktif",

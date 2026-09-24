@@ -31,7 +31,10 @@ import {
   type BillingAccount,
 } from "@/lib/billing-client"
 import { formatBillingMoney } from "@/modules/billing/format-money"
-import { getPlanResources } from "@/modules/deploy/catalog-plan-utils"
+import {
+  getPlanResources,
+  getTemplateRequiredStorageGb,
+} from "@/modules/deploy/catalog-plan-utils"
 import { QuickTopUpDialog } from "@/components/billing/quick-top-up-dialog"
 import {
   Select,
@@ -140,6 +143,10 @@ export function DynamicLaunchDrawer({
   const currentBalance = accountData
     ? Number(accountData.balanceIdr)
     : (initialUserBalance ?? 0)
+  const requiredStorage = useMemo(() => {
+    return getTemplateRequiredStorageGb(template?.blueprint)
+  }, [template?.blueprint])
+
   useEffect(() => {
     if (!open) return
     let isMounted = true
@@ -149,10 +156,16 @@ export function DynamicLaunchDrawer({
         const res = await getCatalogProduct("APP_HOSTING", currency)
         if (isMounted && res) {
           setCatalogData(res)
-          const firstPlan = res.product?.plans?.[0]
-          if (firstPlan) {
-            setSelectedPlanCode(firstPlan.code)
-            const defaults = getPlanResources(firstPlan)
+          const validPlan =
+            res.product?.plans?.find((p) => {
+              const resLimits = getPlanResources(p)
+              return (
+                resLimits.storage === 0 || resLimits.storage >= requiredStorage
+              )
+            }) ?? res.product?.plans?.[0]
+          if (validPlan) {
+            setSelectedPlanCode(validPlan.code)
+            const defaults = getPlanResources(validPlan)
             setCpuOverride(defaults.cpu)
             setMemoryOverride(defaults.mem)
           }
@@ -168,7 +181,7 @@ export function DynamicLaunchDrawer({
       isMounted = false
       setCatalogData(null)
     }
-  }, [open, currency])
+  }, [open, currency, requiredStorage])
 
   const plans = useMemo(() => {
     return catalogData?.product?.plans ?? []
@@ -216,6 +229,18 @@ export function DynamicLaunchDrawer({
   const selectedPlan: CatalogPlan | undefined = useMemo(() => {
     return plans.find((p) => p.code === selectedPlanCode) || plans[0]
   }, [plans, selectedPlanCode])
+
+  const selectedPlanResources = useMemo(() => {
+    return getPlanResources(selectedPlan)
+  }, [selectedPlan])
+
+  const isStorageInsufficient = useMemo(() => {
+    if (requiredStorage <= 0) return false
+    return (
+      selectedPlanResources.storage > 0 &&
+      selectedPlanResources.storage < requiredStorage
+    )
+  }, [requiredStorage, selectedPlanResources.storage])
 
   // Plan price calculation for first month
   const selectedPlanOffer = useMemo(() => {
@@ -318,7 +343,7 @@ export function DynamicLaunchDrawer({
   }, [customEnvVars, reservedKeysSet])
 
   const handleConfirmDeploy = async () => {
-    if (!template || hasReservedKeyConflict) return
+    if (!template || hasReservedKeyConflict || isStorageInsufficient) return
     const currentRegion = availableRegions.find(
       (r) => r.code === effectiveRegionCode
     )
@@ -512,10 +537,34 @@ export function DynamicLaunchDrawer({
               {messages.hardwareResourcePlanLabel}
             </Label>
 
+            {isStorageInsufficient && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-xs text-destructive">
+                <WarningIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">
+                    {messages.insufficientStorageTitle}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {messages.insufficientStorageDescription
+                      .replace(
+                        "{planStorage}",
+                        String(selectedPlanResources.storage)
+                      )
+                      .replace("{requiredStorage}", String(requiredStorage))}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {plans.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
                 {plans.map((plan) => {
                   const isSelected = selectedPlanCode === plan.code
+                  const planRes = getPlanResources(plan)
+                  const isPlanStorageShort =
+                    requiredStorage > 0 &&
+                    planRes.storage > 0 &&
+                    planRes.storage < requiredStorage
                   // Find offer matching the selected region or first monthly
                   const regionOffer =
                     plan.offers?.find(
@@ -555,6 +604,16 @@ export function DynamicLaunchDrawer({
                           ? `${formatBillingMoney(regionOffer.periodPrice, regionOffer.currency || currency)} / month`
                           : "Free / Included"}
                       </span>
+                      {isPlanStorageShort && (
+                        <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          {messages.insufficientStorageBadge
+                            .replace("{planStorage}", String(planRes.storage))
+                            .replace(
+                              "{requiredStorage}",
+                              String(requiredStorage)
+                            )}
+                        </span>
+                      )}
                     </button>
                   )
                 })}
@@ -920,7 +979,9 @@ export function DynamicLaunchDrawer({
             <Button
               type="button"
               onClick={handleConfirmDeploy}
-              disabled={isDeploying || hasReservedKeyConflict}
+              disabled={
+                isDeploying || hasReservedKeyConflict || isStorageInsufficient
+              }
               className="w-2/3 bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {isDeploying ? (

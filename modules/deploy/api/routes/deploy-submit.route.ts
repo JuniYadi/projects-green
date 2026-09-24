@@ -22,6 +22,12 @@ import {
   type ManagedAppTemplate,
 } from "../../managed-app-templates"
 import { parsePublicGitUrl } from "../../public-source"
+import {
+  getPlanResources,
+  getTemplateRequiredStorageGb,
+  validatePlanStorageForTemplate,
+} from "../../catalog-plan-utils"
+import type { CatalogPlan } from "@/lib/billing-client"
 interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
@@ -144,6 +150,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     let resolvedDbTemplateId: string | null = null
     let dbTemplateVersion: string | null = null
     let resolvedTemplateDefaultPort: number | null = null
+    let resolvedTemplateBlueprint: unknown = null
     const templateSecretKeys = new Set<string>()
     if (sourceType === "MANAGED_TEMPLATE") {
       managedTemplate = MANAGED_APP_TEMPLATES.find(
@@ -169,6 +176,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         })
         if (dbTemplate) {
           resolvedDbTemplateId = dbTemplate.id
+          resolvedTemplateBlueprint = dbTemplate.blueprintJson
           const blueprint =
             (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig & {
               envSchema?: Array<{ key: string; isSecret?: boolean }>
@@ -207,6 +215,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         })
         if (dbTemplate) {
           resolvedDbTemplateId = dbTemplate.id
+          resolvedTemplateBlueprint = dbTemplate.blueprintJson
           const blueprint =
             (dbTemplate.blueprintJson as unknown as BlueprintRuntimeConfig & {
               envSchema?: Array<{ key: string; isSecret?: boolean }>
@@ -320,6 +329,44 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     }
 
     const resourcePlanId = body.resourcePlanId
+
+    // Validate storage requirement between template and selected plan
+    const requiredStorageGb = getTemplateRequiredStorageGb(
+      resolvedTemplateBlueprint
+    )
+
+    if (requiredStorageGb > 0 && resourcePlanId) {
+      const plan = await prisma.servicePlan.findFirst({
+        where: {
+          package: { code: "APP_HOSTING" },
+          OR: [{ id: resourcePlanId }, { code: resourcePlanId.toUpperCase() }],
+        },
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          resources: true,
+        },
+      })
+
+      const planResources = getPlanResources(
+        plan ? (plan as unknown as CatalogPlan) : undefined
+      )
+      const validation = validatePlanStorageForTemplate({
+        requiredStorageGb,
+        planStorageGb: planResources.storage,
+        planName: plan?.name || resourcePlanId,
+      })
+      if (!validation.valid) {
+        set.status = 422
+        return {
+          ok: false,
+          error: "INSUFFICIENT_PLAN_STORAGE",
+          message: validation.error,
+        }
+      }
+    }
+
     const billingMode = body.billingMode ?? "PAYG"
     const hourlyCost = computeHourlyCostDecimal({
       resourcePlanId,

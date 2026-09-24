@@ -580,5 +580,40 @@ describe("AppHostingBillingService", () => {
         })
       ).rejects.toThrow("STACK_QUOTA_EXCEEDED")
     })
+
+    it("throws INSUFFICIENT_PLAN_STORAGE when subscription plan storage is less than template requirement", async () => {
+      mockPrisma.serviceSubscription.findFirst.mockResolvedValue({
+        id: "sub_1",
+        organizationId: "org_1",
+        status: "ACTIVE",
+        quantity: decimal("1"),
+        allocatedConfig: { maxStacks: 2 },
+        plan: {
+          code: "SMALL",
+          resources: {
+            provisioning: { storage: 5 },
+          },
+        },
+      })
+      mockPrisma.applicationStack.count.mockResolvedValue(0)
+      mockPrisma.applicationStack.findUnique.mockResolvedValue({
+        id: "stack_new",
+        template: {
+          blueprintJson: {
+            storage: {
+              enabled: true,
+              sizeGbDefault: 10,
+            },
+          },
+        },
+      })
+
+      await expect(
+        service.assertCanDeploySubscription({
+          organizationId: "org_1",
+          stackId: "stack_new",
+        })
+      ).rejects.toThrow("INSUFFICIENT_PLAN_STORAGE")
+    })
   })
 })
