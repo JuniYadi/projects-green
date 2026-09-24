@@ -51,6 +51,8 @@ export const mapStackStatusToDeployStatus = (
       return "running"
     case "FAILED":
       return "failed"
+    case "TERMINATED":
+      return "terminated"
     case "IDLE":
     default:
       return "idle"
@@ -324,6 +326,8 @@ export type StackSummaryDTO = {
   name: string
   slug: string
   status: DeployStatus
+  suspended?: boolean
+  terminated?: boolean
   framework: string | null
   branchName: string
   subdomain: string | null
@@ -485,11 +489,26 @@ export const toStackSummaryDTO = (stack: {
     return null
   })()
 
+  const isSuspended =
+    meta.suspended === true ||
+    meta.billingState === "SUSPENDED" ||
+    resolveStackBillingState(stack.metadataJson) === "SUSPENDED"
+  const isTerminated =
+    stack.status === "TERMINATED" || meta.terminated === true
+
+  const resolvedStatus: DeployStatus = isTerminated
+    ? "terminated"
+    : isSuspended
+      ? "suspended"
+      : mapStackStatusToDeployStatus(stack.status)
+
   return {
     id: stack.id,
     name: stack.name,
     slug: stack.slug,
-    status: mapStackStatusToDeployStatus(stack.status),
+    status: resolvedStatus,
+    suspended: isSuspended,
+    terminated: isTerminated,
     framework: stack.framework ?? null,
     branchName: stack.branchName,
     subdomain: stack.subdomain ?? null,

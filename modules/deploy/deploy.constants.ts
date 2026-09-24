@@ -135,6 +135,8 @@ export const DEPLOY_STATUS_LABELS: Record<DeployStatus, string> = {
   deploying: "Deploying",
   running: "Running",
   failed: "Failed",
+  suspended: "Suspended",
+  terminated: "Terminated",
 }
 
 export const DEPLOY_STATUS_TONE: Record<string, string> = {
@@ -143,6 +145,8 @@ export const DEPLOY_STATUS_TONE: Record<string, string> = {
   building: "border-sky-500/20 bg-sky-500/5 text-sky-400",
   deploying: "border-sky-500/20 bg-sky-500/5 text-sky-400",
   queued: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+  suspended: "border-amber-500/20 bg-amber-500/5 text-amber-400",
+  terminated: "border-zinc-500/20 bg-zinc-500/5 text-zinc-400",
   idle: "border-border bg-muted/30 text-muted-foreground",
 }
 

@@ -5842,6 +5842,7 @@ export const idMessages: AppMessages = {
         allTab: "Semua (",
         runningTab: "Berjalan (",
         queuedTab: "Deploying / Antre (",
+        suspendedTab: "Ditangguhkan (",
         failedTab: "Gagal (",
         searchPlaceholder: "Cari platform...",
         loadingFleet: "Memuat armada platform…",
@@ -5853,6 +5854,7 @@ export const idMessages: AppMessages = {
         noMatchFilter:
           "Tidak ada platform yang cocok dengan kriteria filter Anda.",
         colPlatform: "Platform",
+        colPlatformStack: "Platform & Stack",
         colStatus: "Status",
         colRegion: "Wilayah",
         colFramework: "Framework",
