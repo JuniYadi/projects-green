@@ -320,16 +320,7 @@ export async function syncStackFromParentTemplate(params: {
 
   const mergedEnvVars = [...userEnvs, ...newTemplateEnvs]
 
-  // 3. Update stack (cpu, memory, domains, billingMode remain completely untouched)
-  await prisma.applicationStack.update({
-    where: { id: stack.id },
-    data: {
-      templateId: template.id,
-      metadataJson: updatedMetadata as Prisma.InputJsonValue,
-      envVarsJson: mergedEnvVars as Prisma.InputJsonValue,
-    },
-  })
-
+  // 3. Write secrets to Vault first so a Vault write failure preserves unmigrated state in Postgres
   if (Object.keys(plainSecretsToVault).length > 0) {
     const vaultService = new VaultSecretsService()
     await vaultService.writeSecrets({
@@ -339,6 +330,16 @@ export async function syncStackFromParentTemplate(params: {
       secrets: plainSecretsToVault,
     })
   }
+
+  // 4. Update stack (cpu, memory, domains, billingMode remain completely untouched)
+  await prisma.applicationStack.update({
+    where: { id: stack.id },
+    data: {
+      templateId: template.id,
+      metadataJson: updatedMetadata as Prisma.InputJsonValue,
+      envVarsJson: mergedEnvVars as Prisma.InputJsonValue,
+    },
+  })
 
   // 4. Trigger GitOps sync
   const syncRes = await syncStackConfiguration({

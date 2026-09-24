@@ -354,6 +354,41 @@ describe("template-sync.service", () => {
       })
     })
 
+    it("fails cleanly without modifying stack in database when Vault write fails", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-hermes",
+        slug: "hermes",
+        blueprintJson: {
+          version: "1.0.0",
+          envSchema: [
+            {
+              key: "HERMES_DASHBOARD",
+              defaultValue: "true",
+              isSecret: true,
+            },
+          ],
+        },
+      })
+
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "hermes-agent",
+        organizationId: "org-1",
+        envVarsJson: [{ key: "USER_VAR", value: "user-val" }],
+      })
+
+      mockWriteSecrets.mockRejectedValueOnce(new Error("Vault unreachable"))
+
+      await expect(
+        syncStackFromParentTemplate({
+          templateId: "tmpl-hermes",
+          stackId: "stack-1",
+        })
+      ).rejects.toThrow("Vault unreachable")
+
+      expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
+    })
+
     it("throws when template is not found", async () => {
       mockPrisma.appTemplate.findFirst.mockResolvedValueOnce(null)
       expect(
