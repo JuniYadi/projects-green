@@ -107,6 +107,7 @@ type AppSettingsClient = SettingsRouteClient & {
     env: SettingsRouteClient
     mounts: MountRouteClient
     build: SettingsRouteClient
+    security: SettingsRouteClient
   }
   domains: DomainRouteClient
   scaling: SettingsRouteClient
@@ -257,7 +258,16 @@ const readSettingsData = (payload: SettingsApiPayload<unknown>) => {
           framework: "",
         }
 
-  return { envVars, mounts, persistentStorage, build }
+  const security =
+    data &&
+    typeof data === "object" &&
+    "security" in data &&
+    data.security &&
+    typeof data.security === "object"
+      ? (data.security as SecuritySettings)
+      : null
+
+  return { envVars, mounts, persistentStorage, build, security }
 }
 const toPersistedMount = (mount: VolumeMount) => ({
   id: mount.id,
@@ -688,7 +698,7 @@ export default function PlatformInstanceWorkspacePage() {
       setBuildSettings(settings.build)
     }
     if (settings.security) {
-      setSecuritySettings(settings.security as SecuritySettings)
+      setSecuritySettings(settings.security)
     }
     setSettingsError(null)
   }
