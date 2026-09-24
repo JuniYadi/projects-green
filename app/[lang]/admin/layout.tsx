@@ -2,10 +2,12 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
 import {
+  SIDEBAR_COOKIE_NAME,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { cookies } from "next/headers"
 import {
   getLatestWorkOSUser,
   resolveSidebarOrganization,
@@ -66,8 +68,13 @@ export default async function AdminLayout({
     auth.organizationId
   )
 
+  const cookieStore = await cookies()
+  const sidebarCookie = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value
+  const defaultOpen =
+    sidebarCookie !== undefined ? sidebarCookie === "true" : true
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar
         surface="admin"
         user={sidebarUser}

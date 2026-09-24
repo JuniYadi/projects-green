@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+export const SIDEBAR_COOKIE_NAME = "sidebar_state"
+export const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
@@ -72,6 +72,34 @@ function SidebarProvider({
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
+
+  // Auto-collapse on tablet viewports after mount and on viewport resize when no explicit cookie preference exists.
+  // Initial state is kept consistent with defaultOpen to prevent SSR hydration mismatches.
+  React.useEffect(() => {
+    const mql =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(min-width: 768px) and (max-width: 1023px)")
+        : null
+
+    const handleViewportChange = () => {
+      const hasCookie = document.cookie
+        .split("; ")
+        .some((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      const isTablet =
+        mql?.matches || (window.innerWidth < 1024 && window.innerWidth >= 768)
+      if (!hasCookie && isTablet) {
+        _setOpen(false)
+      }
+    }
+
+    handleViewportChange()
+    window.addEventListener("resize", handleViewportChange)
+    mql?.addEventListener("change", handleViewportChange)
+    return () => {
+      window.removeEventListener("resize", handleViewportChange)
+      mql?.removeEventListener("change", handleViewportChange)
+    }
+  }, [])
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {

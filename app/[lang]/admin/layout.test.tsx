@@ -1,4 +1,4 @@
-import { beforeEach, afterAll, describe, expect, it, mock } from "bun:test"
+import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 
@@ -21,7 +21,7 @@ const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
     firstName: "Jane",
     lastName: "Doe",
     email: "jane@example.com",
-    profilePictureUrl: " https://example.com/avatar.png ",
+    profilePictureUrl: "https://example.com/avatar.png",
   },
   organizationId: "org_123",
 }))
@@ -42,17 +42,17 @@ const mockGetOrganization = mock(async (_orgId?: string) => ({
 const mockRedirect = mock((url: string) => {
   throw new Error(`REDIRECT:${url}`)
 })
+
 mock.module("next/headers", () => ({
   headers: mock(async () => new Headers()),
   cookies: mock(async () => ({
     get: mock(() => undefined),
   })),
 }))
-const mockGetPlatformAccessForUser = mock(
-  async (): Promise<import("@/lib/platform-role").PlatformAccess> => ({
-    exists: true,
-    role: "super_admin",
-  })
+
+const mockGetPlatformRoleForUser = mock(
+  async (): Promise<"super_admin" | "admin" | "member" | "none"> =>
+    "super_admin"
 )
 
 mock.module("@workos-inc/authkit-nextjs", () => {
@@ -82,7 +82,7 @@ mock.module("@/lib/workos-directory", () => ({
   }),
 }))
 
-const mockUsePathname = mock(() => "/en/portal/documentations")
+const mockUsePathname = mock(() => "/en/admin")
 
 mock.module("next/navigation", () => ({
   redirect: mockRedirect,
@@ -94,8 +94,7 @@ mock.module("next/navigation", () => ({
 
 mock.module("@/lib/platform-role", () => {
   return {
-    getPlatformAccessForUser: mockGetPlatformAccessForUser,
-    getPlatformRoleForUser: mock(async () => "none" as const),
+    getPlatformRoleForUser: mockGetPlatformRoleForUser,
   }
 })
 
@@ -120,8 +119,19 @@ mock.module("@/components/app-sidebar", () => {
 mock.module("@/components/ui/sidebar", () => {
   return {
     SIDEBAR_COOKIE_NAME: "sidebar_state",
-    SidebarProvider: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="sidebar-provider">{children}</div>
+    SidebarProvider: ({
+      children,
+      defaultOpen,
+    }: {
+      children: React.ReactNode
+      defaultOpen?: boolean
+    }) => (
+      <div
+        data-testid="sidebar-provider"
+        data-default-open={String(defaultOpen)}
+      >
+        {children}
+      </div>
     ),
     SidebarInset: ({ children }: { children: React.ReactNode }) => (
       <main data-testid="sidebar-inset">{children}</main>
@@ -145,121 +155,88 @@ mock.module("@/components/ui/breadcrumb", () => {
     BreadcrumbItem: ({ children }: { children: React.ReactNode }) => (
       <li>{children}</li>
     ),
-    BreadcrumbLink: ({
-      children,
-      href,
-    }: {
-      children: React.ReactNode
-      href: string
-    }) => <a href={href}>{children}</a>,
-    BreadcrumbSeparator: () => <span>/</span>,
+    BreadcrumbLink: ({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
+    ),
     BreadcrumbPage: ({ children }: { children: React.ReactNode }) => (
       <span>{children}</span>
     ),
+    BreadcrumbSeparator: () => <span>/</span>,
   }
 })
 
-// No mock needed for ThunderAiHelpDrawer to avoid cache pollution
+mock.module("@/modules/docs/ui/thunder-ai-help-drawer", () => ({
+  ThunderAiHelpDrawer: () => <div data-testid="thunder-ai-help" />,
+}))
 
-describe("PortalLayout", () => {
-  afterAll(() => {
-    mock.restore()
-  })
-
+describe("AdminLayout", () => {
   beforeEach(() => {
     mockWithAuth.mockClear()
     mockGetUser.mockClear()
     mockGetOrganization.mockClear()
     mockRedirect.mockClear()
-    mockGetPlatformAccessForUser.mockClear()
-    mockGetPlatformAccessForUser.mockResolvedValue({
-      exists: true,
-      role: "super_admin",
-    })
+    mockGetPlatformRoleForUser.mockClear()
+    mockGetPlatformRoleForUser.mockResolvedValue("super_admin")
     mockWithAuth.mockImplementation(async () => ({
       user: {
         id: "user_123",
         firstName: "Jane",
         lastName: "Doe",
         email: "jane@example.com",
-        profilePictureUrl: " https://example.com/avatar.png ",
+        profilePictureUrl: "https://example.com/avatar.png",
       },
       organizationId: "org_123",
     }))
-    mockUsePathname.mockReturnValue("/en/portal/documentations")
+    mockUsePathname.mockReturnValue("/en/admin")
   })
 
-  it("renders shared portal shell around children", async () => {
-    const layoutModule = await import("@/app/[lang]/portal/layout")
+  it("renders shared admin shell around children with defaultOpen true", async () => {
+    const layoutModule = await import("@/app/[lang]/admin/layout")
     const ui = await layoutModule.default({
-      children: <div>Child Content</div>,
+      children: <div>Admin Content</div>,
       params: Promise.resolve({ lang: "en" }),
     })
 
     const view = render(ui)
 
     expect(mockWithAuth).toHaveBeenCalledWith({ ensureSignedIn: true })
-    expect(mockGetUser).toHaveBeenCalledWith("user_123")
-    expect(mockGetOrganization).toHaveBeenCalledWith("org_123")
-
-    expect(view.getByTestId("sidebar-provider")).toBeInTheDocument()
-    expect(
-      view.getByText("Sidebar:portal:Jane Doe:Acme Inc")
-    ).toBeInTheDocument()
-    expect(view.getByText("Ask P")).toBeInTheDocument()
-    expect(view.getByText("Portal")).toBeInTheDocument()
-    expect(view.getByText("Documentation")).toBeInTheDocument()
-    expect(view.queryByText("Workspace")).not.toBeInTheDocument()
-    expect(view.getByText("Child Content")).toBeInTheDocument()
+    expect(view.getByTestId("sidebar-provider")).toHaveAttribute(
+      "data-default-open",
+      "true"
+    )
+    expect(view.getByText("Admin Content")).toBeInTheDocument()
   })
 
-  it("redirects customer users to console", async () => {
-    mockGetPlatformAccessForUser.mockResolvedValue({
-      exists: false,
-      role: "none",
-    })
+  it("redirects non-super_admin users to console", async () => {
+    mockGetPlatformRoleForUser.mockResolvedValue("none")
 
-    const layoutModule = await import("@/app/[lang]/portal/layout")
-
+    const layoutModule = await import("@/app/[lang]/admin/layout")
     await expect(
       layoutModule.default({
-        children: <div>Child Content</div>,
+        children: <div>Admin Content</div>,
         params: Promise.resolve({ lang: "en" }),
       })
     ).rejects.toThrow("REDIRECT:/en/console")
-
-    expect(mockGetPlatformAccessForUser).toHaveBeenCalledWith({
-      id: "user_123",
-      email: "jane@example.com",
-    })
-    expect(mockRedirect).toHaveBeenCalledWith("/en/console")
   })
 
   it("redirects to onboarding when organization is missing", async () => {
     mockWithAuth.mockImplementation(async () => ({
       user: {
-        id: "user_999",
-        firstName: "No",
-        lastName: "Org",
-        email: "no-org@example.com",
-        profilePictureUrl: null,
+        id: "user_123",
+        firstName: "Jane",
+        lastName: "Doe",
+        email: "jane@example.com",
+        profilePictureUrl: "https://example.com/avatar.png",
       },
       organizationId: undefined,
     }))
 
-    const layoutModule = await import("@/app/[lang]/portal/layout")
-
+    const layoutModule = await import("@/app/[lang]/admin/layout")
     await expect(
       layoutModule.default({
-        children: <div>Child Content</div>,
+        children: <div>Admin Content</div>,
         params: Promise.resolve({ lang: "en" }),
       })
-    ).rejects.toThrow(
-      "REDIRECT:/en/onboarding/organization?next=%2Fen%2Fportal"
-    )
-
-    expect(mockRedirect).toHaveBeenCalledWith(
-      "/en/onboarding/organization?next=%2Fen%2Fportal"
-    )
+    ).rejects.toThrow("REDIRECT:/en/onboarding/organization?next=%2Fen%2Fadmin")
   })
 })
