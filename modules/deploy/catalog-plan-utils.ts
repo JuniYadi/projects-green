@@ -6,41 +6,53 @@ export type PlanResources = {
   storage: number
 }
 
+function extractNumericResource(values: unknown[], fallback: number): number {
+  for (const v of values) {
+    if (v !== undefined && v !== null && v !== "") {
+      const num = Number(v)
+      if (!Number.isNaN(num)) return num
+    }
+  }
+  return fallback
+}
+
 export function getPlanResources(plan: CatalogPlan | undefined): PlanResources {
   if (!plan) return { cpu: 500, mem: 512, storage: 0 }
   const res = plan.resources as Record<string, unknown> | undefined
   const provisioning = res?.provisioning as Record<string, unknown> | undefined
   const features = res?.features as Record<string, unknown> | undefined
 
-  const cpu =
-    Number(provisioning?.cpu) ||
-    Number(features?.defaultCpu) ||
-    Number(res?.defaultCpu) ||
-    Number(res?.cpu) ||
-    (plan.code === "MEDIUM" ? 1000 : 500)
+  const cpu = extractNumericResource(
+    [provisioning?.cpu, features?.defaultCpu, res?.defaultCpu, res?.cpu],
+    plan.code === "MEDIUM" ? 1000 : 500
+  )
 
-  const rawMem =
-    Number(provisioning?.memory) ||
-    Number(features?.defaultMem) ||
-    Number(res?.defaultMem) ||
-    Number(res?.memory) ||
-    (plan.code === "MEDIUM" ? 2048 : 512)
+  const rawMem = extractNumericResource(
+    [provisioning?.memory, features?.defaultMem, res?.defaultMem, res?.memory],
+    plan.code === "MEDIUM" ? 2048 : 512
+  )
 
   // If memory is reported in KiB/bytes or > 32768, normalize safely using 1024 or keep as MiB
   const mem = rawMem > 32768 ? Math.round(rawMem / 1024) : rawMem
 
-  const storage =
-    Number(provisioning?.storage) ||
-    Number(features?.storage) ||
-    Number(res?.storage) ||
-    Number(res?.defaultStorage) ||
-    (plan.code?.toUpperCase() === "SMALL"
+  const defaultStorage =
+    plan.code?.toUpperCase() === "SMALL"
       ? 5
       : plan.code?.toUpperCase() === "MEDIUM"
         ? 20
         : plan.code?.toUpperCase() === "LARGE"
           ? 50
-          : 0)
+          : 0
+
+  const storage = extractNumericResource(
+    [
+      provisioning?.storage,
+      features?.storage,
+      res?.storage,
+      res?.defaultStorage,
+    ],
+    defaultStorage
+  )
 
   return { cpu, mem, storage }
 }

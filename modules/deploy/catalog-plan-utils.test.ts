@@ -33,6 +33,18 @@ describe("catalog-plan-utils", () => {
       expect(result).toEqual({ cpu: 500, mem: 512, storage: 5 })
     })
 
+    it("preserves explicit zero storage on a SMALL plan rather than falling back to default 5 GB", () => {
+      const plan = {
+        code: "SMALL",
+        resources: {
+          provisioning: { storage: 0 },
+        },
+      } as unknown as CatalogPlan
+
+      const result = getPlanResources(plan)
+      expect(result.storage).toBe(0)
+    })
+
     it("returns non-MEDIUM defaults (500 cpu, 512 mem, 0 storage) when plan code is STARTER without resources", () => {
       const plan = {
         code: "STARTER",
