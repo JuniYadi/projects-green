@@ -5616,6 +5616,11 @@ export const enMessages: AppMessages = {
           selfContainedFallback: "Self-contained / In-Stock",
           persistentVolumeLabel: "Persistent Volume:",
           gbMountedAt: "GB mounted at",
+          insufficientStorageTitle: "Insufficient Plan Storage",
+          insufficientStorageDescription:
+            "The selected plan provides {planStorage} GB storage, but this template requires at least {requiredStorage} GB. Please choose a larger plan.",
+          insufficientStorageBadge:
+            "Storage {planStorage} GB < {requiredStorage} GB",
           envConfigHeading: "Environment Configuration (",
           autoPopulated: "Auto-populated",
           enabledLabel: "Enabled",

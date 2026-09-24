@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
+import {
+  getPlanResources,
+  getTemplateRequiredStorageGb,
+} from "../catalog-plan-utils"
+import type { CatalogPlan } from "@/lib/billing-client"
 
 // ─── Types ──────────────────────────────────────────────────────────────
 
@@ -183,6 +188,31 @@ export class AppHostingBillingService {
 
     if (existingStacksCount >= maxSlots) {
       throw new Error("STACK_QUOTA_EXCEEDED")
+    }
+
+    if (input.stackId) {
+      const targetStack = await this.prisma.applicationStack.findUnique({
+        where: { id: input.stackId },
+        select: {
+          template: {
+            select: { blueprintJson: true },
+          },
+        },
+      })
+      const requiredStorageGb = getTemplateRequiredStorageGb(
+        targetStack?.template?.blueprintJson
+      )
+      if (requiredStorageGb > 0) {
+        if (!subscription.plan) {
+          throw new Error("INSUFFICIENT_PLAN_STORAGE")
+        }
+        const planResources = getPlanResources(
+          subscription.plan as unknown as CatalogPlan
+        )
+        if (planResources.storage < requiredStorageGb) {
+          throw new Error("INSUFFICIENT_PLAN_STORAGE")
+        }
+      }
     }
 
     return {
