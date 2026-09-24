@@ -8121,6 +8121,27 @@ export const enMessages: AppMessages = {
       "Build container image directly using repository Dockerfile.",
     dockerfileBuildToggleAriaLabel: "Toggle Dockerfile build",
   },
+  pConsoleSettingsTabSecurity: {
+    title: "Security Context & Runtime Permissions",
+    description:
+      "Configure pod and container execution permissions, user/group IDs, and storage volume ownership.",
+    runAsUserLabel: "Run As User (UID)",
+    runAsUserHint:
+      "UID for container process execution (leave empty for image default).",
+    runAsGroupLabel: "Run As Group (GID)",
+    runAsGroupHint:
+      "GID for container process execution (leave empty for image default).",
+    fsGroupLabel: "Storage FSGroup",
+    fsGroupHint: "Volume ownership GID for mounted persistent disks.",
+    readOnlyRootLabel: "Read-Only Root Filesystem",
+    readOnlyRootHint:
+      "Mount container root filesystem as read-only. Disable for runtimes like Hermes Agent or Python that need write access.",
+    runAsNonRootLabel: "Strict Non-Root Execution",
+    runAsNonRootHint:
+      "Requires container to run as a non-root user. Disable only if your container image explicitly uses root user.",
+    save: "Save Security Settings",
+    saving: "Saving…",
+  },
   pConsoleMarketplaceMyTemplatesPageClient: {
     breadcrumbMarketplace: "Marketplace",
     breadcrumbWorkspaceTemplates: "Workspace Templates",
