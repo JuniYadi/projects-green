@@ -4477,10 +4477,12 @@ export type AppMessages = {
         tableOrganization: string
         tableStack: string
         tableStatus: string
+        tableInfrastructure: string
         tableCluster: string
         tableResources: string
         tableCreated: string
         tableAction: string
+        moreActions: string
         columns: string
         toggleColumns: string
         replicas: string
