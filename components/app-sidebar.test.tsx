@@ -767,7 +767,7 @@ describe("resolveSidebarMenu", () => {
       "Invitations",
     ])
     expect(navMain.find((item) => item.title === "Users")?.isActive).toBe(true)
-    expect(projects.map((item) => item.name)).toContain("Back to Portal")
+    expect(projects.map((item) => item.name)).toEqual(["Back to Portal"])
   })
 })
 

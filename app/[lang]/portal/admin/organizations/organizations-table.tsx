@@ -135,7 +135,10 @@ export function OrganizationsTable() {
       {
         accessorKey: "name",
         header: ({ column }) => (
-          <DataTableColumnHeader column={column} title={messages.colOrganization} />
+          <DataTableColumnHeader
+            column={column}
+            title={messages.colOrganization}
+          />
         ),
         cell: ({ row }) => (
           <span
@@ -213,8 +216,7 @@ export function OrganizationsTable() {
         tableId="portal-admin-organizations"
         columns={columns}
         data={organizations}
-        searchPlaceholder={messages.searchPlaceholder}
-        searchableColumns={["name", "id"]}
+        hideSearch
         defaultColumnVisibility={{ id: false, createdAt: false }}
       />
       <div className="flex items-center justify-between">
