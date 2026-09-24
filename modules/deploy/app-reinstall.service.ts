@@ -513,9 +513,19 @@ export async function executeReinstall(params: {
     reinstalledAt: new Date().toISOString(),
   }
 
-  // 6. Execute atomic stack update and deployment creation
+  // 6. Write secrets to Vault first so a Vault failure cannot leave the stack partially reinstalled
   let deployment: ApplicationDeployment
   try {
+    if (Object.keys(secretsToWrite).length > 0) {
+      const vault = new VaultSecretsService()
+      await vault.writeSecrets({
+        organizationId: params.organizationId,
+        stackId: stack.id,
+        environment: "prod",
+        secrets: secretsToWrite,
+      })
+    }
+
     const txResult = await prisma.$transaction(async (tx) => {
       const updated = await tx.applicationStack.updateMany({
         where: {
@@ -557,15 +567,6 @@ export async function executeReinstall(params: {
       return { deployment: newDep }
     })
     deployment = txResult.deployment
-    if (Object.keys(secretsToWrite).length > 0) {
-      const vault = new VaultSecretsService()
-      await vault.writeSecrets({
-        organizationId: params.organizationId,
-        stackId: stack.id,
-        environment: "prod",
-        secrets: secretsToWrite,
-      })
-    }
   } catch (txErr) {
     if (allocatedStockId) {
       await releaseManagedStock(stack.id).catch(() => {})

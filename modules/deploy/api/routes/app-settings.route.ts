@@ -435,7 +435,9 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           value: "",
           masked: true,
           isStoredSecret: true,
-          source: isShared ? prior?.source : "vault",
+          source: isShared
+            ? (incoming.source ?? prior?.source ?? "managed_service")
+            : "vault",
         }
         if (!row.vaultPath && prior?.vaultPath) {
           row.vaultPath = prior.vaultPath

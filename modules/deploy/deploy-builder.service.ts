@@ -948,7 +948,9 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         if (
           item &&
           typeof item.key === "string" &&
-          (item.type === "secret" || item.isStoredSecret === true) &&
+          (item.type === "secret" ||
+            item.type === "secret_ref" ||
+            item.isStoredSecret === true) &&
           !item.vaultPath &&
           typeof item.value === "string" &&
           item.value.length > 0
