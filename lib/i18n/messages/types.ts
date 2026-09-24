@@ -7467,6 +7467,22 @@ export type AppMessages = {
     dockerfileBuildHint: string
     dockerfileBuildToggleAriaLabel: string
   }
+  pConsoleSettingsTabSecurity: {
+    title: string
+    description: string
+    runAsUserLabel: string
+    runAsUserHint: string
+    runAsGroupLabel: string
+    runAsGroupHint: string
+    fsGroupLabel: string
+    fsGroupHint: string
+    readOnlyRootLabel: string
+    readOnlyRootHint: string
+    runAsNonRootLabel: string
+    runAsNonRootHint: string
+    save: string
+    saving: string
+  }
   pConsoleMarketplaceMyTemplatesPageClient: {
     breadcrumbMarketplace: string
     breadcrumbWorkspaceTemplates: string

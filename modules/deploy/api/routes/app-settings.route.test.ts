@@ -240,6 +240,13 @@ describe("appSettingsRoutes", () => {
           dockerfileDetected: false,
           framework: "",
         },
+        security: {
+          runAsUser: null,
+          runAsGroup: null,
+          fsGroup: null,
+          readOnlyRootFilesystem: false,
+          runAsNonRoot: true,
+        },
       },
     })
     expect(JSON.stringify(body)).not.toContain("old-secret")
@@ -756,6 +763,13 @@ describe("appSettingsRoutes", () => {
         dockerfileDetected: false,
         framework: "",
       },
+      security: {
+        runAsUser: null,
+        runAsGroup: null,
+        fsGroup: null,
+        readOnlyRootFilesystem: false,
+        runAsNonRoot: true,
+      },
     })
   })
 
@@ -779,6 +793,32 @@ describe("appSettingsRoutes", () => {
         rootDirectory: "/app",
         dockerfileDetected: true,
         framework: "Next.js",
+      },
+    })
+  })
+
+  it("updates security settings via PATCH /settings/security", async () => {
+    const response = await request("/deploy/apps/demo/settings/security", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runAsUser: 1000,
+        runAsGroup: 1000,
+        fsGroup: 1000,
+        readOnlyRootFilesystem: false,
+        runAsNonRoot: false,
+      }),
+    })
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body).toEqual({
+      ok: true,
+      data: {
+        runAsUser: 1000,
+        runAsGroup: 1000,
+        fsGroup: 1000,
+        readOnlyRootFilesystem: false,
+        runAsNonRoot: false,
       },
     })
   })

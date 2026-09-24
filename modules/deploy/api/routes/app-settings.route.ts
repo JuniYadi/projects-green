@@ -239,6 +239,14 @@ function settingsData(stack: {
     templateBlueprint && typeof templateBlueprint.storage === "object"
       ? (templateBlueprint.storage as Record<string, unknown>)
       : null
+  const blueprintRuntime =
+    templateBlueprint && typeof templateBlueprint.runtime === "object"
+      ? (templateBlueprint.runtime as Record<string, unknown>)
+      : null
+  const stackMeta =
+    stack.metadataJson && typeof stack.metadataJson === "object"
+      ? (stack.metadataJson as Record<string, unknown>)
+      : null
 
   return {
     envVars: parseArray(stack.envVarsJson).map(safeEnvVar),
@@ -268,6 +276,38 @@ function settingsData(stack: {
       rootDirectory: stack.rootDirectory ?? "/",
       dockerfileDetected: Boolean(stack.dockerfileDetected),
       framework: stack.framework ?? "",
+    },
+    security: {
+      runAsUser:
+        typeof stackMeta?.runAsUser === "number"
+          ? (stackMeta.runAsUser as number)
+          : typeof blueprintRuntime?.runAsUser === "number"
+            ? (blueprintRuntime.runAsUser as number)
+            : null,
+      runAsGroup:
+        typeof stackMeta?.runAsGroup === "number"
+          ? (stackMeta.runAsGroup as number)
+          : typeof blueprintRuntime?.runAsGroup === "number"
+            ? (blueprintRuntime.runAsGroup as number)
+            : null,
+      fsGroup:
+        typeof stackMeta?.fsGroup === "number"
+          ? (stackMeta.fsGroup as number)
+          : typeof persistentStorage?.fsGroup === "number"
+            ? (persistentStorage.fsGroup as number)
+            : typeof blueprintRuntime?.fsGroup === "number"
+              ? (blueprintRuntime.fsGroup as number)
+              : null,
+      readOnlyRootFilesystem:
+        typeof stackMeta?.readOnlyRootFilesystem === "boolean"
+          ? (stackMeta.readOnlyRootFilesystem as boolean)
+          : typeof blueprintRuntime?.readOnlyRootFilesystem === "boolean"
+            ? (blueprintRuntime.readOnlyRootFilesystem as boolean)
+            : false,
+      runAsNonRoot:
+        typeof stackMeta?.runAsNonRoot === "boolean"
+          ? (stackMeta.runAsNonRoot as boolean)
+          : blueprintRuntime?.runAsNonRoot !== false,
     },
   }
 }
@@ -680,6 +720,113 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
         rootDirectory: t.Optional(t.String()),
         dockerfileDetected: t.Optional(t.Boolean()),
         framework: t.Optional(t.String()),
+      }),
+    }
+  )
+  .patch(
+    "/:slug/settings/security",
+    async ({ params, body, set }) => {
+      const auth = await authorize(set, true)
+      if ("error" in auth) return auth.error
+      const stack = await findStack(auth.organizationId, params.slug)
+      if (!stack) {
+        set.status = 404
+        return {
+          ok: false,
+          error: "NOT_FOUND",
+          message: "Application not found",
+        }
+      }
+
+      const metadata =
+        stack.metadataJson && typeof stack.metadataJson === "object"
+          ? { ...(stack.metadataJson as JsonRecord) }
+          : {}
+
+      if (body.runAsUser !== undefined) {
+        if (body.runAsUser === null) {
+          delete metadata.runAsUser
+        } else {
+          metadata.runAsUser = body.runAsUser
+        }
+      }
+
+      if (body.runAsGroup !== undefined) {
+        if (body.runAsGroup === null) {
+          delete metadata.runAsGroup
+        } else {
+          metadata.runAsGroup = body.runAsGroup
+        }
+      }
+
+      if (body.fsGroup !== undefined) {
+        if (body.fsGroup === null) {
+          delete metadata.fsGroup
+        } else {
+          metadata.fsGroup = body.fsGroup
+        }
+      }
+
+      if (body.readOnlyRootFilesystem !== undefined) {
+        if (body.readOnlyRootFilesystem === null) {
+          delete metadata.readOnlyRootFilesystem
+        } else {
+          metadata.readOnlyRootFilesystem = body.readOnlyRootFilesystem
+        }
+      }
+
+      if (body.runAsNonRoot !== undefined) {
+        if (body.runAsNonRoot === null) {
+          delete metadata.runAsNonRoot
+        } else {
+          metadata.runAsNonRoot = body.runAsNonRoot
+        }
+      }
+
+      const updated = await prisma.applicationStack.update({
+        where: { id: stack.id },
+        data: { metadataJson: metadata as Prisma.InputJsonValue },
+        select: { metadataJson: true },
+      })
+
+      const updatedMeta =
+        updated.metadataJson && typeof updated.metadataJson === "object"
+          ? (updated.metadataJson as Record<string, unknown>)
+          : null
+
+      return {
+        ok: true,
+        data: {
+          runAsUser:
+            typeof updatedMeta?.runAsUser === "number"
+              ? (updatedMeta.runAsUser as number)
+              : null,
+          runAsGroup:
+            typeof updatedMeta?.runAsGroup === "number"
+              ? (updatedMeta.runAsGroup as number)
+              : null,
+          fsGroup:
+            typeof updatedMeta?.fsGroup === "number"
+              ? (updatedMeta.fsGroup as number)
+              : null,
+          readOnlyRootFilesystem:
+            typeof updatedMeta?.readOnlyRootFilesystem === "boolean"
+              ? (updatedMeta.readOnlyRootFilesystem as boolean)
+              : false,
+          runAsNonRoot:
+            typeof updatedMeta?.runAsNonRoot === "boolean"
+              ? (updatedMeta.runAsNonRoot as boolean)
+              : true,
+        },
+      }
+    },
+    {
+      body: t.Object({
+        runAsUser: t.Optional(t.Union([t.Number(), t.Null()])),
+        runAsGroup: t.Optional(t.Union([t.Number(), t.Null()])),
+        fsGroup: t.Optional(t.Union([t.Number(), t.Null()])),
+        readOnlyRootFilesystem: t.Optional(t.Union([t.Boolean(), t.Null()])),
+        runAsNonRoot: t.Optional(t.Union([t.Boolean(), t.Null()])),
       }),
     }
   )

@@ -8,6 +8,7 @@ import {
   Globe,
   HardDrive,
   Key,
+  ShieldCheck,
   WarningOctagon,
   Wrench,
 } from "@phosphor-icons/react"
@@ -22,9 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import {
-  DEPLOY_STATUS_LABELS,
-} from "@/modules/deploy/deploy.constants"
+import { DEPLOY_STATUS_LABELS } from "@/modules/deploy/deploy.constants"
 import type {
   DeploymentHistoryDTO,
   DeploymentStatusDTO,
@@ -55,6 +54,10 @@ import { TabDomains } from "@/modules/deploy/ui/operate/tab-domains"
 import { TabScaling } from "@/modules/deploy/ui/operate/tab-scaling"
 import { TabMounts } from "@/modules/deploy/ui/operate/tab-mounts"
 import { TabBuild } from "@/app/[lang]/console/app/settings/_components/tab-build"
+import {
+  TabSecurity,
+  type SecuritySettings,
+} from "@/app/[lang]/console/app/settings/_components/tab-security"
 import { TabDanger } from "@/app/[lang]/console/app/settings/_components/tab-danger"
 import { SecurityArtifactsTabSection } from "@/modules/deploy/ui/security-artifacts/security-artifacts-tab-section"
 
@@ -104,6 +107,7 @@ type AppSettingsClient = SettingsRouteClient & {
     env: SettingsRouteClient
     mounts: MountRouteClient
     build: SettingsRouteClient
+    security: SettingsRouteClient
   }
   domains: DomainRouteClient
   scaling: SettingsRouteClient
@@ -254,7 +258,16 @@ const readSettingsData = (payload: SettingsApiPayload<unknown>) => {
           framework: "",
         }
 
-  return { envVars, mounts, persistentStorage, build }
+  const security =
+    data &&
+    typeof data === "object" &&
+    "security" in data &&
+    data.security &&
+    typeof data.security === "object"
+      ? (data.security as SecuritySettings)
+      : null
+
+  return { envVars, mounts, persistentStorage, build, security }
 }
 const toPersistedMount = (mount: VolumeMount) => ({
   id: mount.id,
@@ -285,7 +298,7 @@ const toPersistedEnvVar = (row: EnvVar) => ({
 })
 
 export type SettingsSubTab =
-  "env" | "domains" | "scaling" | "mounts" | "build" | "danger"
+  "env" | "domains" | "scaling" | "mounts" | "build" | "security" | "danger"
 
 export const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
   "env",
@@ -293,6 +306,7 @@ export const VALID_SETTINGS_SUBTABS: readonly SettingsSubTab[] = [
   "scaling",
   "mounts",
   "build",
+  "security",
   "danger",
 ] as const
 
@@ -390,6 +404,8 @@ export default function PlatformInstanceWorkspacePage() {
     dockerfileDetected: false,
     framework: "",
   })
+  const [securitySettings, setSecuritySettings] =
+    useState<SecuritySettings | null>(null)
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsError, setSettingsError] = useState<string | null>(null)
 
@@ -681,7 +697,24 @@ export default function PlatformInstanceWorkspacePage() {
     if (settings.build) {
       setBuildSettings(settings.build)
     }
+    if (settings.security) {
+      setSecuritySettings(settings.security)
+    }
     setSettingsError(null)
+  }
+
+  const persistSecuritySettings = async (data: SecuritySettings) => {
+    const { data: payload } =
+      await getAppClient(slug).settings.security.patch(data)
+    if (!payload?.ok) {
+      throw new Error(payload?.message ?? "Unable to save security settings.")
+    }
+    toast.success(
+      locale === "id"
+        ? "Pengaturan keamanan berhasil disimpan!"
+        : "Security settings saved successfully!"
+    )
+    await refreshSettings()
   }
 
   const persistBuildSettings = async (data: {
@@ -979,16 +1012,29 @@ export default function PlatformInstanceWorkspacePage() {
                         />
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-medium">
-                            #{selectedDeployment.attempt} · {DEPLOY_STATUS_LABELS[selectedDeployment.status] ?? selectedDeployment.status} · {formatDuration(selectedDeployment.durationMs)}
+                            #{selectedDeployment.attempt} ·{" "}
+                            {DEPLOY_STATUS_LABELS[selectedDeployment.status] ??
+                              selectedDeployment.status}{" "}
+                            · {formatDuration(selectedDeployment.durationMs)}
                           </span>
                           <span className="block truncate text-[11px] text-muted-foreground">
-                            {selectedDeployment.commitSha?.slice(0, 7) ?? "head"} · {selectedDeployment.startedAt ? new Date(selectedDeployment.startedAt).toLocaleString(locale) : "—"}
+                            {selectedDeployment.commitSha?.slice(0, 7) ??
+                              "head"}{" "}
+                            ·{" "}
+                            {selectedDeployment.startedAt
+                              ? new Date(
+                                  selectedDeployment.startedAt
+                                ).toLocaleString(locale)
+                              : "—"}
                           </span>
                         </span>
                         <span className="text-xs text-muted-foreground">▾</span>
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="start" className="w-[min(520px,calc(100vw-2rem))] p-2">
+                    <PopoverContent
+                      align="start"
+                      className="w-[min(520px,calc(100vw-2rem))] p-2"
+                    >
                       <div className="mb-2 px-2 py-1 text-xs font-semibold">
                         {tDeployments.historyTitle}
                       </div>
@@ -997,7 +1043,9 @@ export default function PlatformInstanceWorkspacePage() {
                           <button
                             key={deploymentItem.id}
                             type="button"
-                            onClick={() => setSelectedDeploymentId(deploymentItem.id)}
+                            onClick={() =>
+                              setSelectedDeploymentId(deploymentItem.id)
+                            }
                             className={cn(
                               "flex w-full items-start gap-3 rounded-md border-l-2 px-3 py-2 text-left hover:bg-muted/60",
                               deploymentItem.id === selectedDeploymentId
@@ -1007,13 +1055,25 @@ export default function PlatformInstanceWorkspacePage() {
                           >
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center justify-between gap-3 text-xs font-medium">
-                                <span>#{deploymentItem.attempt} · {DEPLOY_STATUS_LABELS[deploymentItem.status] ?? deploymentItem.status} · {formatDuration(deploymentItem.durationMs)}</span>
+                                <span>
+                                  #{deploymentItem.attempt} ·{" "}
+                                  {DEPLOY_STATUS_LABELS[
+                                    deploymentItem.status
+                                  ] ?? deploymentItem.status}{" "}
+                                  · {formatDuration(deploymentItem.durationMs)}
+                                </span>
                                 <span className="shrink-0 text-[11px] text-muted-foreground">
-                                  {deploymentItem.startedAt ? new Date(deploymentItem.startedAt).toLocaleString(locale) : "—"}
+                                  {deploymentItem.startedAt
+                                    ? new Date(
+                                        deploymentItem.startedAt
+                                      ).toLocaleString(locale)
+                                    : "—"}
                                 </span>
                               </span>
                               <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                                {deploymentItem.failureReason ?? deploymentItem.commitSha?.slice(0, 7) ?? "head"}
+                                {deploymentItem.failureReason ??
+                                  deploymentItem.commitSha?.slice(0, 7) ??
+                                  "head"}
                               </span>
                             </span>
                           </button>
@@ -1021,10 +1081,45 @@ export default function PlatformInstanceWorkspacePage() {
                       </div>
                       {(historyMeta?.totalPages ?? 0) > 1 && (
                         <div className="mt-2 flex items-center justify-between border-t border-border px-2 pt-2 text-xs text-muted-foreground">
-                          <span>{tDeployments.pageOf.replace("{page}", String(historyMeta?.page ?? historyPage)).replace("{total}", String(historyMeta?.totalPages ?? 1))}</span>
+                          <span>
+                            {tDeployments.pageOf
+                              .replace(
+                                "{page}",
+                                String(historyMeta?.page ?? historyPage)
+                              )
+                              .replace(
+                                "{total}",
+                                String(historyMeta?.totalPages ?? 1)
+                              )}
+                          </span>
                           <div className="flex gap-1">
-                            <Button variant="outline" size="xs" disabled={historyPage <= 1} onClick={() => setHistoryPage((page) => Math.max(1, page - 1))}>{tDeployments.previous}</Button>
-                            <Button variant="outline" size="xs" disabled={historyPage >= (historyMeta?.totalPages ?? 1)} onClick={() => setHistoryPage((page) => Math.min(historyMeta?.totalPages ?? 1, page + 1))}>{tDeployments.next}</Button>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              disabled={historyPage <= 1}
+                              onClick={() =>
+                                setHistoryPage((page) => Math.max(1, page - 1))
+                              }
+                            >
+                              {tDeployments.previous}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              disabled={
+                                historyPage >= (historyMeta?.totalPages ?? 1)
+                              }
+                              onClick={() =>
+                                setHistoryPage((page) =>
+                                  Math.min(
+                                    historyMeta?.totalPages ?? 1,
+                                    page + 1
+                                  )
+                                )
+                              }
+                            >
+                              {tDeployments.next}
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -1213,6 +1308,31 @@ export default function PlatformInstanceWorkspacePage() {
                   <span className="flex-1">{tPage.buildDeployNav}</span>
                 </button>
 
+                <button
+                  type="button"
+                  onClick={() => handleSelectSubTab("security")}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors",
+                    settingsSubTab === "security"
+                      ? "bg-secondary font-semibold text-foreground"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                >
+                  <ShieldCheck
+                    size={16}
+                    className={
+                      settingsSubTab === "security"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }
+                  />
+                  <span className="flex-1">
+                    {locale === "id"
+                      ? "Keamanan & Izin"
+                      : "Security & Permissions"}
+                  </span>
+                </button>
+
                 <div className="my-1.5 border-t border-border" />
 
                 <button
@@ -1350,6 +1470,12 @@ export default function PlatformInstanceWorkspacePage() {
                         templateName={overview.stack.templateName}
                         templateId={overview.stack.templateId}
                         onSave={persistBuildSettings}
+                      />
+                    )}
+                    {settingsSubTab === "security" && (
+                      <TabSecurity
+                        security={securitySettings}
+                        onSave={persistSecuritySettings}
                       />
                     )}
                     {settingsSubTab === "danger" && (

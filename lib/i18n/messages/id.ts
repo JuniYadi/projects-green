@@ -8204,6 +8204,27 @@ export const idMessages: AppMessages = {
       "Build image kontainer langsung menggunakan Dockerfile repositori.",
     dockerfileBuildToggleAriaLabel: "Alihkan build Dockerfile",
   },
+  pConsoleSettingsTabSecurity: {
+    title: "Security Context & Izin Runtime",
+    description:
+      "Konfigurasikan izin eksekusi pod dan kontainer, ID pengguna/grup, dan kepemilikan volume penyimpanan.",
+    runAsUserLabel: "Run As User (UID)",
+    runAsUserHint:
+      "UID untuk eksekusi proses kontainer (kosongkan untuk default image).",
+    runAsGroupLabel: "Run As Group (GID)",
+    runAsGroupHint:
+      "GID untuk eksekusi proses kontainer (kosongkan untuk default image).",
+    fsGroupLabel: "Storage FSGroup",
+    fsGroupHint: "GID kepemilikan volume untuk disk persisten yang di-mount.",
+    readOnlyRootLabel: "Filesystem Root Read-Only",
+    readOnlyRootHint:
+      "Mount filesystem root kontainer sebagai read-only. Nonaktifkan untuk runtime seperti Hermes Agent atau Python yang memerlukan akses tulis.",
+    runAsNonRootLabel: "Eksekusi Ketat Non-Root",
+    runAsNonRootHint:
+      "Mewajibkan kontainer berjalan sebagai user non-root. Nonaktifkan hanya jika image kontainer Anda secara eksplisit menggunakan user root.",
+    save: "Simpan Pengaturan Keamanan",
+    saving: "Menyimpan…",
+  },
   pConsoleMarketplaceMyTemplatesPageClient: {
     breadcrumbMarketplace: "Marketplace",
     breadcrumbWorkspaceTemplates: "Template Workspace",

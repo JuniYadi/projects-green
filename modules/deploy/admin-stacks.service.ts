@@ -456,7 +456,28 @@ async function scaleReplicasViaGitOps(
       additionalContainerPorts: getStackAdditionalPorts(stack.metadataJson),
       reloader: true,
       logging: true,
-      runAsNonRoot: blueprintRuntime?.runAsNonRoot !== false,
+      runAsNonRoot:
+        typeof stackMeta?.runAsNonRoot === "boolean"
+          ? (stackMeta.runAsNonRoot as boolean)
+          : blueprintRuntime?.runAsNonRoot !== false,
+      runAsUser:
+        typeof stackMeta?.runAsUser === "number"
+          ? (stackMeta.runAsUser as number)
+          : typeof blueprintRuntime?.runAsUser === "number"
+            ? (blueprintRuntime.runAsUser as number)
+            : undefined,
+      runAsGroup:
+        typeof stackMeta?.runAsGroup === "number"
+          ? (stackMeta.runAsGroup as number)
+          : typeof blueprintRuntime?.runAsGroup === "number"
+            ? (blueprintRuntime.runAsGroup as number)
+            : undefined,
+      readOnlyRootFilesystem:
+        typeof stackMeta?.readOnlyRootFilesystem === "boolean"
+          ? (stackMeta.readOnlyRootFilesystem as boolean)
+          : typeof blueprintRuntime?.readOnlyRootFilesystem === "boolean"
+            ? (blueprintRuntime.readOnlyRootFilesystem as boolean)
+            : undefined,
       fsGroup: resolvedFsGroup,
       livenessProbe,
       readinessProbe,
