@@ -1,6 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import React from "react"
-import { OrganizationsTable } from "./organizations-table"
+import { render, waitFor } from "@testing-library/react"
 
 mock.module("next/navigation", () => ({
   useRouter: () => ({
@@ -56,9 +56,27 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
+const { OrganizationsTable } = await import("./organizations-table")
+
 describe("OrganizationsTable", () => {
-  it("renders without crashing", () => {
-    const element = React.createElement(OrganizationsTable)
-    expect(React.isValidElement(element)).toBe(true)
+  it("renders organizations and only a single dedicated search input without duplicate table search", async () => {
+    const view = render(<OrganizationsTable />)
+
+    // Wait until loaded and organization name appears
+    await waitFor(() => {
+      expect(view.getByText("Acme Corp")).toBeInTheDocument()
+    })
+
+    // Assert that only exactly ONE search input exists on the entire page/table
+    const searchInputs = view.getAllByRole("textbox")
+    expect(searchInputs).toHaveLength(1)
+    expect(searchInputs[0]).toHaveAttribute(
+      "placeholder",
+      "Search organizations..."
+    )
+
+    // Also assert directly against container query selector for input elements
+    const inputs = view.container.querySelectorAll("input")
+    expect(inputs).toHaveLength(1)
   })
 })
