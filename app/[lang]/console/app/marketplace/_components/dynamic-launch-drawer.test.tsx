@@ -14,6 +14,11 @@ mock.module("@/lib/billing-client", () => ({
           id: "plan_starter",
           code: "STARTER",
           name: "Starter",
+          resources: {
+            provisioning: {
+              storage: 10,
+            },
+          },
           offers: [
             {
               id: "off_1",
@@ -457,6 +462,57 @@ describe("DynamicLaunchDrawer", () => {
     expect(await view.findByText("Insufficient Plan Storage")).toBeDefined()
     expect(view.getByText(/requires at least 10 GB/i)).toBeDefined()
 
+    const deployButton = view.getByText("Confirm & Deploy Instantly")
+    expect((deployButton.closest("button") as HTMLButtonElement).disabled).toBe(
+      true
+    )
+
+    fireEvent.click(deployButton)
+    expect(handleDeploy).not.toHaveBeenCalled()
+  })
+
+  it("displays insufficient storage warning and disables deploy button when selected plan has zero storage and template requires storage", async () => {
+    const handleDeploy = mock(async () => {})
+    const { getCatalogProduct } = await import("@/lib/billing-client")
+    ;(getCatalogProduct as ReturnType<typeof mock>).mockResolvedValueOnce({
+      ok: true,
+      product: {
+        code: "APP_HOSTING",
+        name: "App Hosting",
+        plans: [
+          {
+            id: "plan_nostorage",
+            code: "CUSTOM",
+            name: "Zero Storage",
+            resources: {
+              provisioning: {
+                storage: 0,
+              },
+            },
+            offers: [
+              {
+                id: "off_zero",
+                billingPeriod: "MONTHLY",
+                periodPrice: "5000",
+                currency: "IDR",
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    const view = render(
+      <DynamicLaunchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        template={mockTemplate}
+        onDeploy={handleDeploy}
+        userBalance={100000}
+      />
+    )
+
+    expect(await view.findByText("Insufficient Plan Storage")).toBeDefined()
     const deployButton = view.getByText("Confirm & Deploy Instantly")
     expect((deployButton.closest("button") as HTMLButtonElement).disabled).toBe(
       true

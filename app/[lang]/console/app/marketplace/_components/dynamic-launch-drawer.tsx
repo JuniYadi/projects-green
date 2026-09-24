@@ -160,7 +160,7 @@ export function DynamicLaunchDrawer({
             res.product?.plans?.find((p) => {
               const resLimits = getPlanResources(p)
               return (
-                resLimits.storage === 0 || resLimits.storage >= requiredStorage
+                requiredStorage <= 0 || resLimits.storage >= requiredStorage
               )
             }) ?? res.product?.plans?.[0]
           if (validPlan) {
@@ -236,10 +236,7 @@ export function DynamicLaunchDrawer({
 
   const isStorageInsufficient = useMemo(() => {
     if (requiredStorage <= 0) return false
-    return (
-      selectedPlanResources.storage > 0 &&
-      selectedPlanResources.storage < requiredStorage
-    )
+    return selectedPlanResources.storage < requiredStorage
   }, [requiredStorage, selectedPlanResources.storage])
 
   // Plan price calculation for first month
@@ -562,9 +559,7 @@ export function DynamicLaunchDrawer({
                   const isSelected = selectedPlanCode === plan.code
                   const planRes = getPlanResources(plan)
                   const isPlanStorageShort =
-                    requiredStorage > 0 &&
-                    planRes.storage > 0 &&
-                    planRes.storage < requiredStorage
+                    requiredStorage > 0 && planRes.storage < requiredStorage
                   // Find offer matching the selected region or first monthly
                   const regionOffer =
                     plan.offers?.find(
