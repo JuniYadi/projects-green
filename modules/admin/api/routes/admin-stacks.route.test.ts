@@ -58,6 +58,7 @@ const mockStack: AdminStackDTO = {
   deploymentsCount: 3,
   terminatedAt: null,
   scheduledPurgeAt: null,
+  gitopsCleanedUp: false,
 }
 
 const mockListAdminStacks = mock(async () => ({
@@ -84,9 +85,9 @@ const mockDeployStack = mock(async () => ({
 }))
 
 const mockDeleteStack = mock(async () => ({
-  gitopsScaled: true,
-  argocdSynced: true,
-  scheduledPurgeAt: "2026-10-23T00:00:00.000Z",
+  gitopsDeleted: true,
+  argocdDeleted: true,
+  stockReleased: true,
 }))
 
 const mockPurgeStack = mock(async () => ({
@@ -449,36 +450,11 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(body.error).toBe("UNAUTHORIZED")
   })
 
-  it("terminates stack (soft-delete) and returns scheduledPurgeAt", async () => {
-    const res = await makeApp().handle(
-      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
-        method: "DELETE",
-      })
-    )
-
-    expect(res.status).toBe(200)
-    const body = (await res.json()) as {
-      ok: boolean
-      message: string
-      data: {
-        gitopsScaled: boolean
-        argocdSynced: boolean
-        scheduledPurgeAt: string
-      }
-    }
-    expect(body.ok).toBe(true)
-    expect(body.message).toContain("marked for termination")
-    expect(body.message).toContain("30 days")
-    expect(body.data.gitopsScaled).toBe(true)
-    expect(body.data.scheduledPurgeAt).toBe("2026-10-23T00:00:00.000Z")
-    expect(mockDeleteStack).toHaveBeenCalledWith("stack_1")
-  })
-
-  it("returns accurate flags when gitops scale fails", async () => {
+  it("terminates stack and returns deletion flags with database retained", async () => {
     mockDeleteStack.mockResolvedValueOnce({
-      gitopsScaled: false,
-      argocdSynced: false,
-      scheduledPurgeAt: "2026-10-23T00:00:00.000Z",
+      gitopsDeleted: true,
+      argocdDeleted: true,
+      stockReleased: true,
     })
 
     const res = await makeApp().handle(
@@ -490,10 +466,75 @@ describe("DELETE /admin/app-hosting/stacks/:id", () => {
     expect(res.status).toBe(200)
     const body = (await res.json()) as {
       ok: boolean
-      data: { gitopsScaled: boolean }
+      message: string
+      data: {
+        gitopsDeleted: boolean
+        argocdDeleted: boolean
+        stockReleased: boolean
+      }
     }
     expect(body.ok).toBe(true)
-    expect(body.data.gitopsScaled).toBe(false)
+    expect(body.message).toContain("terminated immediately in GitOps")
+    expect(body.message).toContain("Record retained in database")
+    expect(body.data.gitopsDeleted).toBe(true)
+    expect(body.data.argocdDeleted).toBe(true)
+    expect(mockDeleteStack).toHaveBeenCalledWith("stack_1")
+  })
+
+  it("returns accurate flags when gitops delete fails", async () => {
+    mockDeleteStack.mockResolvedValueOnce({
+      gitopsDeleted: false,
+      argocdDeleted: false,
+      stockReleased: true,
+    })
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data: { gitopsDeleted: boolean }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.gitopsDeleted).toBe(false)
+  })
+
+  it("returns 502 when gitops delete fails", async () => {
+    mockDeleteStack.mockRejectedValueOnce(
+      new Error("GITOPS_DELETE_FAILED: Failed to delete GitOps manifests")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(502)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("GITOPS_DELETE_FAILED")
+  })
+
+  it("returns 422 when gitops configuration is missing", async () => {
+    mockDeleteStack.mockRejectedValueOnce(
+      new Error("CONFIG_MISSING: GitOps configuration unavailable")
+    )
+
+    const res = await makeApp().handle(
+      new Request("http://localhost/admin/app-hosting/stacks/stack_1", {
+        method: "DELETE",
+      })
+    )
+
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { ok: boolean; error: string }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("CONFIG_MISSING")
   })
 
   it("returns 404 when stack not found", async () => {

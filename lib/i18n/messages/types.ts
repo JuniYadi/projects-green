@@ -4479,6 +4479,8 @@ export type AppMessages = {
         tableResources: string
         tableCreated: string
         tableAction: string
+        columns: string
+        toggleColumns: string
         replicas: string
         cpuSummary: string
         memorySummary: string
@@ -4513,6 +4515,8 @@ export type AppMessages = {
         terminateConfirm: string
         terminateSuccess: string
         terminateFailed: string
+        terminatePartial: string
+        retryCleanup: string
         terminateScheduledPurge: string
         statusTerminated: string
         purgedLabel: string

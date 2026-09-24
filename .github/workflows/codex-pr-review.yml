@@ -131,7 +131,7 @@ jobs:
       - name: Submit PR Review Verdict
         if: always() && steps.codex-review.outcome == 'success'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.CODEX_REVIEW_TOKEN || secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           PR_NUM: ${{ github.event.pull_request.number }}
         run: |
           if [ ! -s review_output.md ]; then
@@ -141,10 +141,16 @@ jobs:
 
           if grep -q "^VERDICT: REQUEST_CHANGES" review_output.md; then
             echo "Verdict: Request Changes"
-            gh pr review "$PR_NUM" --request-changes -F review_output.md || gh pr review "$PR_NUM" --comment -F review_output.md
+            if ! gh pr review "$PR_NUM" --request-changes -F review_output.md 2> /tmp/review_rc_err.log; then
+              echo "Note: Cannot submit formal request-changes review (token policy restriction). Posting as review comment."
+              gh pr review "$PR_NUM" --comment -F review_output.md
+            fi
           elif grep -q "^VERDICT: APPROVE" review_output.md; then
             echo "Verdict: Approve"
-            gh pr review "$PR_NUM" --approve -F review_output.md || gh pr review "$PR_NUM" --comment -F review_output.md
+            if ! gh pr review "$PR_NUM" --approve -F review_output.md 2> /tmp/review_approve_err.log; then
+              echo "Note: Cannot submit formal approval review (GitHub Actions approval policy restriction). Posting as review comment."
+              gh pr review "$PR_NUM" --comment -F review_output.md
+            fi
           else
             echo "Verdict: Comment (fallback)"
             gh pr review "$PR_NUM" --comment -F review_output.md

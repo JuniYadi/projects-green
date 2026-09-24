@@ -56,6 +56,7 @@ export type AdminStackDTO = {
   deploymentsCount: number
   terminatedAt: string | null
   scheduledPurgeAt: string | null
+  gitopsCleanedUp: boolean
 }
 
 export type AdminStacksListQuery = {
@@ -183,6 +184,17 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
       scheduledPurgeAt: s.scheduledPurgeAt
         ? s.scheduledPurgeAt.toISOString()
         : null,
+      gitopsCleanedUp: Boolean(
+        typeof s.metadataJson === "object" &&
+        s.metadataJson !== null &&
+        (s.metadataJson as Record<string, unknown>).gitopsDeleted &&
+        Boolean(
+          (s.metadataJson as Record<string, unknown>).argocdDeleted ?? true
+        ) &&
+        Boolean(
+          (s.metadataJson as Record<string, unknown>).stockReleased ?? true
+        )
+      ),
     }
   })
 
@@ -888,21 +900,71 @@ export async function adminDeployStack(stackId: string): Promise<{
   }
 }
 
-// ─── Terminate (soft-delete: scale to 0, schedule purge in 30 days) ──────────
+async function deleteGitOpsStackManifests(params: {
+  gitops: GitOpsRepositoryService
+  repo: string
+  serviceDir: string
+  helmPath: string
+  valuePath: string
+  argocdProjectPath: string
+  shouldDeleteArgoProject: boolean
+  commitMessage: string
+}): Promise<boolean> {
+  const {
+    gitops,
+    repo,
+    serviceDir,
+    helmPath,
+    valuePath,
+    argocdProjectPath,
+    shouldDeleteArgoProject,
+    commitMessage,
+  } = params
+
+  // 1. Enumerate tracked files under serviceDir using GitHub recursive tree API
+  const trackedFiles = await gitops.listTrackedFiles(repo, serviceDir)
+
+  // 2. Build set of specific file paths (blobs) to delete.
+  // Never pass directory paths (like serviceDir) to Git Trees API as it operates on blob paths.
+  const filesToDelete = new Set<string>(trackedFiles)
+  filesToDelete.add(helmPath)
+  filesToDelete.add(valuePath)
+
+  if (shouldDeleteArgoProject) {
+    filesToDelete.add(argocdProjectPath)
+  }
+
+  // 3. Commit file deletions if any files to delete
+  if (filesToDelete.size > 0) {
+    await gitops.commitFiles(repo, commitMessage, [], Array.from(filesToDelete))
+  }
+
+  // 4. Verify that no manifests remain under serviceDir
+  const remainingFiles = await gitops.listTrackedFiles(repo, serviceDir)
+  if (remainingFiles.length > 0) {
+    throw new Error(
+      `Manifests still exist under ${serviceDir}: ${remainingFiles.join(", ")}`
+    )
+  }
+
+  return true
+}
+
+// ─── Terminate (immediate gitops delete, keep record in DB) ───────────────────
 
 /**
- * Admin terminate — soft-delete with 30-day purge window:
- *   1. Scales deployment to 0 via GitOps (same as suspend, different commit msg)
- *   2. Triggers ArgoCD sync
- *   3. Sets status=TERMINATED, terminatedAt=now, scheduledPurgeAt=now+30d in DB
+ * Admin terminate — deletes GitOps resources immediately, but keeps DB record:
+ *   1. Deletes GitOps manifests (serviceDir, helmPath, valuePath, argocdProjectPath)
+ *   2. Triggers ArgoCD cascade delete
+ *   3. Releases managed DB stock (Vault KV cleanup)
+ *   4. Sets status=TERMINATED, terminatedAt=now, scheduledPurgeAt=null in DB
  *
- * Does NOT delete GitOps manifests, DB record, or release managed stock.
- * Those happen in adminPurgeTerminatedStack (cron job at day 30).
+ * Keeps ApplicationStack record and its history in database for audit and tracking.
  */
 export async function adminDeleteStack(stackId: string): Promise<{
-  gitopsScaled: boolean
-  argocdSynced: boolean
-  scheduledPurgeAt: string
+  gitopsDeleted: boolean
+  argocdDeleted: boolean
+  stockReleased: boolean
 }> {
   const stack = await prisma.applicationStack.findUnique({
     where: { id: stackId },
@@ -913,52 +975,124 @@ export async function adminDeleteStack(stackId: string): Promise<{
   })
   if (!stack) throw new Error(`NOT_FOUND: Stack ${stackId} not found`)
 
-  if (stack.status === StackStatus.TERMINATED) {
+  const currentMeta =
+    typeof stack.metadataJson === "object" && stack.metadataJson !== null
+      ? (stack.metadataJson as Record<string, unknown>)
+      : {}
+
+  const isFullyCleanedUp =
+    Boolean(currentMeta.gitopsDeleted) &&
+    Boolean(currentMeta.argocdDeleted ?? true) &&
+    Boolean(currentMeta.stockReleased ?? true)
+
+  if (stack.status === StackStatus.TERMINATED && isFullyCleanedUp) {
     throw new Error(
-      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated`
+      `ALREADY_TERMINATED: Stack ${stack.slug} is already terminated and cleaned up`
     )
   }
 
   const { gitopsConfig, argocdConfig } =
     await resolveGitOpsAndArgoConfig(stackId)
 
-  const purgeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-
-  let gitopsScaled = false
-  let argocdSynced = false
-
-  if (gitopsConfig) {
-    const result = await scaleToZeroViaGitOps(
-      stack,
-      gitopsConfig,
-      argocdConfig,
-      `Terminate ${stack.slug} (scale to 0, purge scheduled for ${purgeAt.toISOString()})`
+  if (!gitopsConfig && !currentMeta.gitopsDeleted) {
+    throw new Error(
+      `CONFIG_MISSING: GitOps configuration unavailable for stack ${stack.slug}. Configure cluster GitOps integration before terminating.`
     )
-    gitopsScaled = result.gitopsScaled
-    argocdSynced = result.argocdSynced
   }
 
-  // ALWAYS update the DB regardless of gitops outcome
-  const currentMeta =
-    typeof stack.metadataJson === "object" && stack.metadataJson !== null
-      ? (stack.metadataJson as Record<string, unknown>)
-      : {}
+  let gitopsDeleted = Boolean(currentMeta.gitopsDeleted)
+  let argocdDeleted = Boolean(currentMeta.argocdDeleted ?? !argocdConfig)
+  let stockReleased = Boolean(currentMeta.stockReleased)
+
+  // 1. Delete GitOps manifests immediately if not already deleted
+  if (!gitopsDeleted && gitopsConfig) {
+    try {
+      const { serviceDir, helmPath, valuePath, argocdProjectPath } =
+        resolveGitOpsManifestPaths({
+          slug: stack.slug,
+          organizationId: stack.organizationId,
+          basePath: gitopsConfig.basePath,
+        })
+
+      const gitops = new GitOpsRepositoryService({
+        pat: gitopsConfig.pat,
+        branch: gitopsConfig.branch,
+      })
+
+      const otherActiveStacks = stack.organizationId
+        ? await prisma.applicationStack.count({
+            where: {
+              id: { not: stackId },
+              organizationId: stack.organizationId,
+              status: { not: StackStatus.TERMINATED },
+            },
+          })
+        : 0
+
+      await deleteGitOpsStackManifests({
+        gitops,
+        repo: gitopsConfig.repo,
+        serviceDir,
+        helmPath,
+        valuePath,
+        argocdProjectPath,
+        shouldDeleteArgoProject: otherActiveStacks === 0,
+        commitMessage: `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
+      })
+
+      gitopsDeleted = true
+    } catch (err) {
+      console.error(
+        `[admin-stacks] gitops delete failed during terminate for ${stack.slug}:`,
+        err
+      )
+      throw new Error(
+        `GITOPS_DELETE_FAILED: Failed to delete GitOps manifests for ${stack.slug}: ${err instanceof Error ? err.message : String(err)}`
+      )
+    }
+  }
+
+  // 2. Delete ArgoCD Application if not already deleted
+  if (argocdConfig && !argocdDeleted) {
+    argocdDeleted = await deleteArgoCdApplication(argocdConfig, stack.slug)
+  }
+
+  // 3. Release managed DB stock if not already released
+  if (!stockReleased) {
+    await releaseManagedStock(stackId)
+      .then(() => {
+        stockReleased = true
+      })
+      .catch((err) => {
+        console.warn(
+          `[admin-stacks] releaseManagedStock failed for ${stackId}:`,
+          err
+        )
+      })
+  }
+
+  // 4. Update the DB: mark as TERMINATED, clear scheduledPurgeAt, KEEP record in DB
   await prisma.applicationStack.update({
     where: { id: stackId },
     data: {
       status: StackStatus.TERMINATED,
-      terminatedAt: new Date(),
-      scheduledPurgeAt: purgeAt,
+      terminatedAt: stack.terminatedAt ?? new Date(),
+      scheduledPurgeAt: null,
       metadataJson: {
         ...currentMeta,
         terminated: true,
-        terminatedAt: new Date().toISOString(),
-        scheduledPurgeAt: purgeAt.toISOString(),
+        terminatedAt:
+          typeof currentMeta.terminatedAt === "string"
+            ? currentMeta.terminatedAt
+            : new Date().toISOString(),
+        gitopsDeleted,
+        argocdDeleted,
+        stockReleased,
       },
     },
   })
 
-  return { gitopsScaled, argocdSynced, scheduledPurgeAt: purgeAt.toISOString() }
+  return { gitopsDeleted, argocdDeleted, stockReleased }
 }
 
 // ─── Purge (hard-delete: called by cron at day 30) ───────────────────────────
@@ -1008,13 +1142,25 @@ export async function adminPurgeTerminatedStack(stackId: string): Promise<{
         branch: gitopsConfig.branch,
       })
 
-      // Delete service directory tree + helm manifest + argocd application file
-      await gitops.commitFiles(
-        gitopsConfig.repo,
-        `Purge ${stack.name} (${stack.slug}) — 30-day retention expired`,
-        [],
-        [serviceDir, helmPath, valuePath, argocdProjectPath]
-      )
+      const otherStacks = stack.organizationId
+        ? await prisma.applicationStack.count({
+            where: {
+              id: { not: stackId },
+              organizationId: stack.organizationId,
+            },
+          })
+        : 0
+
+      await deleteGitOpsStackManifests({
+        gitops,
+        repo: gitopsConfig.repo,
+        serviceDir,
+        helmPath,
+        valuePath,
+        argocdProjectPath,
+        shouldDeleteArgoProject: otherStacks === 0,
+        commitMessage: `Purge ${stack.name} (${stack.slug}) — 30-day retention expired`,
+      })
 
       gitopsDeleted = true
     } catch (err) {

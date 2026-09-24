@@ -1,7 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+} from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -13,6 +19,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,13 +41,17 @@ import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
+import { usePersistedColumnVisibility } from "@/hooks/use-persisted-column-visibility"
 import type { AdminStackDTO } from "@/modules/deploy/admin-stacks.service"
 import {
   ArrowsClockwise,
+  CaretDown,
+  Globe,
   MagnifyingGlass,
   PauseCircle,
-  PlayCircle,
   Play,
+  PlayCircle,
+  SlidersHorizontal,
   Trash,
 } from "@phosphor-icons/react"
 
@@ -45,7 +63,7 @@ const STATUS_TONES: Record<string, string> = {
   DEPLOYING: "border-sky-500/20 bg-sky-500/10 text-sky-500",
   QUEUED: "border-amber-500/20 bg-amber-500/10 text-amber-500",
   STOPPED: "border-border bg-muted/40 text-muted-foreground",
-  TERMINATED: "border-border bg-muted/40 text-muted-foreground",
+  TERMINATED: "border-rose-500/20 bg-rose-500/10 text-rose-400",
 }
 
 const STATUS_LABELS = (
@@ -108,6 +126,11 @@ export default function AdminStacksPage() {
   const [deployTarget, setDeployTarget] = useState<AdminStackDTO | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminStackDTO | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  const [columnVisibility, setColumnVisibility] = usePersistedColumnVisibility(
+    "portal-admin-stacks-table",
+    {}
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -195,7 +218,6 @@ export default function AdminStacksPage() {
       if (!res || !res.ok) {
         throw new Error(messages.suspendFailed)
       }
-      // Show warning toast if gitops push failed (runtime may not have scaled down)
       if (res.data && !res.data.gitopsPushed) {
         toast.warning(
           messages.suspendPartial.replace("{stack}", suspendTarget.slug)
@@ -280,9 +302,21 @@ export default function AdminStacksPage() {
       if (!res || !res.ok) {
         throw new Error(messages.terminateFailed)
       }
-      toast.success(
-        messages.terminateScheduledPurge.replace("{stack}", deleteTarget.slug)
-      )
+      const result = res.data
+      if (
+        result &&
+        (!result.gitopsDeleted ||
+          !result.argocdDeleted ||
+          !result.stockReleased)
+      ) {
+        toast.warning(
+          messages.terminatePartial.replace("{stack}", deleteTarget.slug)
+        )
+      } else {
+        toast.success(
+          messages.terminateSuccess.replace("{stack}", deleteTarget.slug)
+        )
+      }
       setReloadTick((v) => v + 1)
       setDeleteTarget(null)
     } catch (err) {
@@ -292,7 +326,294 @@ export default function AdminStacksPage() {
     }
   }
 
-  const nowMs = new Date().getTime()
+  const columns = useMemo<ColumnDef<AdminStackDTO>[]>(
+    () => [
+      {
+        id: "organization",
+        accessorFn: (row) => row.organizationName ?? row.organizationId,
+        header: messages.tableOrganization,
+        enableHiding: true,
+        cell: ({ row }) => {
+          const stack = row.original
+          return (
+            <div className="text-xs">
+              {stack.organizationName ? (
+                <div>
+                  <div
+                    className="max-w-[170px] truncate font-medium text-foreground"
+                    title={stack.organizationName}
+                  >
+                    {stack.organizationName}
+                  </div>
+                  <div
+                    className="max-w-[140px] truncate font-mono text-[10px] text-muted-foreground"
+                    title={stack.organizationId}
+                  >
+                    {stack.organizationId.length > 16
+                      ? `${stack.organizationId.slice(0, 14)}…`
+                      : stack.organizationId}
+                  </div>
+                </div>
+              ) : (
+                <span
+                  className="font-mono text-muted-foreground"
+                  title={stack.organizationId}
+                >
+                  {stack.organizationId.length > 16
+                    ? `${stack.organizationId.slice(0, 14)}…`
+                    : stack.organizationId}
+                </span>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "platform",
+        accessorFn: (row) => row.name,
+        header: messages.tableStack,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const stack = row.original
+          const domain = stack.customDomain ?? stack.subdomain
+          const isNameDifferent = stack.slug !== stack.name
+
+          return (
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-foreground">
+                  {stack.name}
+                </span>
+                {stack.framework && (
+                  <Badge
+                    variant="secondary"
+                    className="h-4.5 px-1.5 text-[10px] font-medium"
+                  >
+                    {stack.framework}
+                  </Badge>
+                )}
+              </div>
+              {isNameDifferent && (
+                <div className="font-mono text-[11px] text-muted-foreground">
+                  {stack.slug}
+                </div>
+              )}
+              {domain && (
+                <div className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+                  <Globe size={11} className="shrink-0" />
+                  <span className="max-w-[220px] truncate">{domain}</span>
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "status",
+        accessorKey: "status",
+        header: messages.tableStatus,
+        enableHiding: true,
+        cell: ({ row }) => {
+          const stack = row.original
+          return (
+            <div>
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-semibold uppercase ${STATUS_TONES[stack.status] ?? ""}`}
+              >
+                {stack.status}
+              </Badge>
+              {stack.suspended && (
+                <div className="mt-0.5 text-[10px] font-semibold text-amber-500">
+                  {messages.suspendedLabel}
+                </div>
+              )}
+              {stack.billingState && stack.billingState !== "ACTIVE" && (
+                <div className="mt-0.5 text-[10px] text-amber-500">
+                  {stack.billingState}
+                </div>
+              )}
+            </div>
+          )
+        },
+      },
+      {
+        id: "cluster",
+        accessorFn: (row) => row.clusterName ?? row.clusterCode,
+        header: messages.tableCluster,
+        enableHiding: true,
+        cell: ({ row }) => {
+          const stack = row.original
+          if (!stack.clusterName) {
+            return <span className="text-muted-foreground">—</span>
+          }
+          return (
+            <div className="text-xs">
+              <div className="font-medium text-foreground">
+                {stack.clusterName}
+              </div>
+              <div className="font-mono text-[10px] text-muted-foreground">
+                {stack.clusterCode}
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        id: "resources",
+        header: messages.tableResources,
+        enableHiding: true,
+        cell: ({ row }) => {
+          const stack = row.original
+          const hasSpecs = stack.cpu || stack.memory || stack.replicas !== null
+          if (!hasSpecs) {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+
+          return (
+            <div className="space-y-0.5 text-xs text-muted-foreground">
+              {stack.replicas !== null && (
+                <div>
+                  <span className="font-mono font-medium text-foreground">
+                    {stack.replicas}
+                  </span>
+                  <span className="ml-1 text-[10px]">{messages.replicas}</span>
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                {stack.cpu && <span>{stack.cpu}m CPU</span>}
+                {stack.cpu && stack.memory && <span>•</span>}
+                {stack.memory && <span>{stack.memory}Mi RAM</span>}
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        id: "createdAt",
+        accessorKey: "createdAt",
+        header: messages.tableCreated,
+        enableHiding: true,
+        cell: ({ row }) => (
+          <span className="text-xs text-muted-foreground">
+            {new Date(row.original.createdAt).toLocaleString(locale, {
+              dateStyle: "short",
+              timeStyle: "short",
+            })}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: () => <div className="text-right">{messages.tableAction}</div>,
+        enableHiding: false,
+        cell: ({ row }) => {
+          const stack = row.original
+          const isTerminated = stack.status === "TERMINATED"
+
+          if (isTerminated) {
+            if (!stack.gitopsCleanedUp) {
+              return (
+                <div className="flex items-center justify-end gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={actionLoading === stack.id}
+                    onClick={() => setDeleteTarget(stack)}
+                    className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
+                  >
+                    <Trash className="size-3.5" />
+                    {messages.retryCleanup}
+                  </Button>
+                </div>
+              )
+            }
+            return (
+              <div className="text-right">
+                <span className="text-xs text-muted-foreground">
+                  {messages.statusTerminated}
+                </span>
+              </div>
+            )
+          }
+
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              {stack.suspended || stack.status === "STOPPED" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actionLoading === stack.id}
+                  onClick={() => setResumeTarget(stack)}
+                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                >
+                  <PlayCircle className="size-3.5" />
+                  {messages.resume}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actionLoading === stack.id}
+                  onClick={() => setSuspendTarget(stack)}
+                  className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700"
+                >
+                  <PauseCircle className="size-3.5" />
+                  {messages.suspend}
+                </Button>
+              )}
+
+              {(stack.status === "IDLE" || stack.status === "FAILED") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actionLoading === stack.id}
+                  onClick={() => setDeployTarget(stack)}
+                  className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
+                >
+                  <Play className="size-3.5" />
+                  {messages.deploy}
+                </Button>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={actionLoading === stack.id}
+                onClick={() => setDeleteTarget(stack)}
+                className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
+              >
+                <Trash className="size-3.5" />
+                {messages.terminate}
+              </Button>
+            </div>
+          )
+        },
+      },
+    ],
+    [locale, messages, actionLoading]
+  )
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const table = useReactTable({
+    data: stacks,
+    columns,
+    state: {
+      columnVisibility,
+    },
+    onColumnVisibilityChange: setColumnVisibility,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
+  const COLUMN_LABELS: Record<string, string> = {
+    organization: messages.tableOrganization,
+    platform: messages.tableStack,
+    status: messages.tableStatus,
+    cluster: messages.tableCluster,
+    resources: messages.tableResources,
+    createdAt: messages.tableCreated,
+    actions: messages.tableAction,
+  }
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -303,18 +624,50 @@ export default function AdminStacksPage() {
             {messages.description}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          disabled={loading}
-        >
-          <ArrowsClockwise
-            size={14}
-            className={`mr-1 ${loading ? "animate-spin" : ""}`}
-          />
-          {messages.refresh}
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Column Show/Hide Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                <SlidersHorizontal size={14} />
+                <span>{messages.columns}</span>
+                <CaretDown size={12} className="opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>{messages.toggleColumns}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {table
+                .getAllColumns()
+                .filter((col) => col.getCanHide())
+                .map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.id}
+                    checked={col.getIsVisible()}
+                    onCheckedChange={(checked) =>
+                      col.toggleVisibility(Boolean(checked))
+                    }
+                  >
+                    {COLUMN_LABELS[col.id] ?? col.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={loading}
+            className="h-8"
+          >
+            <ArrowsClockwise
+              size={14}
+              className={`mr-1 ${loading ? "animate-spin" : ""}`}
+            />
+            {messages.refresh}
+          </Button>
+        </div>
       </header>
 
       {/* Filters */}
@@ -411,23 +764,26 @@ export default function AdminStacksPage() {
       <div className="rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>{messages.tableOrganization}</TableHead>
-              <TableHead>{messages.tableStack}</TableHead>
-              <TableHead>{messages.tableStatus}</TableHead>
-              <TableHead>{messages.tableCluster}</TableHead>
-              <TableHead>{messages.tableResources}</TableHead>
-              <TableHead>{messages.tableCreated}</TableHead>
-              <TableHead className="text-right">
-                {messages.tableAction}
-              </TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={table.getVisibleLeafColumns().length}
                   className="h-32 text-center text-sm text-muted-foreground"
                 >
                   {messages.loading}
@@ -436,215 +792,32 @@ export default function AdminStacksPage() {
             ) : error ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={table.getVisibleLeafColumns().length}
                   className="h-32 text-center text-sm text-rose-500"
                 >
                   {error}
                 </TableCell>
               </TableRow>
-            ) : stacks.length === 0 ? (
+            ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={table.getVisibleLeafColumns().length}
                   className="h-32 text-center text-sm text-muted-foreground"
                 >
                   {messages.empty}
                 </TableCell>
               </TableRow>
             ) : (
-              stacks.map((stack) => (
-                <TableRow key={stack.id}>
-                  <TableCell className="text-xs">
-                    {stack.organizationName ? (
-                      <div>
-                        <div
-                          className="max-w-[160px] truncate font-medium text-foreground"
-                          title={stack.organizationName}
-                        >
-                          {stack.organizationName}
-                        </div>
-                        <div
-                          className="max-w-[140px] truncate font-mono text-[10px] text-muted-foreground"
-                          title={stack.organizationId}
-                        >
-                          {stack.organizationId.length > 16
-                            ? `${stack.organizationId.slice(0, 14)}…`
-                            : stack.organizationId}
-                        </div>
-                      </div>
-                    ) : (
-                      <span
-                        className="font-mono text-muted-foreground"
-                        title={stack.organizationId}
-                      >
-                        {stack.organizationId.length > 16
-                          ? `${stack.organizationId.slice(0, 14)}…`
-                          : stack.organizationId}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm font-semibold text-foreground">
-                      {stack.name}
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-mono text-[11px]">
-                        {stack.slug}
-                      </span>
-                      {stack.framework && (
-                        <span className="rounded bg-muted/40 px-1 text-[10px]">
-                          {stack.framework}
-                        </span>
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
                       )}
-                    </div>
-                    {(stack.customDomain || stack.subdomain) && (
-                      <div className="mt-0.5 max-w-[200px] truncate font-mono text-[10px] text-muted-foreground">
-                        {stack.customDomain ?? `${stack.subdomain}`}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={`text-[10px] font-semibold uppercase ${STATUS_TONES[stack.status] ?? ""}`}
-                    >
-                      {stack.status}
-                    </Badge>
-                    {stack.suspended && (
-                      <div className="mt-0.5 text-[10px] font-semibold text-amber-500">
-                        {messages.suspendedLabel}
-                      </div>
-                    )}
-                    {stack.status === "TERMINATED" &&
-                      stack.scheduledPurgeAt && (
-                        <div className="mt-0.5 text-[10px] font-semibold text-rose-400">
-                          {messages.purgedLabel.replace(
-                            "{days}",
-                            String(
-                              Math.max(
-                                0,
-                                Math.ceil(
-                                  (new Date(stack.scheduledPurgeAt).getTime() -
-                                    nowMs) /
-                                    86400000
-                                )
-                              )
-                            )
-                          )}
-                        </div>
-                      )}
-                    {stack.billingState && stack.billingState !== "ACTIVE" && (
-                      <div className="mt-0.5 text-[10px] text-amber-500">
-                        {stack.billingState}
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {stack.clusterName ? (
-                      <div>
-                        <div className="font-medium text-foreground">
-                          {stack.clusterName}
-                        </div>
-                        <div className="font-mono text-[10px]">
-                          {stack.clusterCode}
-                        </div>
-                      </div>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {stack.cpu || stack.memory || stack.replicas ? (
-                      <div className="space-y-0.5">
-                        {stack.replicas !== null && (
-                          <div>
-                            <span className="font-mono">{stack.replicas}</span>
-                            <span className="ml-1 text-[10px]">
-                              {messages.replicas}
-                            </span>
-                          </div>
-                        )}
-                        {stack.cpu && (
-                          <div className="font-mono text-[11px]">
-                            {messages.cpuSummary.replace(
-                              "{value}",
-                              String(stack.cpu)
-                            )}
-                          </div>
-                        )}
-                        {stack.memory && (
-                          <div className="font-mono text-[11px]">
-                            {messages.memorySummary.replace(
-                              "{value}",
-                              String(stack.memory)
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span>—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(stack.createdAt).toLocaleString(locale, {
-                      dateStyle: "short",
-                      timeStyle: "short",
-                    })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {stack.status !== "TERMINATED" &&
-                        (stack.suspended || stack.status === "STOPPED" ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === stack.id}
-                            onClick={() => setResumeTarget(stack)}
-                            className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                          >
-                            <PlayCircle className="size-3.5" />
-                            {messages.resume}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === stack.id}
-                            onClick={() => setSuspendTarget(stack)}
-                            className="h-7 gap-1 px-2 text-xs text-amber-600 hover:text-amber-700"
-                          >
-                            <PauseCircle className="size-3.5" />
-                            {messages.suspend}
-                          </Button>
-                        ))}
-                      {stack.status !== "TERMINATED" &&
-                        (stack.status === "IDLE" ||
-                          stack.status === "FAILED") && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === stack.id}
-                            onClick={() => setDeployTarget(stack)}
-                            className="h-7 gap-1 px-2 text-xs text-emerald-600 hover:text-emerald-700"
-                          >
-                            <Play className="size-3.5" />
-                            {messages.deploy}
-                          </Button>
-                        )}
-                      {stack.status !== "TERMINATED" && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={actionLoading === stack.id}
-                          onClick={() => setDeleteTarget(stack)}
-                          className="h-7 gap-1 px-2 text-xs text-rose-600 hover:text-rose-700"
-                        >
-                          <Trash className="size-3.5" />
-                          {messages.terminate}
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
             )}
