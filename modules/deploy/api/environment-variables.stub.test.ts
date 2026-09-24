@@ -121,14 +121,12 @@ describe("environment variable stub validation", () => {
     expect(result.ok).toBe(true)
     expect(listEnvironmentVariables("staging")).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ key: "APP_ENV", value: "production" }),
-        expect.objectContaining({ key: "APP_DEBUG", value: "false" }),
+        expect.objectContaining({ key: "APP_ENV", value: "" }),
+        expect.objectContaining({ key: "APP_DEBUG", value: "" }),
       ])
     )
     expect(
-      listEnvironmentVariables("staging").filter(
-        (row) => row.key === "APP_ENV"
-      )
+      listEnvironmentVariables("staging").filter((row) => row.key === "APP_ENV")
     ).toHaveLength(1)
   })
 })

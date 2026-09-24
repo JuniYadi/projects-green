@@ -208,9 +208,8 @@ describe("appSettingsRoutes", () => {
             key: "PUBLIC_URL",
             type: "plain",
             scope: "runtime",
-            masked: false,
-            isStoredSecret: false,
-            value: "https://example.test",
+            masked: true,
+            isStoredSecret: true,
           },
           {
             id: "DATABASE_PASSWORD",
@@ -266,8 +265,9 @@ describe("appSettingsRoutes", () => {
             {
               key: "DATABASE_PASSWORD",
               value: "",
-              type: "secret",
+              type: "secret_ref",
               scope: "runtime",
+              source: "vault",
               masked: true,
               isStoredSecret: true,
             },
@@ -322,14 +322,14 @@ describe("appSettingsRoutes", () => {
       expect.objectContaining({
         key: "QUEUE_CONNECTION",
         type: "plain",
-        isStoredSecret: false,
-        value: "redis",
+        isStoredSecret: true,
+        masked: true,
       }),
       expect.objectContaining({
         key: "CONTAINER_ROLE",
         type: "plain",
-        isStoredSecret: false,
-        value: "worker",
+        isStoredSecret: true,
+        masked: true,
       }),
     ])
 
@@ -369,68 +369,57 @@ describe("appSettingsRoutes", () => {
     )
   })
 
-  it("persists and returns plain values without writing them to Vault", async () => {
+  it("writes all incoming env values to Vault in vault-native mode", async () => {
     const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
       environmentId: "prod",
       variables: [
         {
           key: "APP_ENV",
           value: "production",
-          type: "plain",
+          type: "secret_ref",
           scope: "runtime",
         },
       ],
     })
 
     expect(response.status).toBe(200)
-    expect(mockVaultWriteSecrets).not.toHaveBeenCalled()
+    expect(mockVaultWriteSecrets).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      stackId: "stack-1",
+      environment: "prod",
+      secrets: {
+        APP_ENV: "production",
+      },
+    })
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
           envVarsJson: [
             expect.objectContaining({
               key: "APP_ENV",
-              value: "production",
-              type: "plain",
-              masked: false,
-              isStoredSecret: false,
+              value: "",
+              type: "secret_ref",
+              masked: true,
+              isStoredSecret: true,
             }),
           ],
         },
       })
     )
-    const body = await response.json()
-    expect(body.data.envVars[0]).toMatchObject({
-      key: "APP_ENV",
-      value: "production",
-      type: "plain",
-      masked: false,
-      isStoredSecret: false,
-    })
   })
 
-  it("lets an explicit plain type recover a legacy masked row", async () => {
+  it("ensures updated variables are written to Vault and stored as secret_ref", async () => {
     stack.envVarsJson = [
       {
         key: "APP_DEBUG",
         value: "false",
-        type: "plain",
+        type: "secret_ref",
         masked: true,
         isStoredSecret: true,
         source: "vault",
         vaultPath: "legacy/path",
       },
     ]
-
-    const getResponse = await request("/deploy/apps/demo/settings")
-    const getBody = await getResponse.json()
-    expect(getBody.data.envVars[0]).toMatchObject({
-      key: "APP_DEBUG",
-      value: "false",
-      type: "plain",
-      masked: false,
-      isStoredSecret: false,
-    })
 
     const patchResponse = await json(
       "/deploy/apps/demo/settings/env",
@@ -440,26 +429,69 @@ describe("appSettingsRoutes", () => {
         variables: [
           {
             key: "APP_DEBUG",
-            value: "false",
-            type: "plain",
+            value: "true",
+            type: "secret_ref",
           },
         ],
       }
     )
     expect(patchResponse.status).toBe(200)
-    expect(mockVaultWriteSecrets).not.toHaveBeenCalled()
+    expect(mockVaultWriteSecrets).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      stackId: "stack-1",
+      environment: "prod",
+      secrets: {
+        APP_DEBUG: "true",
+      },
+    })
+  })
+
+  it("preserves prior vaultPath, vaultKey, version, and handles secret_shared_ref without vault write", async () => {
+    stack.envVarsJson = [
+      {
+        key: "EXISTING_VAR",
+        type: "secret_ref",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "EXISTING_VAR",
+        version: 5,
+        masked: true,
+        isStoredSecret: true,
+      },
+    ]
+
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "prod",
+      variables: [
+        {
+          key: "EXISTING_VAR",
+          value: "",
+          type: "secret_ref",
+        },
+        {
+          key: "SHARED_VAR",
+          value: "",
+          type: "secret_shared_ref",
+          serviceCredentialId: "cred-1",
+        },
+      ],
+    })
+
+    expect(response.status).toBe(200)
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
           envVarsJson: [
             expect.objectContaining({
-              key: "APP_DEBUG",
-              value: "false",
-              type: "plain",
-              masked: false,
-              isStoredSecret: false,
-              source: undefined,
-              vaultPath: undefined,
+              key: "EXISTING_VAR",
+              type: "secret_ref",
+              vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+              vaultKey: "EXISTING_VAR",
+              version: 5,
+            }),
+            expect.objectContaining({
+              key: "SHARED_VAR",
+              type: "secret_shared_ref",
+              serviceCredentialId: "cred-1",
             }),
           ],
         },
@@ -710,11 +742,10 @@ describe("appSettingsRoutes", () => {
         {
           id: "PUBLIC_URL",
           key: "PUBLIC_URL",
-          type: "plain",
+          type: "secret",
           scope: "runtime",
-          masked: false,
-          isStoredSecret: false,
-          value: "ok",
+          masked: true,
+          isStoredSecret: true,
         },
       ],
       mounts: { dev: [], staging: [], prod: [] },

@@ -139,6 +139,10 @@ mock.module("@/modules/secrets/vault-secrets.service", () => ({
   VaultSecretsService: class {
     writeSecrets = mockWriteSecrets
   },
+  buildVaultSecretPath: mock(
+    (input: { organizationId: string; stackId: string; environment: string }) =>
+      `tenants/${input.organizationId}/stacks/${input.stackId}/${input.environment}/app-env`
+  ),
 }))
 
 const mockPrisma = {

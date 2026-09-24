@@ -28,6 +28,10 @@ import {
   loadPersistedEdgePolicy,
   resolveHelmEnvInputs,
 } from "./jenkins-image-ready.service"
+import {
+  buildVaultSecretPath,
+  VaultSecretsService,
+} from "@/modules/secrets/vault-secrets.service"
 
 export type TriggerJenkinsJobRetryOptions = {
   maxAttempts?: number
@@ -917,6 +921,99 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
     const { imageRepository, imageTag } =
       await resolveTemplateImageReference(stack)
 
+    const currentEnvs = Array.isArray(stack.envVarsJson)
+      ? (stack.envVarsJson as Array<Record<string, unknown>>)
+      : []
+
+    const hasUnresolvedSecrets = currentEnvs.some(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        (entry.type === "plain" ||
+          entry.type === "secret" ||
+          entry.type === "secret_ref" ||
+          entry.isStoredSecret === true ||
+          entry.masked === true) &&
+        !entry.vaultPath
+    )
+
+    if (hasUnresolvedSecrets && stack.organizationId && stack.id) {
+      const env = stack.slug.endsWith("-staging")
+        ? "staging"
+        : stack.slug.endsWith("-dev")
+          ? "dev"
+          : "prod"
+
+      const plainSecretsToMigrate: Record<string, string> = {}
+      for (const item of currentEnvs) {
+        if (
+          item &&
+          typeof item.key === "string" &&
+          (item.type === "plain" ||
+            item.type === "secret" ||
+            item.type === "secret_ref" ||
+            item.isStoredSecret === true) &&
+          !item.vaultPath &&
+          typeof item.value === "string" &&
+          item.value.length > 0
+        ) {
+          plainSecretsToMigrate[item.key.trim()] = item.value
+        }
+      }
+
+      if (Object.keys(plainSecretsToMigrate).length > 0) {
+        const vaultService = new VaultSecretsService()
+        await vaultService.writeSecrets({
+          organizationId: stack.organizationId,
+          stackId: stack.id,
+          environment: env,
+          secrets: plainSecretsToMigrate,
+        })
+        const refreshedStack = await prisma.applicationStack.findUnique({
+          where: { id: stack.id },
+          select: { envVarsJson: true },
+        })
+        if (refreshedStack) {
+          stack.envVarsJson = refreshedStack.envVarsJson
+        }
+      } else {
+        const currentVaultPath = buildVaultSecretPath({
+          organizationId: stack.organizationId,
+          stackId: stack.id,
+          environment: env,
+        })
+        let needsVaultPathFix = false
+        const updatedEnvs = currentEnvs.map((entry) => {
+          const isSecret =
+            entry.type === "plain" ||
+            entry.type === "secret" ||
+            entry.type === "secret_ref" ||
+            entry.isStoredSecret === true ||
+            entry.masked === true
+          if (isSecret && !entry.vaultPath) {
+            needsVaultPathFix = true
+            return {
+              ...entry,
+              type: "secret_ref",
+              masked: true,
+              isStoredSecret: true,
+              vaultPath: currentVaultPath,
+              vaultKey: entry.vaultKey ?? entry.key,
+            }
+          }
+          return entry
+        })
+
+        if (needsVaultPathFix) {
+          const updatedStack = await prisma.applicationStack.update({
+            where: { id: stack.id },
+            data: { envVarsJson: updatedEnvs as Prisma.InputJsonValue },
+            select: { envVarsJson: true },
+          })
+          stack.envVarsJson = updatedStack.envVarsJson
+        }
+      }
+    }
     const { envVars, externalSecretVaultPath } = resolveHelmEnvInputs(
       stack.envVarsJson
     )

@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import { syncStackConfiguration } from "./sync-stack.service"
+import {
+  buildVaultSecretPath,
+  VaultSecretsService,
+} from "@/modules/secrets/vault-secrets.service"
 import type { AppTemplateBlueprint } from "./blueprint/app-template-blueprint.schema"
 export interface TemplateInstallationItem {
   id: string
@@ -265,8 +269,21 @@ export async function syncStackFromParentTemplate(params: {
       .map((e) => (typeof e?.key === "string" ? e.key : null))
       .filter((k): k is string => Boolean(k))
   )
+  const env = stack.slug.endsWith("-staging")
+    ? "staging"
+    : stack.slug.endsWith("-dev")
+      ? "dev"
+      : "prod"
+
+  const targetVaultPath = buildVaultSecretPath({
+    organizationId: stack.organizationId,
+    stackId: stack.id,
+    environment: env,
+  })
 
   const newTemplateEnvs: Array<Record<string, unknown>> = []
+  const plainSecretsToVault: Record<string, string> = {}
+
   if (Array.isArray(bp?.envSchema)) {
     for (const schemaVar of bp.envSchema) {
       if (
@@ -275,18 +292,66 @@ export async function syncStackFromParentTemplate(params: {
         schemaVar.defaultValue !== "" &&
         !userEnvKeys.has(schemaVar.key)
       ) {
+        const val = String(schemaVar.defaultValue)
+        plainSecretsToVault[schemaVar.key] = val
         newTemplateEnvs.push({
           key: schemaVar.key,
-          value: String(schemaVar.defaultValue),
-          type: schemaVar.isSecret ? "secret" : "plain",
+          value: "",
+          type: "secret_ref",
+          vaultPath: targetVaultPath,
+          vaultKey: schemaVar.key,
+          masked: true,
+          isStoredSecret: true,
         })
       }
     }
   }
+  for (const entry of userEnvs) {
+    if (
+      entry &&
+      typeof entry.key === "string" &&
+      !entry.vaultPath &&
+      typeof entry.value === "string" &&
+      entry.value.length > 0
+    ) {
+      plainSecretsToVault[entry.key] = entry.value
+    }
+  }
 
-  const mergedEnvVars = [...userEnvs, ...newTemplateEnvs]
+  const sanitizedUserEnvs = userEnvs.map((entry) => {
+    if (entry && typeof entry === "object" && typeof entry.key === "string") {
+      if (entry.type === "secret_shared_ref") {
+        return entry
+      }
+      return {
+        ...entry,
+        value: "",
+        type: "secret_ref",
+        vaultPath:
+          typeof entry.vaultPath === "string" && entry.vaultPath.length > 0
+            ? entry.vaultPath
+            : targetVaultPath,
+        vaultKey: entry.vaultKey ?? entry.key,
+        masked: true,
+        isStoredSecret: true,
+      }
+    }
+    return entry
+  })
 
-  // 3. Update stack (cpu, memory, domains, billingMode remain completely untouched)
+  const mergedEnvVars = [...sanitizedUserEnvs, ...newTemplateEnvs]
+  // 3. Write secrets to Vault first so a Vault write failure preserves unmigrated state in Postgres
+  if (Object.keys(plainSecretsToVault).length > 0) {
+    const vaultService = new VaultSecretsService()
+    await vaultService.writeSecrets({
+      organizationId: stack.organizationId,
+      stackId: stack.id,
+      environment: env,
+      secrets: plainSecretsToVault,
+    })
+  }
+
+  // 4. Update stack (cpu, memory, domains, billingMode remain completely untouched)
   await prisma.applicationStack.update({
     where: { id: stack.id },
     data: {

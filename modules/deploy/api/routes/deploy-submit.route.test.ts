@@ -385,7 +385,7 @@ describe("deploySubmitRoutes /submit", () => {
           envVarsJson: expect.arrayContaining([
             expect.objectContaining({
               key: "JWT_SECRET",
-              type: "secret",
+              type: "secret_ref",
               masked: true,
               isStoredSecret: true,
             }),
@@ -407,6 +407,8 @@ describe("deploySubmitRoutes /submit", () => {
         vaultKey: "DATABASE_URL",
         version: 3,
         lastUpdatedAt: "2026-08-18T10:00:00.000Z",
+        masked: true,
+        isStoredSecret: true,
       },
       {
         key: "REDIS_URL",
@@ -418,9 +420,10 @@ describe("deploySubmitRoutes /submit", () => {
         vaultPath: "tenants/org-1/shared/managed-services/credential-redis",
         vaultKey: "CONNECTION_STRING",
         referenceLabel: "Managed Redis",
+        masked: true,
+        isStoredSecret: true,
       },
     ]
-
     const res = await submit({ ...validBody, envVars })
 
     expect(res.status).toBe(200)

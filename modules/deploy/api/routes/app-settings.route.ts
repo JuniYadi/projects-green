@@ -116,18 +116,8 @@ function isEnvironment(value: unknown): value is EnvironmentId {
   )
 }
 
-function isSecret(variable: StoredEnvVar): boolean {
-  if (variable.type === "plain") {
-    return false
-  }
-
-  return (
-    variable.type === "secret" ||
-    variable.type === "secret_ref" ||
-    variable.type === "secret_shared_ref" ||
-    variable.masked === true ||
-    variable.isStoredSecret === true
-  )
+function isSecret(_variable: StoredEnvVar): boolean {
+  return true
 }
 
 const hasVaultReference = (variable: StoredEnvVar): boolean =>
@@ -393,9 +383,9 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
       const secretsToWrite: Record<string, string> = {}
       for (const variable of body.variables) {
         if (
-          isSecret(variable) &&
           typeof variable.value === "string" &&
-          variable.value.length > 0
+          variable.value.length > 0 &&
+          variable.type !== "secret_shared_ref"
         ) {
           secretsToWrite[variable.key] = variable.value
         }
@@ -435,42 +425,28 @@ export const appSettingsRoutes = new Elysia({ prefix: "/deploy/apps" })
           ...(prior ? { ...prior } : {}),
           ...incoming,
         })
-        const secret =
-          isSecret(candidate) || isSecret(prior ?? { key: incoming.key })
+        const isShared =
+          incoming.type === "secret_shared_ref" ||
+          candidate.type === "secret_shared_ref"
         const row: StoredEnvVar = {
           ...(prior ? { ...prior } : {}),
           ...incoming,
-          type:
-            candidate.type ?? prior?.type ?? (secret ? "secret_ref" : "plain"),
-          value: secret
-            ? ""
-            : typeof incoming.value === "string"
-              ? incoming.value
-              : typeof prior?.value === "string"
-                ? prior.value
-                : "",
+          type: isShared ? "secret_shared_ref" : "secret_ref",
+          value: "",
+          masked: true,
+          isStoredSecret: true,
+          source: isShared
+            ? (incoming.source ?? prior?.source ?? "managed_service")
+            : "vault",
         }
-        if (secret) {
-          row.masked = true
-          row.isStoredSecret = true
-          if (!row.vaultPath && prior?.vaultPath) {
-            row.vaultPath = prior.vaultPath
-          }
-          if (!row.vaultKey && prior?.vaultKey) {
-            row.vaultKey = prior.vaultKey
-          }
-          if (!row.version && prior?.version) {
-            row.version = prior.version
-          }
-        } else {
-          row.masked = false
-          row.isStoredSecret = false
-          row.source = undefined
-          row.serviceCredentialId = undefined
-          row.vaultPath = undefined
-          row.vaultKey = undefined
-          row.referenceLabel = undefined
-          row.version = undefined
+        if (!row.vaultPath && prior?.vaultPath) {
+          row.vaultPath = prior.vaultPath
+        }
+        if (!row.vaultKey && prior?.vaultKey) {
+          row.vaultKey = prior.vaultKey
+        }
+        if (!row.version && prior?.version) {
+          row.version = prior.version
         }
         return row
       })

@@ -351,23 +351,15 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
     }
 
     const processedEnvVars = (body.envVars ?? []).map((envItem) => {
-      const isSecretKey =
-        templateSecretKeys.has(envItem.key) ||
-        envItem.type === "secret" ||
-        inferEnvVarTypeFromKey(envItem.key) === "secret_ref"
-
-      if (
-        isSecretKey &&
-        (!envItem.type || envItem.type === "plain" || envItem.type === "secret")
-      ) {
-        return {
-          ...envItem,
-          type: "secret" as const,
-          masked: true,
-          isStoredSecret: true,
-        }
+      const isShared = envItem.type === "secret_shared_ref"
+      return {
+        ...envItem,
+        type: isShared
+          ? ("secret_shared_ref" as const)
+          : ("secret_ref" as const),
+        masked: true,
+        isStoredSecret: true,
       }
-      return envItem
     })
 
     // Persist the stack as the single source of truth before any deploy.

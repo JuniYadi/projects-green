@@ -66,14 +66,13 @@ describe("environment-variables.client", () => {
         environmentId: "test-env",
         key: "CUSTOM_VAR",
         value: "custom-value",
-        type: "plain",
+        type: "secret_ref",
         scope: "all",
       })
 
       expect(result.ok).toBe(true)
       if (result.ok) {
-        expect(result.item?.type).toBe("plain")
-        expect(result.item?.scope).toBe("all")
+        expect(result.item?.type).toBe("secret_ref")
       }
     })
 
@@ -120,7 +119,8 @@ describe("environment-variables.client", () => {
 
       expect(result.ok).toBe(true)
       if (result.ok) {
-        expect(result.item?.value).toBe("updated")
+        expect(result.item?.value).toBe("")
+        expect(result.item?.masked).toBe(true)
       }
     })
 

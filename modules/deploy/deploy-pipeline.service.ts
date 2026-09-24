@@ -161,7 +161,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
         mergedInputEnvVars.push({
           key: tunable.key,
           value: String(tunable.default),
-          type: "plain",
+          type: "secret_ref",
         })
         providedKeys.add(tunable.key)
       }
@@ -172,7 +172,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       mergedInputEnvVars.push({
         key: "APP_ENV",
         value: "production",
-        type: "plain",
+        type: "secret_ref",
       })
       providedKeys.add("APP_ENV")
     }
@@ -180,7 +180,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       mergedInputEnvVars.push({
         key: "APP_DEBUG",
         value: "false",
-        type: "plain",
+        type: "secret_ref",
       })
       providedKeys.add("APP_DEBUG")
     }
@@ -188,7 +188,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       mergedInputEnvVars.push({
         key: "APP_KEY",
         value: generateRandomLaravelAppKey(),
-        type: "secret",
+        type: "secret_ref",
       })
       providedKeys.add("APP_KEY")
     }
@@ -204,7 +204,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       return {
         ...rest,
         value: "",
-        type: entry.type ?? "secret_ref",
+        type: "secret_ref",
         isStoredSecret: true,
         masked: true,
       }
@@ -353,7 +353,10 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
           source?: string
         }
         // If it's not already a resolved vault reference, collect it for Vault storage
-        if (envEntry.source !== "vault" && envEntry.type !== "secret_ref") {
+        if (
+          envEntry.source !== "vault" ||
+          (typeof envEntry.value === "string" && envEntry.value.length > 0)
+        ) {
           const key = String(envEntry.key).trim()
           if (
             key &&

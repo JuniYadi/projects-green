@@ -457,14 +457,18 @@ export async function executeReinstall(params: {
   )
 
   const newEnvs: Array<Record<string, unknown>> = []
+  const secretsToWrite: Record<string, string> = {}
   if (Array.isArray(targetBlueprint.envSchema)) {
     for (const schemaVar of targetBlueprint.envSchema) {
       const customValue = params.input.customEnvs?.[schemaVar.key]
       if (customValue !== undefined) {
+        secretsToWrite[schemaVar.key] = customValue
         newEnvs.push({
           key: schemaVar.key,
-          value: customValue,
-          type: schemaVar.isSecret ? "secret" : "plain",
+          value: "",
+          type: "secret_ref",
+          masked: true,
+          isStoredSecret: true,
         })
       } else if (userEnvMap.has(schemaVar.key)) {
         newEnvs.push(userEnvMap.get(schemaVar.key)!)
@@ -473,10 +477,14 @@ export async function executeReinstall(params: {
         schemaVar.defaultValue !== null &&
         schemaVar.defaultValue !== ""
       ) {
+        const val = String(schemaVar.defaultValue)
+        secretsToWrite[schemaVar.key] = val
         newEnvs.push({
           key: schemaVar.key,
-          value: String(schemaVar.defaultValue),
-          type: schemaVar.isSecret ? "secret" : "plain",
+          value: "",
+          type: "secret_ref",
+          masked: true,
+          isStoredSecret: true,
         })
       }
     }
@@ -505,9 +513,19 @@ export async function executeReinstall(params: {
     reinstalledAt: new Date().toISOString(),
   }
 
-  // 6. Execute atomic stack update and deployment creation
+  // 6. Write secrets to Vault first so a Vault failure cannot leave the stack partially reinstalled
   let deployment: ApplicationDeployment
   try {
+    if (Object.keys(secretsToWrite).length > 0) {
+      const vault = new VaultSecretsService()
+      await vault.writeSecrets({
+        organizationId: params.organizationId,
+        stackId: stack.id,
+        environment: "prod",
+        secrets: secretsToWrite,
+      })
+    }
+
     const txResult = await prisma.$transaction(async (tx) => {
       const updated = await tx.applicationStack.updateMany({
         where: {
