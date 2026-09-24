@@ -27,7 +27,7 @@ export default function PortalMarketplaceModerationPage() {
   const messages = getMessages(locale)
   const [templates, setTemplates] = useState<AdminTemplateRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("pending")
+  const [activeTab, setActiveTab] = useState("official")
   useEffect(() => {
     let isCancelled = false
     const load = async () => {
@@ -207,15 +207,17 @@ export default function PortalMarketplaceModerationPage() {
 
         <TabsContent value="pending" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>
-                {messages.pPortalMarketplacePageClient.pendingCardTitle}
-              </CardTitle>
-              <CardDescription>
-                {messages.pPortalMarketplacePageClient.pendingCardDescription}
-              </CardDescription>
+            <CardHeader className="border-b px-5 py-3.5">
+              <div className="flex flex-col gap-0.5">
+                <CardTitle className="text-base font-semibold">
+                  {messages.pPortalMarketplacePageClient.pendingCardTitle}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {messages.pPortalMarketplacePageClient.pendingCardDescription}
+                </CardDescription>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <TemplateModerationTable
                 templates={pendingTemplates}
                 isLoading={isLoading}
@@ -230,15 +232,17 @@ export default function PortalMarketplaceModerationPage() {
 
         <TabsContent value="live" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>
-                {messages.pPortalMarketplacePageClient.liveCardTitle}
-              </CardTitle>
-              <CardDescription>
-                {messages.pPortalMarketplacePageClient.liveCardDescription}
-              </CardDescription>
+            <CardHeader className="border-b px-5 py-3.5">
+              <div className="flex flex-col gap-0.5">
+                <CardTitle className="text-base font-semibold">
+                  {messages.pPortalMarketplacePageClient.liveCardTitle}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {messages.pPortalMarketplacePageClient.liveCardDescription}
+                </CardDescription>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <TemplateModerationTable
                 templates={liveTemplates}
                 isLoading={isLoading}
@@ -253,15 +257,20 @@ export default function PortalMarketplaceModerationPage() {
 
         <TabsContent value="official" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>
-                {messages.pPortalMarketplacePageClient.officialCardTitle}
-              </CardTitle>
-              <CardDescription>
-                {messages.pPortalMarketplacePageClient.officialCardDescription}
-              </CardDescription>
+            <CardHeader className="border-b px-5 py-3.5">
+              <div className="flex flex-col gap-0.5">
+                <CardTitle className="text-base font-semibold">
+                  {messages.pPortalMarketplacePageClient.officialCardTitle}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {
+                    messages.pPortalMarketplacePageClient
+                      .officialCardDescription
+                  }
+                </CardDescription>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-5">
               <TemplateModerationTable
                 templates={officialTemplates}
                 isLoading={isLoading}

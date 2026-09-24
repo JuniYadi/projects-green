@@ -22,7 +22,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Eye, CheckCircle, Star, MagnifyingGlass } from "@phosphor-icons/react"
+import {
+  Eye,
+  CheckCircle,
+  Star,
+  MagnifyingGlass,
+  Copy,
+  Check,
+  ShieldCheck,
+} from "@phosphor-icons/react"
+import { toast } from "sonner"
 import type { AdminTemplateRecord } from "./template-inspector-drawer"
 
 interface TemplateModerationTableProps {
@@ -48,6 +57,20 @@ export function TemplateModerationTable({
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("ALL")
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopyImage = (id: string, imageText: string) => {
+    try {
+      navigator.clipboard.writeText(imageText)
+      setCopiedId(id)
+      toast.success("Runtime image copied")
+      setTimeout(() => {
+        setCopiedId(null)
+      }, 2000)
+    } catch {
+      // Fallback
+    }
+  }
 
   const filteredTemplates = templates.filter((template) => {
     const matchesSearch =
@@ -153,28 +176,19 @@ export function TemplateModerationTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[280px]">
+              <TableHead className="min-w-[260px]">
                 {messages.pPortalMarketplaceTemplateModerationTable.colTemplate}
               </TableHead>
-              <TableHead>
-                {
-                  messages.pPortalMarketplaceTemplateModerationTable
-                    .categoryPlaceholder
-                }
-              </TableHead>
-              <TableHead>
+              <TableHead className="w-[200px]">
                 {
                   messages.pPortalMarketplaceTemplateModerationTable
                     .colRuntimeImage
                 }
               </TableHead>
-              <TableHead>
+              <TableHead className="w-[140px]">
                 {messages.pPortalMarketplaceTemplateModerationTable.colStatus}
               </TableHead>
-              <TableHead>
-                {messages.pPortalMarketplaceTemplateModerationTable.colFeatured}
-              </TableHead>
-              <TableHead className="text-right">
+              <TableHead className="w-[140px] text-right">
                 {messages.pPortalMarketplaceTemplateModerationTable.colActions}
               </TableHead>
             </TableRow>
@@ -182,7 +196,7 @@ export function TemplateModerationTable({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-sm">
+                <TableCell colSpan={4} className="h-24 text-center text-sm">
                   {
                     messages.pPortalMarketplaceTemplateModerationTable
                       .loadingTemplates
@@ -192,7 +206,7 @@ export function TemplateModerationTable({
             ) : filteredTemplates.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={4}
                   className="h-24 text-center text-sm text-muted-foreground"
                 >
                   {
@@ -202,104 +216,152 @@ export function TemplateModerationTable({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredTemplates.map((template) => (
-                <TableRow key={template.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-foreground">
-                        {template.name}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {template.slug} (v{template.version})
-                      </span>
-                      <span className="line-clamp-1 text-xs text-muted-foreground">
-                        {template.tagline}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {template.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-xs">
-                      {template.blueprintJson?.runtime?.image || "N/A"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      <Badge
-                        variant={
-                          template.visibility === "PUBLIC"
-                            ? "default"
-                            : template.visibility === "PENDING_REVIEW"
+              filteredTemplates.map((template) => {
+                const runtimeImage =
+                  template.blueprintJson?.runtime?.image || "N/A"
+                return (
+                  <TableRow key={template.id} className="group">
+                    <TableCell className="py-2.5">
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-semibold text-foreground">
+                            {template.name}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className="px-1.5 py-0 font-mono text-[10px]"
+                          >
+                            v{template.version}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="px-1.5 py-0 font-mono text-[10px] text-muted-foreground uppercase"
+                          >
+                            {template.category}
+                          </Badge>
+                        </div>
+                        <p
+                          className="line-clamp-1 max-w-[320px] text-xs text-muted-foreground"
+                          title={template.tagline || template.slug}
+                        >
+                          {template.tagline || template.slug}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <div className="flex items-center gap-1">
+                        <span
+                          className="inline-block max-w-[170px] truncate rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+                          title={runtimeImage}
+                        >
+                          {runtimeImage}
+                        </span>
+                        {runtimeImage !== "N/A" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-6 shrink-0 text-muted-foreground hover:text-foreground"
+                            onClick={() =>
+                              handleCopyImage(template.id, runtimeImage)
+                            }
+                            title="Copy image"
+                          >
+                            {copiedId === template.id ? (
+                              <Check className="size-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="size-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge
+                          variant={
+                            template.visibility === "PUBLIC"
                               ? "secondary"
-                              : "destructive"
-                        }
-                        className="text-xs"
-                      >
-                        {template.visibility}
-                      </Badge>
-                      {template.isOfficial && (
-                        <Badge variant="outline" className="text-[10px]">
-                          {
-                            messages.pPortalMarketplaceTemplateModerationTable
-                              .officialBadge
+                              : template.visibility === "PENDING_REVIEW"
+                                ? "outline"
+                                : "destructive"
                           }
+                          className="text-[11px]"
+                        >
+                          {template.visibility}
                         </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleToggleFeatured(template.id)}
-                      disabled={actionLoadingId === template.id}
-                      title={template.isFeatured ? "Featured" : "Not Featured"}
-                    >
-                      <Star
-                        className={`size-4 ${
-                          template.isFeatured
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </Button>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onInspect(template)}
-                        className="h-8 gap-1 text-xs"
-                      >
-                        <Eye className="size-3.5" />{" "}
-                        {
-                          messages.pPortalMarketplaceTemplateModerationTable
-                            .inspectAction
-                        }
-                      </Button>
-                      {template.visibility === "PENDING_REVIEW" && (
+                        {template.isOfficial && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-sky-500/30 bg-sky-500/10 px-1.5 py-0 text-[10px] text-sky-400"
+                          >
+                            <ShieldCheck className="size-3 text-sky-400" />
+                            <span>
+                              {
+                                messages
+                                  .pPortalMarketplaceTemplateModerationTable
+                                  .officialBadge
+                              }
+                            </span>
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
-                          size="sm"
-                          onClick={() => handleApprove(template.id)}
+                          variant="ghost"
+                          size="icon"
+                          className="size-8"
+                          onClick={() => handleToggleFeatured(template.id)}
                           disabled={actionLoadingId === template.id}
+                          title={
+                            template.isFeatured ? "Featured" : "Not Featured"
+                          }
+                        >
+                          <Star
+                            className={`size-4 ${
+                              template.isFeatured
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-muted-foreground"
+                            }`}
+                          />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onInspect(template)}
                           className="h-8 gap-1 text-xs"
                         >
-                          <CheckCircle className="size-3.5" />{" "}
-                          {
-                            messages.pPortalMarketplaceTemplateModerationTable
-                              .approveAction
-                          }
+                          <Eye className="size-3.5" />{" "}
+                          <span>
+                            {
+                              messages.pPortalMarketplaceTemplateModerationTable
+                                .inspectAction
+                            }
+                          </span>
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        {template.visibility === "PENDING_REVIEW" && (
+                          <Button
+                            size="sm"
+                            onClick={() => handleApprove(template.id)}
+                            disabled={actionLoadingId === template.id}
+                            className="h-8 gap-1 bg-primary text-xs text-primary-foreground"
+                          >
+                            <CheckCircle className="size-3.5" />{" "}
+                            <span>
+                              {
+                                messages
+                                  .pPortalMarketplaceTemplateModerationTable
+                                  .approveAction
+                              }
+                            </span>
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
