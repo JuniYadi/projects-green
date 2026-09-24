@@ -71,17 +71,19 @@ function SidebarProvider({
 
   // This is the internal state of the sidebar.
   // We use openProp and setOpenProp for control from outside the component.
-  const [_open, _setOpen] = React.useState(() => {
-    if (typeof window !== "undefined") {
-      const hasCookie = document.cookie
-        .split("; ")
-        .some((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
-      if (!hasCookie && window.innerWidth < 1024 && window.innerWidth >= 768) {
-        return false
-      }
+  const [_open, _setOpen] = React.useState(defaultOpen)
+
+  // Auto-collapse on tablet viewports after mount when no explicit cookie preference exists.
+  // Initial state is kept consistent with defaultOpen to prevent SSR hydration mismatches.
+  React.useEffect(() => {
+    const hasCookie = document.cookie
+      .split("; ")
+      .some((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+    if (!hasCookie && window.innerWidth < 1024 && window.innerWidth >= 768) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      _setOpen(false)
     }
-    return defaultOpen
-  })
+  }, [])
   const open = openProp ?? _open
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {

@@ -191,4 +191,24 @@ describe("Sidebar", () => {
     const sidebar = view.container.querySelector('[data-slot="sidebar"]')
     expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
   })
+
+  it("respects explicit cookie preference on tablet viewports", () => {
+    // @ts-expect-error happy-dom specific API
+    window.happyDOM?.setURL("https://example.com/")
+    document.cookie = "sidebar_state=true; path=/;"
+    window.innerWidth = 800
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar>
+            <SidebarContent>Tablet Content</SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const sidebar = view.container.querySelector('[data-slot="sidebar"]')
+    expect(sidebar?.getAttribute("data-state")).toBe("expanded")
+  })
 })
