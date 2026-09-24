@@ -73,15 +73,31 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
 
-  // Auto-collapse on tablet viewports after mount when no explicit cookie preference exists.
+  // Auto-collapse on tablet viewports after mount and on viewport resize when no explicit cookie preference exists.
   // Initial state is kept consistent with defaultOpen to prevent SSR hydration mismatches.
   React.useEffect(() => {
-    const hasCookie = document.cookie
-      .split("; ")
-      .some((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
-    if (!hasCookie && window.innerWidth < 1024 && window.innerWidth >= 768) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      _setOpen(false)
+    const mql =
+      typeof window.matchMedia === "function"
+        ? window.matchMedia("(min-width: 768px) and (max-width: 1023px)")
+        : null
+
+    const handleViewportChange = () => {
+      const hasCookie = document.cookie
+        .split("; ")
+        .some((c) => c.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+      const isTablet =
+        mql?.matches || (window.innerWidth < 1024 && window.innerWidth >= 768)
+      if (!hasCookie && isTablet) {
+        _setOpen(false)
+      }
+    }
+
+    handleViewportChange()
+    window.addEventListener("resize", handleViewportChange)
+    mql?.addEventListener("change", handleViewportChange)
+    return () => {
+      window.removeEventListener("resize", handleViewportChange)
+      mql?.removeEventListener("change", handleViewportChange)
     }
   }, [])
   const open = openProp ?? _open

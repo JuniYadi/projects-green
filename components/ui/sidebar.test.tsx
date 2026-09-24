@@ -211,4 +211,55 @@ describe("Sidebar", () => {
     const sidebar = view.container.querySelector('[data-slot="sidebar"]')
     expect(sidebar?.getAttribute("data-state")).toBe("expanded")
   })
+
+  it("auto-collapses when resizing from desktop to tablet width without cookie", () => {
+    // @ts-expect-error happy-dom specific API
+    window.happyDOM?.setURL("https://example.com/")
+    document.cookie =
+      "sidebar_state=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    window.innerWidth = 1280
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar>
+            <SidebarContent>Content</SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const sidebar = view.container.querySelector('[data-slot="sidebar"]')
+    expect(sidebar?.getAttribute("data-state")).toBe("expanded")
+
+    window.innerWidth = 800
+    fireEvent(window, new Event("resize"))
+
+    expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
+  })
+
+  it("preserves explicit cookie preference when resizing to tablet width", () => {
+    // @ts-expect-error happy-dom specific API
+    window.happyDOM?.setURL("https://example.com/")
+    document.cookie = "sidebar_state=true; path=/;"
+    window.innerWidth = 1280
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar>
+            <SidebarContent>Content</SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const sidebar = view.container.querySelector('[data-slot="sidebar"]')
+    expect(sidebar?.getAttribute("data-state")).toBe("expanded")
+
+    window.innerWidth = 800
+    fireEvent(window, new Event("resize"))
+
+    expect(sidebar?.getAttribute("data-state")).toBe("expanded")
+  })
 })
