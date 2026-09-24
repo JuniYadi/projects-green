@@ -37,4 +37,30 @@ describe("NavProjects", () => {
       view.getByRole("link", { name: "Invoices" }).getAttribute("href")
     ).toBe("/console/invoices")
   })
+
+  it("does not hide group when sidebar is collapsed to icons", () => {
+    const { container } = render(
+      <SidebarProvider defaultOpen={false}>
+        <TooltipProvider>
+          <NavProjects
+            label="Workspaces"
+            projects={[
+              {
+                name: "Overview",
+                url: "/console",
+                icon: <span aria-hidden="true">O</span>,
+              },
+            ]}
+          />
+        </TooltipProvider>
+      </SidebarProvider>
+    )
+
+    const group = container.querySelector("[data-sidebar='group']")
+    expect(group).toBeTruthy()
+    expect(group?.className).not.toContain(
+      "group-data-[collapsible=icon]:hidden"
+    )
+    expect(container.textContent).toContain("Workspaces")
+  })
 })
