@@ -2,6 +2,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs"
 import { Separator } from "@/components/ui/separator"
 import {
+  SIDEBAR_COOKIE_NAME,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
@@ -17,7 +18,7 @@ import { BillingSetupBannerClient } from "@/components/billing/setup-status/bill
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { redirect } from "next/navigation"
 import { getPlatformAccessForUser } from "@/lib/platform-role"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 
 import type { Metadata } from "next"
@@ -82,8 +83,13 @@ export default async function PortalLayout({
     ? { id: auth.organizationId, name: "Functional Test Organization" }
     : await resolveSidebarOrganization(auth.organizationId)
 
+  const cookieStore = await cookies()
+  const sidebarCookie = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value
+  const defaultOpen =
+    sidebarCookie !== undefined ? sidebarCookie === "true" : true
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar
         surface="portal"
         user={sidebarUser}

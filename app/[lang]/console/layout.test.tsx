@@ -11,6 +11,7 @@ const mockRedirect = mock((url: string) => {
 mock.module("next/navigation", () => ({
   redirect: mockRedirect,
   usePathname: () => "/en/console",
+  useParams: () => ({}),
   useRouter: () => ({ replace: mock(() => {}), refresh: mock(() => {}) }),
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -25,18 +26,16 @@ type MockAuthPayload = {
   organizationId: string | undefined
 }
 
-const mockWithAuth = mock(
-  async (): Promise<MockAuthPayload> => ({
-    user: {
-      id: "user_123",
-      firstName: "Jane",
-      lastName: "Doe",
-      email: "jane@example.com",
-      profilePictureUrl: " https://example.com/avatar.png ",
-    },
-    organizationId: "org_123",
-  })
-)
+const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
+  user: {
+    id: "user_123",
+    firstName: "Jane",
+    lastName: "Doe",
+    email: "jane@example.com",
+    profilePictureUrl: " https://example.com/avatar.png ",
+  },
+  organizationId: "org_123",
+}))
 
 const mockGetUser = mock(async (_userId?: string) => ({
   id: "user_123",
@@ -100,6 +99,9 @@ mock.module("@/lib/platform-role", () => {
 
 mock.module("next/headers", () => ({
   headers: mock(async () => new Headers()),
+  cookies: mock(async () => ({
+    get: mock(() => undefined),
+  })),
 }))
 
 mock.module("@/modules/billing/billing-account.service", () => ({
@@ -134,6 +136,7 @@ mock.module("@/components/app-sidebar", () => {
 
 mock.module("@/components/ui/sidebar", () => {
   return {
+    SIDEBAR_COOKIE_NAME: "sidebar_state",
     SidebarProvider: ({ children }: { children: React.ReactNode }) => (
       <div data-testid="sidebar-provider">{children}</div>
     ),

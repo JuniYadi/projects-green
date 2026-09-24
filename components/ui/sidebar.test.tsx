@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test"
 import { fireEvent, render } from "@testing-library/react"
 
 import {
+  SIDEBAR_COOKIE_NAME,
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -140,5 +141,54 @@ describe("Sidebar", () => {
     expect(sidebar).toHaveAttribute("data-collapsible", "icon")
     expect(container).toBeInTheDocument()
     expect(container?.className).toContain("border-sidebar-border")
+  })
+
+  it("exports SIDEBAR_COOKIE_NAME and updates cookie on toggle", () => {
+    // @ts-expect-error happy-dom specific API
+    window.happyDOM?.setURL("https://example.com/")
+    expect(SIDEBAR_COOKIE_NAME).toBe("sidebar_state")
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar>
+            <SidebarContent>Content</SidebarContent>
+          </Sidebar>
+          <SidebarTrigger />
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const trigger = view.container.querySelector(
+      '[data-slot="sidebar-trigger"]'
+    ) as HTMLButtonElement
+
+    fireEvent.click(trigger)
+    expect(document.cookie).toContain("sidebar_state=false")
+
+    fireEvent.click(trigger)
+    expect(document.cookie).toContain("sidebar_state=true")
+  })
+
+  it("auto-collapses on tablet viewports when no cookie is set", () => {
+    // @ts-expect-error happy-dom specific API
+    window.happyDOM?.setURL("https://example.com/")
+    // Clear cookie
+    document.cookie =
+      "sidebar_state=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+    window.innerWidth = 800
+
+    const view = render(
+      <TooltipProvider>
+        <SidebarProvider defaultOpen>
+          <Sidebar>
+            <SidebarContent>Tablet Content</SidebarContent>
+          </Sidebar>
+        </SidebarProvider>
+      </TooltipProvider>
+    )
+
+    const sidebar = view.container.querySelector('[data-slot="sidebar"]')
+    expect(sidebar?.getAttribute("data-state")).toBe("collapsed")
   })
 })

@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { ConsoleOnboardingTour } from "@/components/console-onboarding-tour"
 import { CompactBalanceBadge } from "@/components/billing/compact-balance-badge"
 import {
+  SIDEBAR_COOKIE_NAME,
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
@@ -31,7 +32,7 @@ import { ensureBillingAccountForOrg } from "@/modules/billing/billing-account.se
 import { MINIMUM_BALANCE_WARN_IDR } from "@/modules/billing/constants"
 import { BillingBalanceGateBanner } from "@/components/billing-balance-gate-banner"
 import { formatBillingMoney } from "@/modules/billing/format-money"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 import { readFunctionalTestIdentity } from "@/lib/auth/functional-test-session"
 import { resolveFirstActiveOrganization } from "@/lib/whatsapp/resolvers"
 
@@ -129,8 +130,13 @@ export default async function ConsoleLayout({
     locale,
   })
 
+  const cookieStore = await cookies()
+  const sidebarCookie = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value
+  const defaultOpen =
+    sidebarCookie !== undefined ? sidebarCookie === "true" : true
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar
         surface="console"
         user={sidebarUser}
