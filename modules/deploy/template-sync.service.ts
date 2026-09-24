@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import { syncStackConfiguration } from "./sync-stack.service"
+import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
 import type { AppTemplateBlueprint } from "./blueprint/app-template-blueprint.schema"
 export interface TemplateInstallationItem {
   id: string
@@ -267,6 +268,8 @@ export async function syncStackFromParentTemplate(params: {
   )
 
   const newTemplateEnvs: Array<Record<string, unknown>> = []
+  const plainSecretsToVault: Record<string, string> = {}
+
   if (Array.isArray(bp?.envSchema)) {
     for (const schemaVar of bp.envSchema) {
       if (
@@ -275,12 +278,21 @@ export async function syncStackFromParentTemplate(params: {
         schemaVar.defaultValue !== "" &&
         !userEnvKeys.has(schemaVar.key)
       ) {
-        newTemplateEnvs.push({
-          key: schemaVar.key,
-          value: String(schemaVar.defaultValue),
-          type: schemaVar.isSecret ? "secret" : "plain",
-        })
+        const val = String(schemaVar.defaultValue)
+        plainSecretsToVault[schemaVar.key] = val
       }
+    }
+  }
+
+  for (const entry of userEnvs) {
+    if (
+      entry &&
+      typeof entry.key === "string" &&
+      !entry.vaultPath &&
+      typeof entry.value === "string" &&
+      entry.value.length > 0
+    ) {
+      plainSecretsToVault[entry.key] = entry.value
     }
   }
 
@@ -295,6 +307,21 @@ export async function syncStackFromParentTemplate(params: {
       envVarsJson: mergedEnvVars as Prisma.InputJsonValue,
     },
   })
+
+  if (Object.keys(plainSecretsToVault).length > 0) {
+    const env = stack.slug.endsWith("-staging")
+      ? "staging"
+      : stack.slug.endsWith("-dev")
+        ? "dev"
+        : "prod"
+    const vaultService = new VaultSecretsService()
+    await vaultService.writeSecrets({
+      organizationId: stack.organizationId,
+      stackId: stack.id,
+      environment: env,
+      secrets: plainSecretsToVault,
+    })
+  }
 
   // 4. Trigger GitOps sync
   const syncRes = await syncStackConfiguration({

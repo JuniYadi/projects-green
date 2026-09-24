@@ -10,10 +10,10 @@ import {
 } from "@/modules/deploy/environment-vars"
 
 describe("environment vars helpers", () => {
-  it("infers secret keys", () => {
+  it("infers all keys as secret_ref in vault-native mode", () => {
     expect(inferEnvVarTypeFromKey("APP_KEY")).toBe("secret_ref")
     expect(inferEnvVarTypeFromKey("DB_CREDENTIAL")).toBe("secret_ref")
-    expect(inferEnvVarTypeFromKey("CACHE_STORE")).toBe("plain")
+    expect(inferEnvVarTypeFromKey("CACHE_STORE")).toBe("secret_ref")
   })
 
   it("generates a valid random Laravel APP_KEY base64", () => {
@@ -78,11 +78,11 @@ describe("environment vars helpers", () => {
     )
 
     expect(parsed.entries).toEqual([
-      { key: "APP_ENV", value: "staging", type: "plain" },
+      { key: "APP_ENV", value: "staging", type: "secret_ref" },
       {
         key: "APP_URL",
         value: "https://example.test",
-        type: "plain",
+        type: "secret_ref",
       },
     ])
     expect(parsed.errors).toEqual(["Line 4 is not a valid KEY=VALUE entry."])

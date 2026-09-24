@@ -47,11 +47,11 @@ describe("EnvVarsEditor", () => {
     expect(view.getByText("Scope")).toBeTruthy()
     expect(view.getByText("Last updated")).toBeTruthy()
     expect(view.getByText("Actions")).toBeTruthy()
-    expect(view.getByRole("button", { name: "Show" })).toBeTruthy()
+    expect(view.getByRole("button", { name: "Reveal" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Edit" })).toBeTruthy()
     expect(view.getByRole("button", { name: "Delete" })).toBeTruthy()
     expect(view.getByRole("textbox", { name: "APP_ENV value" })).toHaveValue(
-      "staging"
+      "••••••••"
     )
   })
 
@@ -82,7 +82,7 @@ describe("EnvVarsEditor", () => {
     await waitFor(() => expect(changes.at(-1)).toHaveLength(0))
   })
 
-  it("copies plain values and never enables secret copy before reveal", async () => {
+  it("never enables secret copy before reveal and copies revealed value", async () => {
     const user = userEvent.setup()
     const writeText = mock(async () => {})
     const originalClipboard = navigator.clipboard
@@ -94,8 +94,8 @@ describe("EnvVarsEditor", () => {
     const view = render(
       <EnvVarsEditor
         envVars={[
-          { id: "plain", key: "APP_ENV", value: "production", type: "plain" },
-          { id: "secret", key: "TOKEN", value: "", type: "secret_ref" },
+          { id: "var-1", key: "APP_ENV", value: "", type: "secret_ref" },
+          { id: "var-2", key: "TOKEN", value: "", type: "secret_ref" },
         ]}
         onChange={() => {}}
         onRevealSecret={reveal}
@@ -103,10 +103,9 @@ describe("EnvVarsEditor", () => {
     )
 
     const copyButtons = view.getAllByRole("button", { name: "Copy value" })
+    expect(copyButtons[0]).toBeDisabled()
     expect(copyButtons[1]).toBeDisabled()
-    await user.click(copyButtons[0])
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith("production"))
-    await user.click(view.getByRole("button", { name: "Reveal" }))
+    await user.click(view.getAllByRole("button", { name: "Reveal" })[1])
     await waitFor(() =>
       expect(view.getByDisplayValue("top-secret")).toBeTruthy()
     )
@@ -119,20 +118,20 @@ describe("EnvVarsEditor", () => {
   })
 
   it("keeps long values inside a bounded input", () => {
-    const value = "x".repeat(500)
     const view = render(
       <EnvVarsEditor
-        envVars={[{ id: "long", key: "LONG_VALUE", value, type: "plain" }]}
+        envVars={[
+          { id: "long", key: "LONG_VALUE", value: "", type: "secret_ref" },
+        ]}
         onChange={() => {}}
       />
     )
 
     const input = view.getByRole("textbox", { name: "LONG_VALUE value" })
-    expect(input).toHaveValue(value)
     expect(input.className).toContain("max-w-full")
   })
 
-  it("shows legacy plain values even when their old masked flag is set", () => {
+  it("masks all environment variables in vault-native mode", () => {
     const view = render(
       <EnvVarsEditor
         envVars={[
@@ -140,7 +139,7 @@ describe("EnvVarsEditor", () => {
             id: "legacy-plain",
             key: "APP_ENV",
             value: "production",
-            type: "plain",
+            type: "secret_ref",
             masked: true,
           },
         ]}
@@ -148,8 +147,7 @@ describe("EnvVarsEditor", () => {
       />
     )
 
-    expect(view.getByDisplayValue("production")).toBeTruthy()
-    expect(view.queryByDisplayValue("••••••••")).toBeNull()
+    expect(view.getByDisplayValue("••••••••")).toBeTruthy()
   })
 
   it("creates a managed-service reference without storing a value", async () => {
@@ -317,8 +315,8 @@ describe("EnvVarsEditor", () => {
       "APP_ENV=staging\nDATABASE_PASSWORD=top-secret"
     )
 
-    expect(view.getByText("••••••••")).toBeTruthy()
-    expect(view.getByText("Secret")).toBeTruthy()
+    expect(view.getAllByText("••••••••")).toHaveLength(2)
+    expect(view.getAllByText("Secret")).toHaveLength(2)
     expect(view.queryByText("top-secret")).toBeNull()
 
     await user.click(view.getByRole("button", { name: "Import variables" }))
@@ -368,24 +366,27 @@ describe("EnvVarsEditor", () => {
     expect(view.getByDisplayValue("••••••••")).toBeTruthy()
   })
 
-  it("shows a placeholder for an empty plain value", () => {
+  it("shows a placeholder when an empty secret is revealed", async () => {
+    const user = userEvent.setup()
+    const reveal = mock(async () => "")
     const view = render(
       <EnvVarsEditor
         envVars={[
           {
-            id: "plain-empty",
-            key: "APP_ENV",
+            id: "secret-empty",
+            key: "EMPTY_VAR",
             value: "",
-            type: "plain",
+            type: "secret_ref",
           },
         ]}
         onChange={() => {}}
+        onRevealSecret={reveal}
       />
     )
 
-    const input = view.getByRole("textbox", { name: "APP_ENV value" })
+    await user.click(view.getByRole("button", { name: "Reveal" }))
+    const input = view.getByRole("textbox", { name: "EMPTY_VAR value" })
     expect(input).toHaveAttribute("placeholder", "<empty value>")
-    expect(input).toHaveValue("")
   })
 
   it("does not display an empty Vault reveal as a successful value", async () => {
@@ -441,10 +442,7 @@ describe("EnvVarsEditor", () => {
       view.getByRole("textbox", { name: "Variable key" }),
       "app_env"
     )
-    await user.type(
-      view.getByRole("textbox", { name: "Variable value" }),
-      "production"
-    )
+    await user.type(view.getByLabelText("Variable value"), "production")
     await user.click(view.getByRole("button", { name: "Save variable" }))
 
     expect(view.getByRole("alert")).toHaveTextContent(

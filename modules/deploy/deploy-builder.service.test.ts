@@ -102,6 +102,24 @@ mock.module("@/modules/gitops/gitops.service", () => ({
   },
 }))
 
+const mockWriteSecrets = mock(async () => ({
+  environment: "prod",
+  vaultPath: "tenants/org-1/stacks/stack-hermes-1/prod/app-env",
+  version: 1,
+  updatedAt: "2026-08-28T00:00:00.000Z",
+  references: [],
+}))
+
+mock.module("@/modules/secrets/vault-secrets.service", () => ({
+  VaultSecretsService: class {
+    writeSecrets = mockWriteSecrets
+  },
+  buildVaultSecretPath: mock(
+    (input: { organizationId: string; stackId: string; environment: string }) =>
+      `tenants/${input.organizationId}/stacks/${input.stackId}/${input.environment}/app-env`
+  ),
+}))
+
 const mockResolveClusterIntegration = mock<
   (id: string, type: string) => Promise<any>
 >(async (_id: string, type: string) => {
@@ -155,6 +173,7 @@ describe("processQueuedDeployment", () => {
 
   beforeEach(() => {
     txCreate.mockClear()
+    mockWriteSecrets.mockClear()
     triggerJenkinsJobMock.mockReset()
     triggerJenkinsJobMock.mockResolvedValue(undefined)
     syncJenkinsPipelineMock.mockClear()
@@ -509,6 +528,70 @@ describe("processQueuedDeployment", () => {
     expect(filesArg[0]?.content).toContain("deploymentType: statefulset")
     expect(filesArg[0]?.content).toContain("containerPort: 9119")
     expect(filesArg[0]?.content).toContain("name: dashboard")
+  })
+
+  it("migrates unreferenced secret env vars to Vault before generating Helm values", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-hermes-secrets",
+      stackId: "stack-hermes-1",
+      status: "QUEUED",
+      attempt: 1,
+      commitSha: null,
+      stack: {
+        id: "stack-hermes-1",
+        organizationId: "org-1",
+        slug: "hermes-agent",
+        branchName: "main",
+        repositoryConnectionId: null,
+        framework: null,
+        sourceType: "TEMPLATE",
+        publicSourceUrl: null,
+        publicSourceRef: null,
+        cpu: 500,
+        memory: 1024,
+        customDomain: null,
+        envVarsJson: [
+          { key: "HERMES_DASHBOARD", type: "secret", value: "true" },
+          { key: "PORT", type: "secret", value: "8080" },
+        ],
+        metadataJson: {
+          imageRepository: "nousresearch/hermes-agent:v2026.8.18",
+          deploymentType: "statefulset",
+        },
+      },
+    } as never)
+
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      clusterId: "cluster-1",
+      envVarsJson: [
+        {
+          key: "HERMES_DASHBOARD",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-hermes-1/prod/app-env",
+          vaultKey: "HERMES_DASHBOARD",
+        },
+        {
+          key: "PORT",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-hermes-1/prod/app-env",
+          vaultKey: "PORT",
+        },
+      ],
+    } as never)
+
+    const result = await processQueuedDeployment("deploy-hermes-secrets")
+
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+    expect(mockWriteSecrets).toHaveBeenCalledWith({
+      organizationId: "org-1",
+      stackId: "stack-hermes-1",
+      environment: "prod",
+      secrets: {
+        HERMES_DASHBOARD: "true",
+        PORT: "8080",
+      },
+    })
   })
 
   it("resolves template image from template blueprint without requiring REGISTRY integration", async () => {

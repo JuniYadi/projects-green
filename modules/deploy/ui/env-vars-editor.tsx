@@ -77,7 +77,7 @@ type EnvVarsEditorProps = {
 }
 
 type EditorMode = "create" | "edit" | "import"
-type EditableEnvVarType = Exclude<EnvVarType, "secret">
+type EditableEnvVarType = "secret_ref" | "secret_shared_ref"
 
 type EnvVarFormState = {
   id: string | null
@@ -135,11 +135,10 @@ const formatUpdatedAt = (value: string | undefined) => {
 }
 
 const normalizeType = (type: EnvVarType | undefined): EditableEnvVarType => {
-  if (type === "secret") {
-    return "secret_ref"
+  if (type === "secret_shared_ref") {
+    return "secret_shared_ref"
   }
-
-  return type ?? "plain"
+  return "secret_ref"
 }
 
 const getTypeLabel = (
@@ -149,12 +148,11 @@ const getTypeLabel = (
   >["console"]["deploy"]["envVarsEditor"]
 ) => {
   switch (normalizeType(type)) {
-    case "secret_ref":
-      return messages ? messages.typeSecret : "Secret"
     case "secret_shared_ref":
       return messages ? messages.typeSharedSecret : "Shared Secret"
+    case "secret_ref":
     default:
-      return messages ? messages.typePlainBadge : "Plain"
+      return messages ? messages.typeSecret : "Secret"
   }
 }
 
@@ -163,7 +161,7 @@ const createEmptyForm = (): EnvVarFormState => {
     id: null,
     key: "",
     value: "",
-    type: "plain",
+    type: "secret_ref",
     scope: "runtime",
     sharedSecretOptionId: "",
     valueVisible: false,
@@ -843,31 +841,24 @@ export function EnvVarsEditor({
       importedByKey.delete(entry.key)
       return {
         ...row,
-        value: entry.type === "plain" ? entry.value : "",
-        type: entry.type,
-        masked: entry.type === "secret_ref",
-        isStoredSecret: entry.type === "secret_ref",
+        value: "",
+        type: "secret_ref" as const,
+        masked: true,
+        isStoredSecret: true,
         lastUpdatedAt: now,
-        ...(entry.type === "plain"
-          ? {
-              source: undefined,
-              vaultPath: undefined,
-              vaultKey: undefined,
-              version: undefined,
-            }
-          : { source: "vault" as const }),
+        source: "vault" as const,
       }
     })
     const addedRows = [...importedByKey.values()].map((entry) => ({
       id: `env-${Math.random().toString(36).slice(2, 10)}`,
       key: entry.key,
-      value: entry.type === "plain" ? entry.value : "",
-      type: entry.type,
+      value: "",
+      type: "secret_ref" as const,
       scope: "runtime" as const,
-      masked: entry.type === "secret_ref",
-      isStoredSecret: entry.type === "secret_ref",
+      masked: true,
+      isStoredSecret: true,
       lastUpdatedAt: now,
-      ...(entry.type === "secret_ref" ? { source: "vault" as const } : {}),
+      source: "vault" as const,
     }))
 
     commitRows([...addedRows, ...updatedRows])
@@ -943,20 +934,7 @@ export function EnvVarsEditor({
               const current = normalizedRows.find(
                 (row) => row.key.trim().toUpperCase() === entry.key
               )
-              if (entry.type === "plain") {
-                return {
-                  id:
-                    current?.id ??
-                    `env-${Math.random().toString(36).slice(2, 10)}`,
-                  key: entry.key,
-                  value: entry.value,
-                  type: "plain" as const,
-                  scope: "runtime" as const,
-                  masked: false,
-                  isStoredSecret: false,
-                  lastUpdatedAt: now,
-                }
-              }
+
               const reference = referenceByKey.get(entry.key)
               return reference
                 ? {
@@ -1166,7 +1144,10 @@ export function EnvVarsEditor({
     const isSecret = isSecretEnvVarType(row.type)
     const value = isSecret ? revealedValuesById[row.id] : row.value
     if (value === undefined || value === "") {
-      pushToast("error", isSecret ? "Reveal the secret before copying." : "Nothing to copy.")
+      pushToast(
+        "error",
+        isSecret ? "Reveal the secret before copying." : "Nothing to copy."
+      )
       return
     }
 
@@ -1285,8 +1266,8 @@ export function EnvVarsEditor({
                   <td className="max-w-0 px-3 py-2 font-mono text-xs">
                     <Input
                       aria-label={`${row.key} value`}
-                      className="min-w-0 max-w-full font-mono text-xs"
-                      type={isSecret && !isVisible ? "password" : "text"}
+                      className="max-w-full min-w-0 font-mono text-xs"
+                      type="text"
                       value={shownValue}
                       readOnly
                       placeholder={EMPTY_ENV_VAR_VALUE}
@@ -1614,7 +1595,6 @@ export function EnvVarsEditor({
                       }))
                     }}
                   >
-                    <option value="plain">{messages.typePlain}</option>
                     <option value="secret_ref">{messages.typeSecret}</option>
                     {sharedSecretOptions.length > 0 ? (
                       <option value="secret_shared_ref">

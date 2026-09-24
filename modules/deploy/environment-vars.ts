@@ -58,13 +58,8 @@ export const getEnvPresets = (
   return GENERIC_ENV_PRESETS
 }
 
-const SECRET_KEY_HINT_PATTERN =
-  /(SECRET|TOKEN|PASSWORD|PASS|PRIVATE|CREDENTIAL|APP_KEY|DB_PASSWORD|SALT|API_KEY|ENCRYPTION_KEY|AUTH_KEY)/i
-
-export const isSecretEnvVarType = (type: EnvVarType | undefined) => {
-  return (
-    type === "secret" || type === "secret_ref" || type === "secret_shared_ref"
-  )
+export const isSecretEnvVarType = (_type: EnvVarType | undefined): boolean => {
+  return true
 }
 
 const stripQuotedValue = (value: string) => {
@@ -80,27 +75,23 @@ const stripQuotedValue = (value: string) => {
   return trimmed
 }
 
-export const inferEnvVarTypeFromKey = (key: string): "plain" | "secret_ref" => {
-  return SECRET_KEY_HINT_PATTERN.test(key) ? "secret_ref" : "plain"
+export const inferEnvVarTypeFromKey = (_key: string): "secret_ref" => {
+  return "secret_ref"
 }
 
 export const maskEnvVarValue = (_value: string) => {
   return MASKED_ENV_VAR_VALUE
 }
 
-export const getEnvVarPreviewValue = (envVar: EnvVar): string => {
-  if (isSecretEnvVarType(envVar.type) || envVar.masked) {
-    return maskEnvVarValue(envVar.value)
-  }
-
-  return envVar.value
+export const getEnvVarPreviewValue = (_envVar: EnvVar): string => {
+  return MASKED_ENV_VAR_VALUE
 }
 
 export type ParsedEnvImportResult = {
   entries: Array<{
     key: string
     value: string
-    type: "plain" | "secret_ref"
+    type: "secret_ref"
   }>
   errors: string[]
 }
@@ -146,7 +137,7 @@ export const parseDotEnvImport = (raw: string): ParsedEnvImportResult => {
       return
     }
 
-    entries.push({ key, value, type: inferEnvVarTypeFromKey(key) })
+    entries.push({ key, value, type: "secret_ref" })
   })
 
   return {

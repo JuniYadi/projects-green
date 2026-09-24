@@ -37,6 +37,19 @@ mock.module("./sync-stack.service", () => ({
   syncStackConfiguration: mockSyncStackConfiguration,
 }))
 
+const mockWriteSecrets = mock(async () => ({
+  environment: "prod",
+  vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+  version: 1,
+  updatedAt: "2026-08-28T00:00:00.000Z",
+  references: [],
+}))
+
+mock.module("@/modules/secrets/vault-secrets.service", () => ({
+  VaultSecretsService: class {
+    writeSecrets = mockWriteSecrets
+  },
+}))
 const {
   listTemplateInstallations,
   syncStackFromParentTemplate,
@@ -50,6 +63,7 @@ describe("template-sync.service", () => {
     mockPrisma.applicationStack.findUnique.mockReset()
     mockPrisma.applicationStack.update.mockReset()
     mockSyncStackConfiguration.mockClear()
+    mockWriteSecrets.mockClear()
   })
 
   describe("listTemplateInstallations", () => {
@@ -208,19 +222,16 @@ describe("template-sync.service", () => {
       expect(updateCall.data.metadataJson.customBuildOpt).toBe(true)
       expect(updateCall.data.metadataJson.templateVersion).toBe("1.0.0")
 
-      // User override preserved, missing template default added
-      const updatedEnvs = updateCall.data.envVarsJson as Array<{
-        key: string
-        value: string
-      }>
-      expect(updatedEnvs).toHaveLength(2)
-      expect(
-        updatedEnvs.find((e) => e.key === "ROUTER_MASTER_KEY")?.value
-      ).toBe("user-custom-secret-key")
-      expect(
-        updatedEnvs.find((e) => e.key === "NEW_OPTIONAL_FLAG")?.value
-      ).toBe("enabled")
-
+      // New template default sent to Vault
+      expect(mockWriteSecrets).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        secrets: {
+          NEW_OPTIONAL_FLAG: "enabled",
+          ROUTER_MASTER_KEY: "user-custom-secret-key",
+        },
+      })
       // syncStackConfiguration triggered
       expect(mockSyncStackConfiguration).toHaveBeenCalledWith({
         slug: "9router-daring-pulsar",
@@ -271,6 +282,61 @@ describe("template-sync.service", () => {
       expect(updateCall.data.metadataJson.livenessProbe).toBeUndefined()
       expect(updateCall.data.metadataJson.readinessProbe).toBeUndefined()
       expect(updateCall.data.metadataJson.startupProbe).toBeUndefined()
+    })
+
+    it("writes newly introduced template secret env vars to Vault via VaultSecretsService", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-hermes",
+        slug: "hermes",
+        blueprintJson: {
+          version: "1.0.0",
+          envSchema: [
+            {
+              key: "HERMES_DASHBOARD",
+              defaultValue: "true",
+              isSecret: true,
+            },
+            {
+              key: "PORT",
+              defaultValue: "8080",
+              isSecret: true,
+            },
+            {
+              key: "APP_ENV",
+              defaultValue: "production",
+              isSecret: false,
+            },
+          ],
+        },
+      })
+
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "hermes-agent",
+        organizationId: "org-1",
+        envVarsJson: [],
+      })
+
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-1",
+      })
+
+      const result = await syncStackFromParentTemplate({
+        templateId: "tmpl-hermes",
+        stackId: "stack-1",
+      })
+
+      expect(result.ok).toBe(true)
+      expect(mockWriteSecrets).toHaveBeenCalledWith({
+        organizationId: "org-1",
+        stackId: "stack-1",
+        environment: "prod",
+        secrets: {
+          HERMES_DASHBOARD: "true",
+          PORT: "8080",
+          APP_ENV: "production",
+        },
+      })
     })
 
     it("throws when template is not found", async () => {
