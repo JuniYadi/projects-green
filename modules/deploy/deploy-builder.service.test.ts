@@ -594,6 +594,70 @@ describe("processQueuedDeployment", () => {
     })
   })
 
+  it("fixes missing vaultPath on secret references when secrets have no plaintext", async () => {
+    mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
+      id: "deploy-hermes-staging",
+      stackId: "stack-hermes-staging",
+      status: "QUEUED",
+      attempt: 1,
+      commitSha: null,
+      stack: {
+        id: "stack-hermes-staging",
+        organizationId: "org-1",
+        slug: "hermes-agent-staging",
+        branchName: "main",
+        repositoryConnectionId: null,
+        framework: null,
+        sourceType: "TEMPLATE",
+        publicSourceUrl: null,
+        publicSourceRef: null,
+        cpu: 500,
+        memory: 1024,
+        customDomain: null,
+        envVarsJson: [
+          { key: "HERMES_DASHBOARD", type: "secret_ref", value: "" },
+        ],
+        metadataJson: {
+          imageRepository: "nousresearch/hermes-agent:v2026.8.18",
+          deploymentType: "statefulset",
+        },
+      },
+    } as never)
+
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      envVarsJson: [
+        {
+          key: "HERMES_DASHBOARD",
+          type: "secret_ref",
+          vaultPath:
+            "tenants/org-1/stacks/stack-hermes-staging/staging/app-env",
+          vaultKey: "HERMES_DASHBOARD",
+        },
+      ],
+    } as never)
+
+    const result = await processQueuedDeployment("deploy-hermes-staging")
+
+    expect(result.processed).toBe(true)
+    expect(result.status).toBe("DEPLOYING")
+    expect(mockPrisma.applicationStack.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "stack-hermes-staging" },
+        data: expect.objectContaining({
+          envVarsJson: [
+            expect.objectContaining({
+              key: "HERMES_DASHBOARD",
+              type: "secret_ref",
+              vaultPath:
+                "tenants/org-1/stacks/stack-hermes-staging/staging/app-env",
+              vaultKey: "HERMES_DASHBOARD",
+            }),
+          ],
+        }),
+      })
+    )
+  })
+
   it("resolves template image from template blueprint without requiring REGISTRY integration", async () => {
     mockPrisma.applicationDeployment.findUnique.mockResolvedValueOnce({
       id: "deploy-template-1",

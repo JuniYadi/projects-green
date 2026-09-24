@@ -6,6 +6,7 @@ import {
   getEnvVarPreviewValue,
   getSeedEnvVarsForFramework,
   inferEnvVarTypeFromKey,
+  isSecretEnvVarType,
   parseDotEnvImport,
 } from "@/modules/deploy/environment-vars"
 
@@ -14,6 +15,13 @@ describe("environment vars helpers", () => {
     expect(inferEnvVarTypeFromKey("APP_KEY")).toBe("secret_ref")
     expect(inferEnvVarTypeFromKey("DB_CREDENTIAL")).toBe("secret_ref")
     expect(inferEnvVarTypeFromKey("CACHE_STORE")).toBe("secret_ref")
+  })
+
+  it("treats all variable types as secret in vault-native mode", () => {
+    expect(isSecretEnvVarType("secret_ref")).toBe(true)
+    expect(isSecretEnvVarType("secret_shared_ref")).toBe(true)
+    expect(isSecretEnvVarType("secret")).toBe(true)
+    expect(isSecretEnvVarType(undefined)).toBe(true)
   })
 
   it("generates a valid random Laravel APP_KEY base64", () => {

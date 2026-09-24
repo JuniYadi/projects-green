@@ -446,6 +446,59 @@ describe("appSettingsRoutes", () => {
     })
   })
 
+  it("preserves prior vaultPath, vaultKey, version, and handles secret_shared_ref without vault write", async () => {
+    stack.envVarsJson = [
+      {
+        key: "EXISTING_VAR",
+        type: "secret_ref",
+        vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+        vaultKey: "EXISTING_VAR",
+        version: 5,
+        masked: true,
+        isStoredSecret: true,
+      },
+    ]
+
+    const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
+      environmentId: "prod",
+      variables: [
+        {
+          key: "EXISTING_VAR",
+          value: "",
+          type: "secret_ref",
+        },
+        {
+          key: "SHARED_VAR",
+          value: "",
+          type: "secret_shared_ref",
+          serviceCredentialId: "cred-1",
+        },
+      ],
+    })
+
+    expect(response.status).toBe(200)
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          envVarsJson: [
+            expect.objectContaining({
+              key: "EXISTING_VAR",
+              type: "secret_ref",
+              vaultPath: "tenants/org-1/stacks/stack-1/prod/app-env",
+              vaultKey: "EXISTING_VAR",
+              version: 5,
+            }),
+            expect.objectContaining({
+              key: "SHARED_VAR",
+              type: "secret_shared_ref",
+              serviceCredentialId: "cred-1",
+            }),
+          ],
+        },
+      })
+    )
+  })
+
   it("fails closed with 500 when Vault write fails during settings update", async () => {
     mockVaultWriteSecrets.mockRejectedValueOnce(new Error("Vault unavailable"))
     const response = await json("/deploy/apps/demo/settings/env", "PATCH", {
