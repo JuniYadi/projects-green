@@ -4733,6 +4733,8 @@ export const enMessages: AppMessages = {
             deploying: "Deploying your app",
             running: "Your app is live!",
             failed: "Deployment failed",
+            suspended: "Application suspended",
+            terminated: "Application terminated",
           },
         },
         logs: {

@@ -4775,6 +4775,8 @@ export const idMessages: AppMessages = {
             deploying: "Men-deploy aplikasi Anda",
             running: "Aplikasi Anda sudah online!",
             failed: "Deployment gagal",
+            suspended: "Aplikasi ditangguhkan",
+            terminated: "Aplikasi dihentikan",
           },
         },
         logs: {

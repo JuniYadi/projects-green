@@ -4306,6 +4306,8 @@ export type AppMessages = {
             deploying: string
             running: string
             failed: string
+            suspended: string
+            terminated: string
           }
         }
         logs: {
