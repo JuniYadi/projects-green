@@ -95,6 +95,113 @@ describe("GitOpsRepositoryService", () => {
       sha: null,
     })
   })
+
+  it("should list tracked files filtered by directory prefix", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "base-sha" } }),
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sha: "base-sha",
+        tree: [
+          {
+            path: "services-yaml/app-org/stack-a/helm.yml",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-1",
+          },
+          {
+            path: "services-yaml/app-org/stack-a/value.yml",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-2",
+          },
+          {
+            path: "services-yaml/app-org/stack-a",
+            type: "tree",
+            mode: "040000",
+            sha: "tree-1",
+          },
+          {
+            path: "services-yaml/app-org/stack-b/helm.yml",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-3",
+          },
+          {
+            path: "argocd-projects/app-org.yml",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-4",
+          },
+        ],
+      }),
+    })
+
+    const files = await service.listTrackedFiles(
+      "owner/repo",
+      "services-yaml/app-org/stack-a"
+    )
+
+    expect(files).toEqual([
+      "services-yaml/app-org/stack-a/helm.yml",
+      "services-yaml/app-org/stack-a/value.yml",
+    ])
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("should list all tracked files when no prefix provided", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "base-sha" } }),
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sha: "base-sha",
+        tree: [
+          {
+            path: "file1.txt",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-1",
+          },
+          {
+            path: "dir",
+            type: "tree",
+            mode: "040000",
+            sha: "tree-1",
+          },
+          {
+            path: "dir/file2.txt",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-2",
+          },
+        ],
+      }),
+    })
+
+    const files = await service.listTrackedFiles("owner/repo")
+    expect(files).toEqual(["file1.txt", "dir/file2.txt"])
+  })
+
+  it("should throw error when listTrackedFiles fails to fetch tree", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "base-sha" } }),
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      text: async () => "Not Found",
+    })
+
+    await expect(service.listTrackedFiles("owner/repo")).rejects.toThrow(
+      "Failed to list tree: Not Found"
+    )
+  })
 })
 
 afterAll(() => {

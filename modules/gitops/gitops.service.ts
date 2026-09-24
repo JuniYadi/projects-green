@@ -24,6 +24,53 @@ export class GitOpsRepositoryService {
   }
 
   /**
+   * List all tracked file paths (blobs) in the repository or under a given directory prefix.
+   * @param repo Full repository name (e.g., "owner/repo")
+   * @param pathPrefix Optional directory path prefix (e.g., "services-yaml/app-slug")
+   * @param branchOverride Optional branch override
+   */
+  async listTrackedFiles(
+    repo: string,
+    pathPrefix?: string,
+    branchOverride?: string
+  ): Promise<string[]> {
+    const branch = branchOverride ?? this.branch
+    const token = await this.getAccessToken()
+    const baseRef = await this.getRef(repo, branch, token)
+    const baseSha = baseRef.object.sha
+
+    const res = await this.githubFetch(
+      `${this.repoBaseUrl}/repos/${repo}/git/trees/${baseSha}?recursive=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      }
+    )
+
+    if (!res.ok) {
+      throw new Error(`Failed to list tree: ${await res.text()}`)
+    }
+
+    const data = (await res.json()) as {
+      tree?: Array<{ path: string; type: string }>
+      truncated?: boolean
+    }
+
+    const items = data.tree ?? []
+    const prefix = pathPrefix ? pathPrefix.replace(/\/+$/, "") + "/" : undefined
+
+    return items
+      .filter((item) => {
+        if (item.type !== "blob") return false
+        if (!prefix) return true
+        return item.path.startsWith(prefix) || item.path === pathPrefix
+      })
+      .map((item) => item.path)
+  }
+
+  /**
    * Commit multiple files to a repository in a single atomic operation using Trees API.
    * @param repo Full repository name (e.g., "owner/repo")
    * @param message Commit message

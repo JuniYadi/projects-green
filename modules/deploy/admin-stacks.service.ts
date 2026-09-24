@@ -900,6 +900,56 @@ export async function adminDeployStack(stackId: string): Promise<{
   }
 }
 
+async function deleteGitOpsStackManifests(params: {
+  gitops: GitOpsRepositoryService
+  repo: string
+  serviceDir: string
+  helmPath: string
+  valuePath: string
+  argocdProjectPath: string
+  shouldDeleteArgoProject: boolean
+  commitMessage: string
+}): Promise<boolean> {
+  const {
+    gitops,
+    repo,
+    serviceDir,
+    helmPath,
+    valuePath,
+    argocdProjectPath,
+    shouldDeleteArgoProject,
+    commitMessage,
+  } = params
+
+  // 1. Enumerate tracked files under serviceDir using GitHub recursive tree API
+  const trackedFiles = await gitops.listTrackedFiles(repo, serviceDir)
+
+  // 2. Build set of specific file paths (blobs) to delete.
+  // Never pass directory paths (like serviceDir) to Git Trees API as it operates on blob paths.
+  const filesToDelete = new Set<string>(trackedFiles)
+  filesToDelete.add(helmPath)
+  filesToDelete.add(valuePath)
+
+  if (shouldDeleteArgoProject) {
+    filesToDelete.add(argocdProjectPath)
+  }
+
+  // 3. Commit file deletions if any files to delete
+  if (filesToDelete.size > 0) {
+    await gitops.commitFiles(repo, commitMessage, [], Array.from(filesToDelete))
+  }
+
+  // 4. Verify that no manifests remain under serviceDir
+  const remainingFiles = await gitops.listTrackedFiles(repo, serviceDir)
+  if (remainingFiles.length > 0) {
+    throw new Error(
+      `Manifests still exist under ${serviceDir}: ${remainingFiles.join(", ")}`
+    )
+  }
+
+  return true
+}
+
 // ─── Terminate (immediate gitops delete, keep record in DB) ───────────────────
 
 /**
@@ -969,12 +1019,26 @@ export async function adminDeleteStack(stackId: string): Promise<{
         branch: gitopsConfig.branch,
       })
 
-      await gitops.commitFiles(
-        gitopsConfig.repo,
-        `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
-        [],
-        [serviceDir, helmPath, valuePath, argocdProjectPath]
-      )
+      const otherActiveStacks = stack.organizationId
+        ? await prisma.applicationStack.count({
+            where: {
+              id: { not: stackId },
+              organizationId: stack.organizationId,
+              status: { not: StackStatus.TERMINATED },
+            },
+          })
+        : 0
+
+      await deleteGitOpsStackManifests({
+        gitops,
+        repo: gitopsConfig.repo,
+        serviceDir,
+        helmPath,
+        valuePath,
+        argocdProjectPath,
+        shouldDeleteArgoProject: otherActiveStacks === 0,
+        commitMessage: `Terminate ${stack.name} (${stack.slug}) — removed from GitOps`,
+      })
 
       gitopsDeleted = true
     } catch (err) {
@@ -1078,13 +1142,25 @@ export async function adminPurgeTerminatedStack(stackId: string): Promise<{
         branch: gitopsConfig.branch,
       })
 
-      // Delete service directory tree + helm manifest + argocd application file
-      await gitops.commitFiles(
-        gitopsConfig.repo,
-        `Purge ${stack.name} (${stack.slug}) — 30-day retention expired`,
-        [],
-        [serviceDir, helmPath, valuePath, argocdProjectPath]
-      )
+      const otherStacks = stack.organizationId
+        ? await prisma.applicationStack.count({
+            where: {
+              id: { not: stackId },
+              organizationId: stack.organizationId,
+            },
+          })
+        : 0
+
+      await deleteGitOpsStackManifests({
+        gitops,
+        repo: gitopsConfig.repo,
+        serviceDir,
+        helmPath,
+        valuePath,
+        argocdProjectPath,
+        shouldDeleteArgoProject: otherStacks === 0,
+        commitMessage: `Purge ${stack.name} (${stack.slug}) — 30-day retention expired`,
+      })
 
       gitopsDeleted = true
     } catch (err) {
