@@ -159,17 +159,15 @@ describe("PortalMarketplaceModerationPage", () => {
     cleanup()
   })
 
-  it("renders tabs and pending templates list by default", async () => {
+  it("renders tabs and official templates list by default", async () => {
     const utils = render(<PortalMarketplaceModerationPage />)
 
-    expect(
-      utils.getByText("Marketplace Moderation & Governance")
-    ).toBeInTheDocument()
-    expect(utils.getByText("Pending Review")).toBeInTheDocument()
+    expect(utils.getByText("Template Marketplace")).toBeInTheDocument()
+    expect(utils.getByText("Official Templates")).toBeInTheDocument()
     expect(utils.getByText("New Template")).toBeInTheDocument()
 
     await waitFor(() => {
-      expect(utils.getByText("Custom Ghost")).toBeInTheDocument()
+      expect(utils.getByText("n8n")).toBeInTheDocument()
     })
   })
 
@@ -178,7 +176,7 @@ describe("PortalMarketplaceModerationPage", () => {
     const utils = render(<PortalMarketplaceModerationPage />)
 
     await waitFor(() => {
-      expect(utils.getByText("Custom Ghost")).toBeInTheDocument()
+      expect(utils.getByText("n8n")).toBeInTheDocument()
     })
 
     const inspectBtn = utils.getByRole("button", { name: /inspect/i })
@@ -188,6 +186,9 @@ describe("PortalMarketplaceModerationPage", () => {
   it("allows approving a pending template directly", async () => {
     const user = userEvent.setup()
     const utils = render(<PortalMarketplaceModerationPage />)
+
+    const pendingTab = utils.getByRole("tab", { name: /pending review/i })
+    await user.click(pendingTab)
 
     await waitFor(() => {
       expect(utils.getByText("Custom Ghost")).toBeInTheDocument()

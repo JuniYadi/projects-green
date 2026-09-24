@@ -1,6 +1,6 @@
 import "@/test/register"
 import { describe, expect, it, mock } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
 
 const mockPush = mock(() => {})
 mock.module("next/navigation", () => ({
@@ -44,10 +44,8 @@ import PortalAppTemplatesPage from "./page"
 
 describe("PortalAppTemplatesPage", () => {
   it("renders the marketplace moderation view", async () => {
-    render(<PortalAppTemplatesPage />)
-    expect(
-      screen.getByText("Marketplace Moderation & Governance")
-    ).toBeInTheDocument()
-    expect(screen.getByText("Official Templates")).toBeInTheDocument()
+    const { getByText } = render(<PortalAppTemplatesPage />)
+    expect(getByText("Template Marketplace")).toBeInTheDocument()
+    expect(getByText("Official Templates")).toBeInTheDocument()
   })
 })
