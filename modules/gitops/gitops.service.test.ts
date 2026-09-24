@@ -202,6 +202,32 @@ describe("GitOpsRepositoryService", () => {
       "Failed to list tree: Not Found"
     )
   })
+
+  it("should throw error when GitHub tree response is truncated", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ object: { sha: "base-sha" } }),
+    })
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        sha: "base-sha",
+        tree: [
+          {
+            path: "services/file.yml",
+            type: "blob",
+            mode: "100644",
+            sha: "blob-1",
+          },
+        ],
+        truncated: true,
+      }),
+    })
+
+    await expect(service.listTrackedFiles("owner/repo")).rejects.toThrow(
+      "GITOPS_TREE_TRUNCATED"
+    )
+  })
 })
 
 afterAll(() => {

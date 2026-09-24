@@ -1056,6 +1056,28 @@ describe("adminDeleteStack", () => {
     expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
   })
 
+  it("fails and throws GITOPS_DELETE_FAILED when listTrackedFiles detects truncated repository tree", async () => {
+    const gitopsConfig = makeMockGitOpsConfig()
+    const cluster = makeMockCluster()
+
+    mockResolveClusterIntegration.mockImplementation(
+      async (_stackId: string, type: string) => {
+        if (type === "GITOPS") return gitopsConfig
+        throw new Error("No integration configured")
+      }
+    )
+    mockResolveAppHostingClusterForStack.mockImplementation(async () => cluster)
+
+    mockListTrackedFiles.mockRejectedValueOnce(
+      new Error("GITOPS_TREE_TRUNCATED: Git tree is truncated by GitHub API")
+    )
+
+    await expect(adminDeleteStack("stack_1")).rejects.toThrow(
+      "GITOPS_DELETE_FAILED"
+    )
+    expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
+  })
+
   it("fails and throws GITOPS_DELETE_FAILED without updating DB when gitops commitFiles fails", async () => {
     const gitopsConfig = makeMockGitOpsConfig()
     const cluster = makeMockCluster()

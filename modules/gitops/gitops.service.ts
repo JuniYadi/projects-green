@@ -58,6 +58,12 @@ export class GitOpsRepositoryService {
       truncated?: boolean
     }
 
+    if (data.truncated) {
+      throw new Error(
+        `GITOPS_TREE_TRUNCATED: Git tree for ${repo} on branch ${branch} is truncated by GitHub API. Manifest cleanup cannot be safely verified.`
+      )
+    }
+
     const items = data.tree ?? []
     const prefix = pathPrefix ? pathPrefix.replace(/\/+$/, "") + "/" : undefined
 
