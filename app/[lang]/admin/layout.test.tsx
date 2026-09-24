@@ -34,7 +34,7 @@ const mockGetUser = mock(async (_userId?: string) => ({
   profilePictureUrl: "https://example.com/latest-avatar.png",
 }))
 
-const mockGetOrganization = mock(async () => ({
+const mockGetOrganization = mock(async (_orgId?: string) => ({
   id: "org_123",
   name: "Acme Inc",
 }))
@@ -50,7 +50,10 @@ mock.module("next/headers", () => ({
   })),
 }))
 
-const mockGetPlatformRoleForUser = mock(async () => "super_admin" as const)
+const mockGetPlatformRoleForUser = mock(
+  async (): Promise<"super_admin" | "admin" | "member" | "none"> =>
+    "super_admin"
+)
 
 mock.module("@workos-inc/authkit-nextjs", () => {
   return createAuthMock({

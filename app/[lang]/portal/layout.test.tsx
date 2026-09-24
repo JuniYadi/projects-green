@@ -26,7 +26,7 @@ const mockWithAuth = mock(async (): Promise<MockAuthPayload> => ({
   organizationId: "org_123",
 }))
 
-const mockGetUser = mock(async () => ({
+const mockGetUser = mock(async (_userId?: string) => ({
   id: "user_123",
   firstName: "Jane",
   lastName: "Doe",
@@ -34,7 +34,7 @@ const mockGetUser = mock(async () => ({
   profilePictureUrl: "https://example.com/latest-avatar.png",
 }))
 
-const mockGetOrganization = mock(async () => ({
+const mockGetOrganization = mock(async (_orgId?: string) => ({
   id: "org_123",
   name: "Acme Inc",
 }))
