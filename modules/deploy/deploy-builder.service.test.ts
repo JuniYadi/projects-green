@@ -553,6 +553,7 @@ describe("processQueuedDeployment", () => {
         envVarsJson: [
           { key: "HERMES_DASHBOARD", type: "secret", value: "true" },
           { key: "PORT", type: "secret", value: "8080" },
+          { key: "LEGACY_VAR", type: "plain", value: "plain-secret" },
         ],
         metadataJson: {
           imageRepository: "nousresearch/hermes-agent:v2026.8.18",
@@ -576,6 +577,12 @@ describe("processQueuedDeployment", () => {
           vaultPath: "tenants/org-1/stacks/stack-hermes-1/prod/app-env",
           vaultKey: "PORT",
         },
+        {
+          key: "LEGACY_VAR",
+          type: "secret_ref",
+          vaultPath: "tenants/org-1/stacks/stack-hermes-1/prod/app-env",
+          vaultKey: "LEGACY_VAR",
+        },
       ],
     } as never)
 
@@ -590,6 +597,7 @@ describe("processQueuedDeployment", () => {
       secrets: {
         HERMES_DASHBOARD: "true",
         PORT: "8080",
+        LEGACY_VAR: "plain-secret",
       },
     })
   })

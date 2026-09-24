@@ -2,7 +2,10 @@ import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import { syncStackConfiguration } from "./sync-stack.service"
-import { VaultSecretsService } from "@/modules/secrets/vault-secrets.service"
+import {
+  buildVaultSecretPath,
+  VaultSecretsService,
+} from "@/modules/secrets/vault-secrets.service"
 import type { AppTemplateBlueprint } from "./blueprint/app-template-blueprint.schema"
 export interface TemplateInstallationItem {
   id: string
@@ -266,6 +269,17 @@ export async function syncStackFromParentTemplate(params: {
       .map((e) => (typeof e?.key === "string" ? e.key : null))
       .filter((k): k is string => Boolean(k))
   )
+  const env = stack.slug.endsWith("-staging")
+    ? "staging"
+    : stack.slug.endsWith("-dev")
+      ? "dev"
+      : "prod"
+
+  const targetVaultPath = buildVaultSecretPath({
+    organizationId: stack.organizationId,
+    stackId: stack.id,
+    environment: env,
+  })
 
   const newTemplateEnvs: Array<Record<string, unknown>> = []
   const plainSecretsToVault: Record<string, string> = {}
@@ -280,10 +294,18 @@ export async function syncStackFromParentTemplate(params: {
       ) {
         const val = String(schemaVar.defaultValue)
         plainSecretsToVault[schemaVar.key] = val
+        newTemplateEnvs.push({
+          key: schemaVar.key,
+          value: "",
+          type: "secret_ref",
+          vaultPath: targetVaultPath,
+          vaultKey: schemaVar.key,
+          masked: true,
+          isStoredSecret: true,
+        })
       }
     }
   }
-
   for (const entry of userEnvs) {
     if (
       entry &&
@@ -309,11 +331,6 @@ export async function syncStackFromParentTemplate(params: {
   })
 
   if (Object.keys(plainSecretsToVault).length > 0) {
-    const env = stack.slug.endsWith("-staging")
-      ? "staging"
-      : stack.slug.endsWith("-dev")
-        ? "dev"
-        : "prod"
     const vaultService = new VaultSecretsService()
     await vaultService.writeSecrets({
       organizationId: stack.organizationId,

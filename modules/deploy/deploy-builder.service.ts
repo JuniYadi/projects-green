@@ -929,7 +929,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
       (entry) =>
         entry &&
         typeof entry === "object" &&
-        (entry.type === "secret" ||
+        (entry.type === "plain" ||
+          entry.type === "secret" ||
           entry.type === "secret_ref" ||
           entry.isStoredSecret === true ||
           entry.masked === true) &&
@@ -948,7 +949,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         if (
           item &&
           typeof item.key === "string" &&
-          (item.type === "secret" ||
+          (item.type === "plain" ||
+            item.type === "secret" ||
             item.type === "secret_ref" ||
             item.isStoredSecret === true) &&
           !item.vaultPath &&
@@ -983,6 +985,7 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
         let needsVaultPathFix = false
         const updatedEnvs = currentEnvs.map((entry) => {
           const isSecret =
+            entry.type === "plain" ||
             entry.type === "secret" ||
             entry.type === "secret_ref" ||
             entry.isStoredSecret === true ||
@@ -992,6 +995,8 @@ async function processTemplateDeployment(deployment: QueuedTemplateDeployment) {
             return {
               ...entry,
               type: "secret_ref",
+              masked: true,
+              isStoredSecret: true,
               vaultPath: currentVaultPath,
               vaultKey: entry.vaultKey ?? entry.key,
             }

@@ -49,6 +49,10 @@ mock.module("@/modules/secrets/vault-secrets.service", () => ({
   VaultSecretsService: class {
     writeSecrets = mockWriteSecrets
   },
+  buildVaultSecretPath: mock(
+    (input: { organizationId: string; stackId: string; environment: string }) =>
+      `tenants/${input.organizationId}/stacks/${input.stackId}/${input.environment}/app-env`
+  ),
 }))
 const {
   listTemplateInstallations,
@@ -221,6 +225,17 @@ describe("template-sync.service", () => {
       ])
       expect(updateCall.data.metadataJson.customBuildOpt).toBe(true)
       expect(updateCall.data.metadataJson.templateVersion).toBe("1.0.0")
+
+      // Template defaults persisted in envVarsJson as secret_ref
+      expect(updateCall.data.envVarsJson).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: "NEW_OPTIONAL_FLAG",
+            type: "secret_ref",
+            vaultKey: "NEW_OPTIONAL_FLAG",
+          }),
+        ])
+      )
 
       // New template default sent to Vault
       expect(mockWriteSecrets).toHaveBeenCalledWith({
