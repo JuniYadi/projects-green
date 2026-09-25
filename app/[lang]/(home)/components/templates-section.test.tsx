@@ -53,5 +53,11 @@ describe("TemplatesSection", () => {
       "href",
       "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
     )
+
+    // Request template email link
+    const requestLink = container.querySelector(
+      'a[href^="mailto:support@pfnapp.com"]'
+    )
+    expect(requestLink).not.toBeNull()
   })
 })

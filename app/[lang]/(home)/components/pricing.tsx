@@ -316,8 +316,8 @@ export function PricingSection() {
           </p>
           <div className="mt-2 text-xs text-muted-foreground">
             {isId
-              ? "⚡ Kuota Terbatas: Khusus 50 pendaftar pertama periode launching (Sisa 18 kuota)."
-              : "⚡ Limited Inventory: Valid for the first 50 early-adopter signups (18 remaining)."}
+              ? "⚡ Promo Terbatas: Berlaku untuk pendaftar batch early-adopter selama periode launching."
+              : "⚡ Limited Time Promo: Valid for early-adopter signups during the launch period."}
           </div>
         </div>
 
