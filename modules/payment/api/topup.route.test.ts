@@ -116,6 +116,11 @@ describe("TopupRoute POST /topup", () => {
     }
     mockBillingAccountFindUnique.mockReset()
     mockBillingInvoiceUpdate.mockReset()
+    mockBillingInvoiceDelete.mockReset()
+    mockPrismaTransaction.mockReset()
+    mockPrismaTransaction.mockImplementation(async (actions: unknown[]) =>
+      Promise.all(actions as Promise<unknown>[])
+    )
     mockCreateTopupInvoice.mockReset()
     mockGetActiveAccounts.mockReset()
     mockDuitkuCreatePayment.mockReset()
@@ -386,6 +391,37 @@ describe("TopupRoute POST /topup", () => {
     })
   })
 
+  it("does not delete invoice if Duitku metadata update fails after payment creation", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_duitku_meta_fail",
+      invoiceNumber: "INV-DUITKU-META-FAIL",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "VA",
+    })
+    mockDuitkuCreatePayment.mockResolvedValueOnce({
+      paymentUrl: "https://duitku.com/pay",
+      reference: "duitku_ref_success",
+    })
+    mockBillingInvoiceUpdate.mockRejectedValueOnce(
+      new Error("Database write error during invoice update")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    expect(mockDuitkuCreatePayment).toHaveBeenCalledTimes(1)
+    expect(mockBillingInvoiceDelete).not.toHaveBeenCalled()
+  })
+
   it("returns 400 when PAYPAL gateway is not available", async () => {
     mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
     mockFindByTypeForCurrency.mockResolvedValue(null)
@@ -497,6 +533,41 @@ describe("TopupRoute POST /topup", () => {
     expect(mockBillingInvoiceDelete).toHaveBeenCalledWith({
       where: { id: "inv_pp_failed" },
     })
+  })
+
+  it("does not delete invoice if PayPal metadata update fails after payment creation", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_paypal" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_pp_meta_fail",
+      invoiceNumber: "INV-PP-META-FAIL",
+      totalAmount: new Decimal(50),
+      status: "UNPAID",
+      paymentMethod: "PAYPAL",
+    })
+    mockGetDecryptedConfig.mockResolvedValueOnce({
+      clientId: "pp_client",
+      secret: "pp_sec",
+    })
+    mockPaypalCreatePayment.mockResolvedValueOnce({
+      redirectUrl: "https://paypal.com/checkout",
+      reference: "pp_ref_success",
+    })
+    mockBillingInvoiceUpdate.mockRejectedValueOnce(
+      new Error("Database write error during invoice update")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50, paymentMethod: "PAYPAL" }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    expect(mockPaypalCreatePayment).toHaveBeenCalledTimes(1)
+    expect(mockBillingInvoiceDelete).not.toHaveBeenCalled()
   })
 
   it("returns 400 / 500 when service throws an error", async () => {
