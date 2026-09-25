@@ -5,7 +5,6 @@ import { useParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { List, X, CaretDown } from "@phosphor-icons/react"
 
-import { BrandLogo } from "@/components/brand-logo"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function HomeNav() {
@@ -58,7 +57,6 @@ export function HomeNav() {
       ],
     },
     { label: isId ? "Templates" : "Templates", href: "#templates" },
-    { label: isId ? "Harga" : "Pricing", href: "#pricing" },
     { label: isId ? "Dokumentasi" : "Docs", href: `/${locale}/docs` },
   ]
 
@@ -70,30 +68,24 @@ export function HomeNav() {
           : "border-b border-white/5 bg-[#060b18]/80 backdrop-blur-sm"
       }`}
     >
-      {/* Top Launch Announcement Bar */}
-      <div className="border-b border-emerald-500/20 bg-emerald-950/40 px-4 py-1.5 text-center text-xs text-white/90 backdrop-blur-sm">
-        <Link
-          href="#pricing"
-          className="inline-flex items-center gap-1.5 transition-colors hover:text-emerald-300"
-        >
-          <span className="font-semibold text-emerald-400">
-            {isId ? "🎁 BATCH 1 LAUNCHING:" : "🎁 BATCH 1 LAUNCH:"}
-          </span>
-          <span>
-            {isId
-              ? "Klaim Voucher Rp 50.000 Saldo Pertama untuk Early Adopter"
-              : "Claim Rp 50,000 Credit Voucher for Early Adopters"}
-          </span>
-          <span className="ml-1 font-semibold text-emerald-400 underline underline-offset-2">
-            {isId ? "Klaim Sekarang →" : "Claim Now →"}
-          </span>
-        </Link>
-      </div>
-
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
-        <Link href={`/${locale}`} className="group flex items-center gap-2.5">
-          <BrandLogo size="md" textColor="text-white" />
+        <Link
+          href={`/${locale}`}
+          className="group flex items-center gap-2.5"
+          aria-label="PFNApp"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icon.png"
+            alt=""
+            width={36}
+            height={36}
+            className="size-9 object-contain"
+          />
+          <span className="text-lg font-semibold tracking-tight text-white">
+            PFN<span className="text-emerald-400">App</span>
+          </span>
         </Link>
 
         {/* Desktop Nav */}

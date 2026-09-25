@@ -1,71 +1,45 @@
 "use client"
 
 import Link from "next/link"
-import {
-  GithubLogo,
-  TwitterLogo,
-  DiscordLogo,
-  ArrowRight,
-} from "@phosphor-icons/react"
+import { ArrowRight } from "@phosphor-icons/react"
 
 import { useParams } from "next/navigation"
-import { BrandLogo } from "@/components/brand-logo"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 export function CTASection() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
-  const t = messages.pHomeFooter
+  const isId = locale === "id"
 
   return (
-    <section className="relative overflow-hidden bg-background py-28">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_50%,color-mix(in_oklch,var(--primary)_12%,transparent),transparent)]" />
-      <div className="absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-3xl" />
-
-      <div className="relative mx-auto max-w-4xl px-6 text-center">
-        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-          <span className="text-sm font-medium text-primary">
-            {t.ctaJoinDevelopers}
-          </span>
-        </div>
-
-        <h2 className="mb-6 text-5xl leading-[1.1] font-bold tracking-tight text-foreground lg:text-6xl">
-          {t.ctaHeading}{" "}
-          <span className="bg-gradient-to-r from-chart-4 via-chart-3 to-chart-2 bg-clip-text text-transparent">
-            {t.ctaHeadingHighlight}
-          </span>
+    <section className="border-t border-white/10 bg-[#0c1420] py-20 text-white">
+      <div className="mx-auto max-w-7xl px-6">
+        <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
+          {isId
+            ? "Sudah tahu aplikasi yang ingin dijalankan?"
+            : "Know what you want to run?"}
         </h2>
-
-        <p className="mx-auto mb-12 max-w-2xl text-xl leading-relaxed text-muted-foreground">
-          {t.ctaDescription}
+        <p className="mt-4 max-w-xl text-white/60">
+          {isId
+            ? "Pilih template yang tersedia atau mulai dari repo Git Anda."
+            : "Choose an available template or start with your Git repository."}
         </p>
-
-        <div className="flex flex-col justify-center gap-4 sm:flex-row">
+        <div className="mt-8 flex flex-wrap items-center gap-5">
           <Link
-            href={`/${locale}/products/whatsapp-official`}
-            id="cta-final-whatsapp"
-            className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-8 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-emerald-500"
+            href={`/${locale}#templates`}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white hover:bg-emerald-500"
           >
-            {locale === "id"
-              ? "Mulai Solusi WhatsApp"
-              : "Get Started with WhatsApp"}
-            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            {isId ? "Pilih template" : "Choose a template"}
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
           <Link
-            href={`/${locale}/login`}
-            id="cta-final-login"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-secondary px-8 py-4 text-base font-semibold text-foreground transition-all hover:bg-accent"
+            href={`/${locale}/login?next=%2F${locale}%2Fconsole%2Fapp%2Fdeploy`}
+            className="font-medium text-white/75 hover:text-white"
           >
-            {locale === "id" ? "Masuk ke Konsol" : "Enter Console"}
+            {isId ? "Deploy dari Git →" : "Deploy from Git →"}
           </Link>
         </div>
-
-        <p className="mt-6 text-xs text-muted-foreground/50">
-          {t.ctaGuarantees}
-        </p>
       </div>
     </section>
   )
@@ -77,77 +51,52 @@ export function Footer() {
   const messages = getMessages(locale)
   const t = messages.pHomeFooter
 
-  const links: Record<
-    string,
-    { label: string; href: string; isRoute?: boolean }[]
-  > = {
+  const links: Record<string, { label: string; href: string }[]> = {
     [t.categoryProduct]: [
-      { label: t.linkAppHosting, href: "#hosting" },
-      { label: t.linkCommunication, href: "#communication" },
-      { label: t.linkStorageS3, href: "#storage" },
-      { label: t.linkAiServices, href: "#ai" },
-      { label: t.linkSecurity, href: "#security" },
-      { label: t.linkAnalytics, href: "#analytics" },
+      { label: t.linkAppHosting, href: `/${locale}#templates` },
+      {
+        label: t.linkCommunication,
+        href: `/${locale}/products/whatsapp-official`,
+      },
+      { label: t.linkStorageS3, href: `/${locale}#storage` },
+      { label: "VPN", href: `/${locale}#vpn` },
     ],
     [t.categoryDevelopers]: [
-      { label: t.linkDocumentation, href: "#docs" },
-      { label: t.linkApiReference, href: "#api" },
-      { label: t.linkCli, href: "#cli" },
-      { label: t.linkSdks, href: "#sdks" },
-      { label: t.linkStatusPage, href: "#status" },
-      { label: t.linkChangelog, href: "#changelog" },
-    ],
-    [t.categoryCompany]: [
-      { label: t.linkAbout, href: "#about" },
-      { label: t.linkBlog, href: "#blog" },
-      { label: t.linkCareers, href: "#careers" },
-      { label: t.linkPress, href: "#press" },
-      { label: t.linkContact, href: "#contact" },
+      { label: t.linkDocumentation, href: `/${locale}/docs` },
     ],
     [t.categoryLegal]: [
-      { label: t.linkTermsOfService, href: "/terms", isRoute: true },
-      { label: t.linkPrivacyPolicy, href: "/privacy", isRoute: true },
+      { label: t.linkTermsOfService, href: `/${locale}/terms` },
+      { label: t.linkPrivacyPolicy, href: `/${locale}/privacy` },
       {
         label: t.linkAcceptableUsePolicy,
-        href: "/acceptable-use",
-        isRoute: true,
+        href: `/${locale}/acceptable-use`,
       },
-      { label: t.linkCookiePolicy, href: "#cookies" },
-      { label: t.linkDpa, href: "#dpa" },
     ],
   }
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-6">
+        <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-5">
           {/* Brand */}
           <div className="col-span-2">
-            <Link href="/" className="group mb-4 flex items-center gap-2.5">
-              <BrandLogo size="md" />
+            <Link
+              href={`/${locale}`}
+              className="group mb-4 flex items-center gap-2.5"
+              aria-label="PFNApp"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.png"
+                alt=""
+                width={36}
+                height={36}
+                className="size-9 object-contain"
+              />
+              <span className="font-semibold text-foreground">PFNApp</span>
             </Link>
             <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
               {t.brandDescription}
             </p>
-            <div className="flex items-center gap-3">
-              <a
-                href="#github"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
-              >
-                <GithubLogo className="h-4 w-4" />
-              </a>
-              <a
-                href="#twitter"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
-              >
-                <TwitterLogo className="h-4 w-4" />
-              </a>
-              <a
-                href="#discord"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground transition-all hover:bg-accent hover:text-foreground"
-              >
-                <DiscordLogo className="h-4 w-4" />
-              </a>
-            </div>
           </div>
 
           {/* Links */}
@@ -158,14 +107,10 @@ export function Footer() {
               </h4>
               <ul className="space-y-2.5">
                 {items.map((link) => {
-                  const href =
-                    "isRoute" in link && link.isRoute
-                      ? `/${locale}${link.href}`
-                      : link.href
                   return (
                     <li key={link.label}>
                       <Link
-                        href={href}
+                        href={link.href}
                         className="text-sm text-muted-foreground/70 transition-colors hover:text-foreground"
                       >
                         {link.label}

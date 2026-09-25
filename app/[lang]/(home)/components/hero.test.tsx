@@ -1,76 +1,71 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, render } from "@testing-library/react"
-import { HeroSection } from "./hero"
 
 const mockUseParams = mock(() => ({ lang: "en" }))
 
 mock.module("next/navigation", () => ({
   useParams: mockUseParams,
-  useRouter: () => ({ push: mock(() => {}) }),
-  useSearchParams: () => new URLSearchParams(),
 }))
+
+import { HeroSection } from "./hero"
 
 describe("HeroSection", () => {
   beforeEach(() => {
     cleanup()
-  })
-
-  it("renders the hero heading, stats, and call-to-actions in English", () => {
+    mockUseParams.mockClear()
     mockUseParams.mockReturnValue({ lang: "en" })
-    const { getByRole, getByText } = render(<HeroSection />)
-
-    expect(getByRole("heading", { level: 1 })).toBeInTheDocument()
-
-    // Assert key stat values and CTAs
-    expect(getByText("99.9%")).toBeInTheDocument()
-    expect(getByText("< 2s")).toBeInTheDocument()
-    expect(getByText("24/7")).toBeInTheDocument()
-    expect(getByText("100%")).toBeInTheDocument()
-
-    const exploreCta = getByRole("link", { name: /Explore WhatsApp Platform/i })
-    expect(exploreCta).toHaveAttribute("href", "/en/products/whatsapp-official")
-
-    const consoleCta = getByRole("link", { name: /Open Console/i })
-    expect(consoleCta).toHaveAttribute("href", "/en/login")
   })
 
-  it("renders Indonesian copy and localized links when active", () => {
+  it("leads with App Hosting and one template action in English", () => {
+    const { getByRole, queryByText } = render(<HeroSection />)
+
+    expect(getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Run your apps without setting up a server."
+    )
+    expect(
+      getByRole("link", { name: /Explore ready-to-deploy apps/i })
+    ).toHaveAttribute("href", "/en#templates")
+    expect(getByRole("link", { name: /Deploy from Git/i })).toHaveAttribute(
+      "href",
+      "/en/login?next=%2Fen%2Fconsole%2Fapp%2Fdeploy"
+    )
+    expect(queryByText("Cluster SG-01: Operational")).not.toBeInTheDocument()
+  })
+
+  it("shows localized deployment copy and destinations in Indonesian", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByRole, getByText } = render(<HeroSection />)
 
-    expect(getByText("Latensi Kirim Pesan")).toBeInTheDocument()
-    expect(getByText("Dukungan Teknis")).toBeInTheDocument()
-    expect(getByText("API Resmi Meta")).toBeInTheDocument()
-
-    const exploreCta = getByRole("link", { name: /Lihat Solusi WhatsApp/i })
-    expect(exploreCta).toHaveAttribute("href", "/id/products/whatsapp-official")
-
-    const consoleCta = getByRole("link", { name: /Buka Konsol/i })
-    expect(consoleCta).toHaveAttribute("href", "/id/login")
+    expect(getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Jalankan aplikasi Anda tanpa menyiapkan server."
+    )
+    expect(getByText("Memori tetap tersimpan")).toBeInTheDocument()
+    expect(
+      getByRole("link", { name: /Lihat template siap deploy/i })
+    ).toHaveAttribute("href", "/id#templates")
   })
 
-  it("renders the terminal title bar and interactive template selector pills", () => {
-    mockUseParams.mockReturnValue({ lang: "en" })
-    const { getByText, getByRole } = render(<HeroSection />)
+  it("slides between available apps and updates the deploy destination", () => {
+    mockUseParams.mockReturnValue({ lang: "id" })
+    const { getByRole, getByText, queryByRole } = render(<HeroSection />)
 
-    expect(getByText("PFNApp Hosting - Deployment")).toBeInTheDocument()
-    expect(getByText("Select template:")).toBeInTheDocument()
+    fireEvent.click(getByRole("button", { name: "Aplikasi berikutnya" }))
+    expect(getByText("9router.sg.pfnapp.dev")).toBeInTheDocument()
+    expect(getByRole("link", { name: "Deploy 9router" })).toHaveAttribute(
+      "href",
+      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3D9router"
+    )
+    expect(
+      queryByRole("link", { name: "Deploy Hermes Agent" })
+    ).not.toBeInTheDocument()
 
-    const hermesBtn = getByRole("button", { name: "{hermes}" })
-    const routerBtn = getByRole("button", { name: "{9router}" })
-    const openclawBtn = getByRole("button", { name: "{openclaw}" })
-    const n8nBtn = getByRole("button", { name: "{n8n}" })
-
-    expect(hermesBtn).toBeInTheDocument()
-    expect(routerBtn).toBeInTheDocument()
-    expect(openclawBtn).toBeInTheDocument()
-    expect(n8nBtn).toBeInTheDocument()
-
-    expect(hermesBtn).toHaveAttribute("aria-pressed", "true")
-    expect(routerBtn).toHaveAttribute("aria-pressed", "false")
-
-    fireEvent.click(routerBtn)
-    expect(routerBtn).toHaveAttribute("aria-pressed", "true")
-    expect(hermesBtn).toHaveAttribute("aria-pressed", "false")
+    fireEvent.click(getByRole("button", { name: "n8n Automation" }))
+    expect(getByRole("button", { name: "n8n Automation" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
+    expect(
+      getByRole("link", { name: "Deploy n8n Automation" })
+    ).toBeInTheDocument()
   })
 })

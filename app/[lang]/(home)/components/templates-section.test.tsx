@@ -15,7 +15,7 @@ describe("TemplatesSection", () => {
     cleanup()
   })
 
-  it("renders ready templates, upcoming stacks, and comparison table", () => {
+  it("renders available templates with deploy destinations", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByText, container } = render(<TemplatesSection />)
 
@@ -26,22 +26,8 @@ describe("TemplatesSection", () => {
     expect(getByText("9router")).toBeInTheDocument()
     expect(getByText("n8n Automation")).toBeInTheDocument()
 
-    // 3 Available Soon stacks
-    expect(getByText("OpenClaw")).toBeInTheDocument()
-    expect(getByText("OmniRoute")).toBeInTheDocument()
-    expect(getByText("WordPress")).toBeInTheDocument()
-
-    // Request card
     expect(
-      getByText(/Butuh Docker Image atau Template Aplikasi Lain\?/i)
-    ).toBeInTheDocument()
-
-    // Comparison table
-    expect(
-      getByText(/Kenapa Infrastruktur Kami Lebih Cepat & Anti-Lag\?/i)
-    ).toBeInTheDocument()
-    expect(
-      getByText(/Direct Enterprise NVMe \(400.000 IOPS, Sub-millisecond\)/i)
+      getByText("Pilih aplikasi yang ingin dijalankan")
     ).toBeInTheDocument()
 
     // Deploy links with target template intent

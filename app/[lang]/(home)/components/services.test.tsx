@@ -26,17 +26,16 @@ describe("ServicesSection", () => {
     expect(container.querySelector("#storage")).toBeInTheDocument()
 
     expect(getByText("WhatsApp Official API")).toBeInTheDocument()
-    expect(getByText("Secure WireGuard VPN")).toBeInTheDocument()
-    expect(getByText("Integrated Cloud Solutions")).toBeInTheDocument()
+    expect(getByText("WireGuard VPN")).toBeInTheDocument()
+    expect(getByText("More from PFNApp")).toBeInTheDocument()
   })
 
   it("renders Indonesian copy and titles when active", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByText } = render(<ServicesSection />)
 
-    expect(getByText("Katalog Solusi Terintegrasi")).toBeInTheDocument()
+    expect(getByText("Layanan lain di PFNApp")).toBeInTheDocument()
     expect(getByText("Hosting Aplikasi")).toBeInTheDocument()
-    expect(getByText("Penyimpanan Objek S3")).toBeInTheDocument()
-    expect(getByText("Analitik & Penagihan Terpadu")).toBeInTheDocument()
+    expect(getByText("Penyimpanan S3")).toBeInTheDocument()
   })
 })

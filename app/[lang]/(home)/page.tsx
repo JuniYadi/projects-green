@@ -3,17 +3,14 @@ import { HomeNav } from "./components/nav"
 import { HeroSection } from "./components/hero"
 import { TemplatesSection } from "./components/templates-section"
 import { ServicesSection } from "./components/services"
-import { FeaturesSection } from "./components/features"
-import { PricingSection } from "./components/pricing"
-import { TestimonialsSection } from "./components/testimonials"
 import { CTASection, Footer } from "./components/footer"
 
 export const metadata: Metadata = {
   title: {
-    absolute: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
+    absolute: "PFNApp — Deploy Aplikasi Tanpa Menyiapkan Server",
   },
   description:
-    "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe. Claim Rp 50,000 credit voucher on launch batch.",
+    "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server. Pilih template dan lihat harga App Hosting PFNApp.",
   keywords: [
     "hermes agent hosting",
     "ai agent hosting",
@@ -24,9 +21,9 @@ export const metadata: Metadata = {
     "PFNApp",
   ],
   openGraph: {
-    title: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
+    title: "PFNApp — Deploy Aplikasi Tanpa Menyiapkan Server",
     description:
-      "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe.",
+      "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server.",
     siteName: "PFNApp",
     type: "website",
   },
@@ -40,9 +37,6 @@ export default function HomePage() {
         <HeroSection />
         <TemplatesSection />
         <ServicesSection />
-        <FeaturesSection />
-        <PricingSection />
-        <TestimonialsSection />
         <CTASection />
       </main>
       <Footer />
