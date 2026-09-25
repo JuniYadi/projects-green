@@ -76,7 +76,9 @@ import { TemplateInstallationsTab } from "./template-installations-tab"
 import type { AdminTemplateRecord } from "@/app/[lang]/portal/marketplace/_components/template-inspector-drawer"
 import {
   appTemplateBlueprintSchema,
+  appTemplateAccessSchema,
   type AppTemplateBlueprint,
+  type AppTemplateAccess,
   type AppTemplateBlueprintEnvVar,
   type AppTemplateBlueprintMount,
   type AppTemplatePackage,
@@ -95,6 +97,18 @@ export interface TemplateEditorFormProps {
   onReject?: (id: string, notes: string) => Promise<void>
   onToggleFeatured?: (id: string) => Promise<void>
   isSaving?: boolean
+}
+
+function parseAccessPreview(value: string): {
+  access?: AppTemplateAccess
+  error?: string
+} {
+  if (!value.trim()) return {}
+  try {
+    return { access: appTemplateAccessSchema.parse(JSON.parse(value)) }
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Invalid JSON" }
+  }
 }
 
 export function TemplateEditorForm({
@@ -120,6 +134,12 @@ export function TemplateEditorForm({
     initialData?.readmeMarkdown || ""
   )
   const [readmeTab, setReadmeTab] = useState<"write" | "preview">("write")
+  const [accessJson, setAccessJson] = useState(
+    initialData?.blueprintJson?.access
+      ? JSON.stringify(initialData.blueprintJson.access, null, 2)
+      : ""
+  )
+  const accessPreview = parseAccessPreview(accessJson)
   const [iconUrl, setIconUrl] = useState(initialData?.iconUrl || "")
   const [websiteUrl, setWebsiteUrl] = useState(initialData?.websiteUrl || "")
   const [documentationUrl, setDocumentationUrl] = useState(
@@ -319,6 +339,9 @@ export function TemplateEditorForm({
     const parsedArgs = runtimeArgs.trim().split(/\s+/).filter(Boolean)
     return {
       version: "1.0.0",
+      ...(accessJson.trim()
+        ? { access: JSON.parse(accessJson) as AppTemplateAccess }
+        : {}),
       runtime: {
         image: runtimeImage,
         defaultPort,
@@ -508,7 +531,16 @@ export function TemplateEditorForm({
   }
 
   const handleExportJson = () => {
-    const blueprint = constructBlueprint()
+    let blueprint: AppTemplateBlueprint
+    try {
+      blueprint = appTemplateBlueprintSchema.parse(constructBlueprint())
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Invalid access JSON"
+      )
+      setActiveTab("access")
+      return
+    }
     const pkg = exportTemplatePackage({
       name: name.trim() || "template",
       slug: slug.trim() || "template",
@@ -734,6 +766,7 @@ export function TemplateEditorForm({
       if (Array.isArray(bp.envSchema)) {
         setEnvSchema(bp.envSchema)
       }
+      setAccessJson(bp.access ? JSON.stringify(bp.access, null, 2) : "")
 
       setShowImportDialog(false)
       setImportJsonText("")
@@ -746,7 +779,21 @@ export function TemplateEditorForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const parsedBlueprint = constructBlueprint()
+    let parsedBlueprint: AppTemplateBlueprint
+    try {
+      parsedBlueprint = constructBlueprint()
+      const validated = appTemplateBlueprintSchema.safeParse(parsedBlueprint)
+      if (!validated.success) {
+        const issue = validated.error.issues[0]
+        throw new Error(`${issue?.path.join(".")}: ${issue?.message}`)
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Invalid access JSON"
+      )
+      setActiveTab("access")
+      return
+    }
     if (!name.trim()) {
       toast.error("Template name is required")
       setActiveTab("general")
@@ -968,19 +1015,65 @@ export function TemplateEditorForm({
         className="space-y-4"
       >
         <TabsList
-          className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-4" : "grid-cols-3"}`}
+          className={`grid w-full ${!isNew && initialData?.id ? "grid-cols-5" : "grid-cols-4"}`}
         >
           <TabsTrigger value="general">{messages.tabs.generalDocs}</TabsTrigger>
           <TabsTrigger value="runtime">
             {messages.tabs.runtimeServices}
           </TabsTrigger>
           <TabsTrigger value="env">{messages.tabs.envSchema}</TabsTrigger>
+          <TabsTrigger value="access">Panduan akses</TabsTrigger>
           {!isNew && initialData?.id && (
             <TabsTrigger value="installations">
               {messages.tabs.installations}
             </TabsTrigger>
           )}
         </TabsList>
+
+        <TabsContent value="access" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Panduan akses pengguna (JSON)</CardTitle>
+              <CardDescription>
+                Hanya referensikan key env; jangan masukkan nilai password.
+                Panduan ini juga dapat digunakan untuk email tanpa mengirim
+                secret.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Label htmlFor="template-access">Kontrak akses (opsional)</Label>
+              <Textarea
+                id="template-access"
+                value={accessJson}
+                onChange={(event) => setAccessJson(event.target.value)}
+                rows={16}
+                className="font-mono text-xs"
+                placeholder='{"mode":"password-only","title":"Mulai menggunakan aplikasi","fields":[],"steps":[{"text":"Buka aplikasi.","action":{"type":"open-app"}}]}'
+              />
+              {accessPreview.error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {accessPreview.error}
+                </p>
+              )}
+              {accessPreview.access && (
+                <div className="space-y-3 rounded-lg border border-border p-4 text-sm">
+                  <p className="font-semibold">
+                    Preview kartu & email: {accessPreview.access.title}
+                  </p>
+                  <ol className="list-decimal space-y-1 pl-5">
+                    {accessPreview.access.steps.map((step, index) => (
+                      <li key={index}>{step.text}</li>
+                    ))}
+                  </ol>
+                  <p className="text-xs text-muted-foreground">
+                    Email akan mengarahkan pengguna masuk ke PFNApp untuk
+                    melihat secret; nilai secret tidak disertakan.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* Tab 1: General Info */}
         <TabsContent value="general" className="space-y-4">

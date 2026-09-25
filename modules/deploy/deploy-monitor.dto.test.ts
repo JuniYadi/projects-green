@@ -398,6 +398,58 @@ describe("deploy-monitor.dto", () => {
   })
 
   describe("toStackSummaryDTO", () => {
+    it("exposes only declared access references, never stored secret values", () => {
+      const dto = toStackSummaryDTO({
+        id: "stack-access",
+        name: "router",
+        slug: "router",
+        status: "RUNNING",
+        framework: null,
+        branchName: "main",
+        subdomain: "router.example.test",
+        customDomain: null,
+        resourcePlanId: null,
+        billingMode: null,
+        metadataJson: null,
+        lastDeployedAt: null,
+        template: {
+          name: "router",
+          blueprintJson: {
+            access: {
+              mode: "password-only",
+              title: "Open router",
+              fields: [
+                {
+                  id: "password",
+                  label: "Initial password",
+                  source: "env",
+                  key: "INITIAL_PASSWORD",
+                  secret: true,
+                },
+              ],
+              steps: [
+                {
+                  text: "See password",
+                  action: { type: "reveal-field", fieldId: "password" },
+                },
+              ],
+            },
+          },
+        },
+        envVarsJson: [
+          {
+            key: "INITIAL_PASSWORD",
+            type: "secret_ref",
+            value: "should-not-leak",
+          },
+          { key: "DB_PASSWORD", type: "secret_ref", value: "also-private" },
+        ],
+      })
+      expect(dto.accessReadyKeys).toEqual(["INITIAL_PASSWORD"])
+      expect(JSON.stringify(dto)).not.toContain("should-not-leak")
+      expect(JSON.stringify(dto)).not.toContain("also-private")
+    })
+
     it("maps a stack with its latest deployment id and billing state", () => {
       const lastDeployedAt = new Date("2026-06-05T10:00:00.000Z")
       const dto = toStackSummaryDTO({

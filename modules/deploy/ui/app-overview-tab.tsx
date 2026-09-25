@@ -1,11 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  ArrowsClockwise,
   CaretDown,
   Check,
   CheckCircle,
@@ -17,8 +15,6 @@ import {
 import { cn } from "@/lib/utils"
 import { eden } from "@/lib/eden"
 import { getMessagesForMaybeLocale } from "@/lib/i18n/messages"
-import { Button } from "@/components/ui/button"
-import { ReinstallTemplateDialog } from "./reinstall-template-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Collapsible,
@@ -32,6 +28,7 @@ import {
 } from "@/modules/deploy/telemetry.service"
 import type { StackSummaryDTO } from "@/modules/deploy/deploy-monitor.dto"
 import type { ClusterTelemetrySummary } from "@/modules/deploy/telemetry.types"
+import { TemplateAccessCard } from "./template-access-card"
 
 type AppOverviewTabProps = {
   stack: StackSummaryDTO
@@ -306,8 +303,6 @@ function CopyableRow({
 }
 
 export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
-  const router = useRouter()
-  const [reinstallOpen, setReinstallOpen] = useState(false)
   const [technicalOpen, setTechnicalOpen] = useState(false)
   const isTemplate =
     stack.sourceType === "TEMPLATE" || Boolean(stack.templateId)
@@ -378,6 +373,7 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
 
   return (
     <div className="space-y-6">
+      <TemplateAccessCard stack={stack} locale={locale} />
       {/* 1. VITAL HEALTH GAUGES */}
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -575,22 +571,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
                       stack.templateId ??
                       "Custom Container"}
                   </span>
-                  {isTemplate && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setReinstallOpen(true)}
-                      className="h-6 gap-1 px-1.5 text-[11px] text-primary hover:bg-primary/10 hover:text-primary"
-                    >
-                      <ArrowsClockwise size={12} />
-                      <span>
-                        {locale.startsWith("id")
-                          ? "Ganti Template"
-                          : "Change Template"}
-                      </span>
-                    </Button>
-                  )}
                 </div>
               </div>
 
@@ -644,18 +624,6 @@ export function AppOverviewTab({ stack, locale }: AppOverviewTabProps) {
           </div>
         </CollapsibleContent>
       </Collapsible>
-
-      {isTemplate && (
-        <ReinstallTemplateDialog
-          stack={stack}
-          open={reinstallOpen}
-          onOpenChange={setReinstallOpen}
-          onSuccess={() => {
-            router.refresh()
-          }}
-          locale={locale}
-        />
-      )}
     </div>
   )
 }

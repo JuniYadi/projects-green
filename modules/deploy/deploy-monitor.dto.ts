@@ -12,6 +12,10 @@ import type {
   DeployTimelineItem,
 } from "@/modules/deploy/deploy.types"
 import { DEPLOY_TEMPLATES } from "@/modules/deploy/deploy.constants"
+import {
+  appTemplateAccessSchema,
+  type AppTemplateAccess,
+} from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 /**
  * PGREEN-072 — Console Monitor/Manage truth path.
  *
@@ -340,6 +344,8 @@ export type StackSummaryDTO = {
   dockerVersion?: string | null
   templateId?: string | null
   templateName?: string | null
+  access?: AppTemplateAccess | null
+  accessReadyKeys?: string[]
   templateUpdate?: {
     installedVersion: string
     latestVersion: string
@@ -405,7 +411,11 @@ export const toStackSummaryDTO = (stack: {
   metadataJson: unknown
   sourceType?: string | null
   templateId?: string | null
-  template?: { name?: string | null; version?: string | null } | null
+  template?: {
+    name?: string | null
+    version?: string | null
+    blueprintJson?: unknown
+  } | null
   cluster?: {
     id: string
     name: string
@@ -431,6 +441,13 @@ export const toStackSummaryDTO = (stack: {
   events?: Array<Pick<ApplicationDeployEvent, "type" | "createdAt">>
 }): StackSummaryDTO => {
   const meta = (stack.metadataJson ?? {}) as Record<string, unknown>
+  const blueprint = stack.template?.blueprintJson
+  const access =
+    appTemplateAccessSchema.safeParse(
+      blueprint && typeof blueprint === "object" && !Array.isArray(blueprint)
+        ? (blueprint as Record<string, unknown>).access
+        : undefined
+    ).data ?? null
   const envVars = Array.isArray(stack.envVarsJson)
     ? stack.envVarsJson
     : typeof stack.envVarsJson === "object" && stack.envVarsJson !== null
@@ -493,8 +510,7 @@ export const toStackSummaryDTO = (stack: {
     meta.suspended === true ||
     meta.billingState === "SUSPENDED" ||
     resolveStackBillingState(stack.metadataJson) === "SUSPENDED"
-  const isTerminated =
-    stack.status === "TERMINATED" || meta.terminated === true
+  const isTerminated = stack.status === "TERMINATED" || meta.terminated === true
 
   const resolvedStatus: DeployStatus = isTerminated
     ? "terminated"
@@ -554,6 +570,22 @@ export const toStackSummaryDTO = (stack: {
           : null)
       )
     })(),
+    access,
+    accessReadyKeys: Array.isArray(stack.envVarsJson)
+      ? stack.envVarsJson
+          .filter(
+            (entry): entry is Record<string, unknown> =>
+              typeof entry === "object" &&
+              entry !== null &&
+              !Array.isArray(entry)
+          )
+          .filter(
+            (entry) =>
+              entry.type === "secret_ref" &&
+              access?.fields.some((field) => field.key === entry.key)
+          )
+          .map((entry) => entry.key as string)
+      : [],
     port: resolvedPort,
     templateUpdate,
     cpu: stack.cpu ?? (typeof meta.cpu === "number" ? meta.cpu : null),

@@ -313,6 +313,28 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
         deploymentType: "statefulset",
         runAsNonRoot: false,
       },
+      access: {
+        mode: "password-only",
+        title: "Mulai menggunakan 9router",
+        loginPath: "/login",
+        fields: [
+          {
+            id: "initial-password",
+            label: "Password awal",
+            source: "env",
+            key: "INITIAL_PASSWORD",
+            secret: true,
+          },
+        ],
+        steps: [
+          {
+            text: "Lihat dan salin password awal di PFNApp.",
+            action: { type: "reveal-field", fieldId: "initial-password" },
+          },
+          { text: "Buka dashboard 9router.", action: { type: "open-app" } },
+          { text: "Masukkan password tersebut. Tidak perlu username." },
+        ],
+      },
       resources: {
         defaultCpu: 250,
         defaultMemory: 256,

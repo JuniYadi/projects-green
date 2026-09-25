@@ -3,6 +3,7 @@ import { describe, expect, it, mock, beforeEach } from "bun:test"
 import { render, waitFor, cleanup } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { TemplateEditorForm } from "./template-editor-form"
+import { OFFICIAL_APP_TEMPLATES } from "../app-template.seed"
 
 // Mock next/navigation
 mock.module("next/navigation", () => ({
@@ -15,6 +16,7 @@ mock.module("next/navigation", () => ({
 }))
 interface SavePayload {
   blueprintJson?: {
+    access?: { title: string; steps: Array<{ text: string }> }
     runtime?: {
       command?: string[]
       args?: string[]
@@ -34,6 +36,46 @@ interface SavePayload {
 describe("TemplateEditorForm", () => {
   beforeEach(() => {
     cleanup()
+  })
+
+  it("preserves the 9router access contract when saving other template fields", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const template = OFFICIAL_APP_TEMPLATES.find(
+      (item) => item.slug === "9router"
+    )!
+    const { getByText } = render(
+      <TemplateEditorForm
+        isNew={false}
+        onSave={onSave}
+        initialData={{
+          id: "tmpl-1",
+          name: template.name,
+          slug: template.slug,
+          tagline: template.tagline,
+          description: template.description,
+          category: template.category,
+          visibility: template.visibility,
+          version: template.version,
+          isOfficial: true,
+          isFeatured: true,
+          currency: "USD",
+          installCount: 0,
+          reviewNotes: null,
+          verifiedAt: null,
+          priceMonthly: "0",
+          blueprintJson: template.blueprint,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }}
+      />
+    )
+    await userEvent.setup().click(getByText("Save Changes"))
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.access?.title).toBe(
+      "Mulai menggunakan 9router"
+    )
+    expect(payload?.blueprintJson?.access?.steps).toHaveLength(3)
   })
 
   it("renders 3 consolidated tabs for new template", () => {

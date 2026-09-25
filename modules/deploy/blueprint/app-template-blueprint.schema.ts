@@ -91,15 +91,96 @@ export const appTemplateBlueprintEnvVarSchema = z.object({
   isHidden: z.boolean().default(false).optional(),
 })
 
-export const appTemplateBlueprintSchema = z.object({
-  version: z.literal("1.0.0"),
-  runtime: appTemplateBlueprintRuntimeSchema,
-  resources: appTemplateBlueprintResourcesSchema,
-  storage: appTemplateBlueprintStorageSchema.optional(),
-  dependencies: z.array(appTemplateBlueprintDependencySchema).default([]),
-  envSchema: z.array(appTemplateBlueprintEnvVarSchema).default([]),
-  scaling: appTemplateBlueprintScalingSchema.optional(),
+export const appTemplateAccessSchema = z.object({
+  mode: z.enum([
+    "password-only",
+    "username-password",
+    "first-run-setup",
+    "external-auth",
+    "no-login",
+  ]),
+  title: z.string().trim().min(1),
+  loginPath: z
+    .string()
+    .regex(/^\/(?!\/)/)
+    .optional(),
+  fields: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1),
+        label: z.string().trim().min(1),
+        source: z.literal("env"),
+        key: z.string().trim().min(1),
+        secret: z.literal(true),
+      })
+    )
+    .default([]),
+  steps: z
+    .array(
+      z.object({
+        text: z.string().trim().min(1),
+        action: z
+          .discriminatedUnion("type", [
+            z.object({ type: z.literal("reveal-field"), fieldId: z.string() }),
+            z.object({ type: z.literal("open-app") }),
+          ])
+          .optional(),
+      })
+    )
+    .min(1),
 })
+
+export type AppTemplateAccess = z.infer<typeof appTemplateAccessSchema>
+
+export const appTemplateBlueprintSchema = z
+  .object({
+    version: z.literal("1.0.0"),
+    runtime: appTemplateBlueprintRuntimeSchema,
+    resources: appTemplateBlueprintResourcesSchema,
+    storage: appTemplateBlueprintStorageSchema.optional(),
+    dependencies: z.array(appTemplateBlueprintDependencySchema).default([]),
+    envSchema: z.array(appTemplateBlueprintEnvVarSchema).default([]),
+    access: appTemplateAccessSchema.optional(),
+    scaling: appTemplateBlueprintScalingSchema.optional(),
+  })
+  .superRefine((blueprint, ctx) => {
+    const access = blueprint.access
+    if (!access) return
+    const ids = new Set<string>()
+    for (const [index, field] of access.fields.entries()) {
+      if (ids.has(field.id)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["access", "fields", index, "id"],
+          message: "Field ID must be unique",
+        })
+      }
+      ids.add(field.id)
+      if (
+        !blueprint.envSchema.some(
+          (env) => env.key === field.key && env.isSecret
+        )
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["access", "fields", index, "key"],
+          message: "Field must reference a secret env key",
+        })
+      }
+    }
+    for (const [index, step] of access.steps.entries()) {
+      if (
+        step.action?.type === "reveal-field" &&
+        !ids.has(step.action.fieldId)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["access", "steps", index, "action", "fieldId"],
+          message: "Step references an unknown field",
+        })
+      }
+    }
+  })
 
 export type AppTemplateBlueprint = z.input<typeof appTemplateBlueprintSchema>
 export type AppTemplateBlueprintParsed = z.infer<
