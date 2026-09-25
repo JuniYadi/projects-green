@@ -100,9 +100,10 @@ export interface PaymentConfirmationResponse {
 export interface DuitkuConfig {
   merchantCode: string
   apiKey: string
+  environment?: "sandbox" | "production"
   checkoutMode?: "POP" | "REDIRECT"
-  sandboxUrl: string
-  productionUrl: string
+  sandboxUrl?: string
+  productionUrl?: string
 }
 
 export interface DuitkuInquiryRequest {

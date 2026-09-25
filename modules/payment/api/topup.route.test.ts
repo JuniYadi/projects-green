@@ -22,6 +22,7 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
 
 const mockBillingAccountFindUnique = mock()
 const mockBillingInvoiceUpdate = mock()
+const mockBillingInvoiceDelete = mock()
 const mockPrismaTransaction = mock(async (actions: unknown[]) => actions)
 
 const mockPrisma = {
@@ -30,6 +31,7 @@ const mockPrisma = {
   },
   billingInvoice: {
     update: mockBillingInvoiceUpdate,
+    delete: mockBillingInvoiceDelete,
   },
   $transaction: mockPrismaTransaction,
 }
@@ -252,7 +254,7 @@ describe("TopupRoute POST /topup", () => {
     expect(json.vaNumber).toBe("88880001")
     expect(json.paymentUrl).toBe("https://duitku.com/pay")
     expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentMethod: "VC" })
+      expect.objectContaining({ paymentMethod: "" })
     )
   })
 
@@ -286,8 +288,37 @@ describe("TopupRoute POST /topup", () => {
     const json = await res.json()
     expect(json.ok).toBe(true)
     expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentMethod: "QR" })
+      expect.objectContaining({ paymentMethod: "SP" })
     )
+  })
+
+  it("rolls back invoice if Duitku payment creation fails", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_failed_1",
+      invoiceNumber: "INV-FAILED-001",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "VA",
+    })
+    mockDuitkuCreatePayment.mockRejectedValueOnce(
+      new Error("Duitku API error: 404")
+    )
+    mockBillingInvoiceDelete.mockResolvedValueOnce({ id: "inv_failed_1" })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    expect(mockBillingInvoiceDelete).toHaveBeenCalledWith({
+      where: { id: "inv_failed_1" },
+    })
   })
 
   it("returns 400 when PAYPAL gateway is not available", async () => {

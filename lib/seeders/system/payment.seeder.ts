@@ -96,11 +96,8 @@ export class PaymentSeeder extends BaseSeeder {
     const config = {
       merchantCode: process.env.DUITKU_MERCHANT_CODE ?? "DS00000",
       apiKey: process.env.DUITKU_API_KEY ?? "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      environment: process.env.DUITKU_ENVIRONMENT ?? "sandbox",
       checkoutMode: process.env.DUITKU_CHECKOUT_MODE ?? "POP",
-      sandboxUrl:
-        process.env.DUITKU_SANDBOX_URL ?? "https://api-sandbox.duitku.com",
-      productionUrl:
-        process.env.DUITKU_PRODUCTION_URL ?? "https://api-prod.duitku.com",
     }
 
     const existing = await this.prisma.paymentGateway.findFirst({
