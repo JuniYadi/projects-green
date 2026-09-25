@@ -197,6 +197,45 @@ describe("AppTemplateBlueprint Validation & Service", () => {
     ])
   })
 
+  it("accepts securityContext overrides including root execution with null UID/GID", () => {
+    const rootBlueprint = {
+      ...validSampleBlueprint,
+      runtime: {
+        ...validSampleBlueprint.runtime,
+        runAsNonRoot: false,
+        runAsUser: null,
+        runAsGroup: null,
+        readOnlyRootFilesystem: false,
+      },
+    }
+    const result = validateBlueprint(rootBlueprint)
+    expect(result.valid).toBe(true)
+    expect(result.data?.runtime.runAsNonRoot).toBe(false)
+    expect(result.data?.runtime.runAsUser).toBeNull()
+    expect(result.data?.runtime.runAsGroup).toBeNull()
+  })
+
+  it("accepts securityContext with strict UID/GID numbers", () => {
+    const strictBlueprint = {
+      ...validSampleBlueprint,
+      runtime: {
+        ...validSampleBlueprint.runtime,
+        runAsNonRoot: true,
+        runAsUser: 10001,
+        runAsGroup: 10001,
+        readOnlyRootFilesystem: true,
+        allowPrivilegeEscalation: false,
+      },
+    }
+    const result = validateBlueprint(strictBlueprint)
+    expect(result.valid).toBe(true)
+    expect(result.data?.runtime.runAsNonRoot).toBe(true)
+    expect(result.data?.runtime.runAsUser).toBe(10001)
+    expect(result.data?.runtime.runAsGroup).toBe(10001)
+    expect(result.data?.runtime.readOnlyRootFilesystem).toBe(true)
+    expect(result.data?.runtime.allowPrivilegeEscalation).toBe(false)
+  })
+
   it("rejects an invalid deploymentType value", () => {
     const invalid = {
       ...validSampleBlueprint,

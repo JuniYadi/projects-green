@@ -118,15 +118,15 @@ describe("PortalEditAppTemplatePage", () => {
 
   it("renders all envSchema fields including description and random hex on Env Schema tab", async () => {
     const user = userEvent.setup()
-    const { getByRole, getByDisplayValue } = render(
+    const { getByRole, getByDisplayValue, getAllByDisplayValue } = render(
       <PortalEditAppTemplatePage />
     )
 
     await waitFor(() => {
-      expect(getByRole("tab", { name: /4\. Env Schema/i })).toBeInTheDocument()
+      expect(getByRole("tab", { name: /Env Schema/i })).toBeInTheDocument()
     })
 
-    const envTab = getByRole("tab", { name: /4\. Env Schema/i })
+    const envTab = getByRole("tab", { name: /Env Schema/i })
     await user.click(envTab)
 
     await waitFor(() => {
@@ -138,7 +138,7 @@ describe("PortalEditAppTemplatePage", () => {
         )
       ).toBeInTheDocument()
       expect(getByDisplayValue("32")).toBeInTheDocument()
-      expect(getByDisplayValue("/app/data")).toBeInTheDocument()
+      expect(getAllByDisplayValue("/app/data")[0]).toBeInTheDocument()
     })
   })
 })

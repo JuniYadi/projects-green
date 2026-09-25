@@ -266,6 +266,22 @@ describe("buildHelmValues", () => {
     expect(out.containerPorts).toEqual([{ containerPort: 8080, name: "http" }])
   })
 
+  it("renders securityContext with runAsNonRoot: false and omits runAsUser/runAsGroup when null", () => {
+    const out = buildHelmValues({
+      slug: "root-docker-app",
+      imageRepository: "ghcr.io/pfnapp/base/root-app",
+      imageTag: "latest",
+      env: [],
+      containerPort: 8080,
+      runAsNonRoot: false,
+      runAsUser: null,
+      runAsGroup: null,
+    })
+    expect(out.securityContext).toEqual({
+      runAsNonRoot: false,
+    })
+  })
+
   it("renders livenessProbe and readinessProbe targeting port 8080", () => {
     const out = buildHelmValues({
       slug: "laravel-app",

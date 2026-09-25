@@ -466,6 +466,23 @@ export type AppMessages = {
           portNamePlaceholder: string
           runAsNonRoot: string
           runAsNonRootDescription: string
+          securityContextTitle: string
+          securityContextDescription: string
+          securityPresetLabel: string
+          securityPresetHint: string
+          presetRootDefault: string
+          presetStrictNonRoot: string
+          presetStandardNonRoot: string
+          presetImageDefaultNonRoot: string
+          presetCustom: string
+          runAsUserLabel: string
+          runAsUserHint: string
+          runAsGroupLabel: string
+          runAsGroupHint: string
+          fsGroupLabel: string
+          fsGroupHint: string
+          readOnlyRootLabel: string
+          readOnlyRootHint: string
         }
         resourcesStorage: {
           title: string

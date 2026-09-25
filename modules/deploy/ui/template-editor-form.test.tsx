@@ -22,6 +22,10 @@ interface SavePayload {
       livenessProbe?: { path: string }
       readinessProbe?: { path: string }
       startupProbe?: { path: string }
+      runAsNonRoot?: boolean
+      runAsUser?: number | null
+      runAsGroup?: number | null
+      readOnlyRootFilesystem?: boolean
     }
   }
 }
@@ -315,5 +319,74 @@ describe("TemplateEditorForm", () => {
     } finally {
       global.fetch = origFetch
     }
+  })
+
+  it("configures and saves root execution securityContext with runAsNonRoot: false and null UID/GID", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const { getByTestId, getByText, getByLabelText } = render(
+      <TemplateEditorForm isNew={true} onSave={onSave} />
+    )
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Docker Root App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "Requires root execution"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Toggle runAsNonRoot switch to false
+    const nonRootSwitch = getByLabelText(/Run as Non-Root/i)
+    await user.click(nonRootSwitch)
+
+    // Save template
+    await user.click(getByText("Create Template"))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.runAsNonRoot).toBe(false)
+    expect(payload?.blueprintJson?.runtime?.runAsUser).toBeNull()
+    expect(payload?.blueprintJson?.runtime?.runAsGroup).toBeNull()
+  })
+
+  it("allows auto-input and overwriting UID/GID in security context", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const { getByTestId, getByText, getByLabelText } = render(
+      <TemplateEditorForm isNew={true} onSave={onSave} />
+    )
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Custom UID App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "App with custom UID/GID"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Enter custom UID and GID (overwriting default empty values)
+    const uidInput = getByLabelText(/Run As User \(UID\)/i)
+    await user.type(uidInput, "1000")
+
+    const gidInput = getByLabelText(/Run As Group \(GID\)/i)
+    await user.type(gidInput, "2000")
+
+    // Save template
+    await user.click(getByText("Create Template"))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.runAsNonRoot).toBe(true)
+    expect(payload?.blueprintJson?.runtime?.runAsUser).toBe(1000)
+    expect(payload?.blueprintJson?.runtime?.runAsGroup).toBe(2000)
   })
 })

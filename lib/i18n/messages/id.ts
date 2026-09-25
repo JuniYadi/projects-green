@@ -607,6 +607,29 @@ export const idMessages: AppMessages = {
           portNamePlaceholder: "dashboard",
           runAsNonRoot: "Jalankan sebagai Non-Root",
           runAsNonRootDescription: "Menerapkan standar keamanan pod",
+          securityContextTitle: "Security Context & Izin Runtime",
+          securityContextDescription:
+            "Konfigurasi user, grup, dan izin eksekusi proses kontainer",
+          securityPresetLabel: "Preset Keamanan",
+          securityPresetHint:
+            "Pilih preset untuk auto-isi pengaturan keamanan, atau sesuaikan secara manual di bawah.",
+          presetRootDefault:
+            "Root / Default Kontainer (runAsNonRoot: false, UID/GID: tidak diset)",
+          presetStrictNonRoot: "Non-Root Ketat (UID 10001, GID 10001)",
+          presetStandardNonRoot: "Non-Root Standar (UID 1000, GID 1000)",
+          presetImageDefaultNonRoot: "Non-Root tanpa UID (User Default Image)",
+          presetCustom: "Konfigurasi Kustom",
+          runAsUserLabel: "Run As User (UID)",
+          runAsUserHint:
+            "UID untuk proses kontainer (kosongkan untuk default image / null)",
+          runAsGroupLabel: "Run As Group (GID)",
+          runAsGroupHint:
+            "GID untuk proses kontainer (kosongkan untuk default image / null)",
+          fsGroupLabel: "Storage FSGroup",
+          fsGroupHint:
+            "GID kepemilikan volume untuk storage persisten (opsional)",
+          readOnlyRootLabel: "Filesystem Root Read-Only",
+          readOnlyRootHint: "Mount filesystem root kontainer sebagai read-only",
         },
         resourcesStorage: {
           title: "Sumber Daya & Storage",

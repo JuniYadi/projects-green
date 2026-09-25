@@ -40,6 +40,10 @@ export const appTemplateBlueprintRuntimeSchema = z.object({
   readinessProbe: appTemplateBlueprintProbeSchema.optional(),
   startupProbe: appTemplateBlueprintProbeSchema.optional(),
   runAsNonRoot: z.boolean().default(true),
+  runAsUser: z.number().int().nonnegative().nullable().optional(),
+  runAsGroup: z.number().int().nonnegative().nullable().optional(),
+  readOnlyRootFilesystem: z.boolean().optional(),
+  allowPrivilegeEscalation: z.boolean().optional(),
   deploymentType: z.enum(["deployment", "statefulset"]).default("deployment"),
   additionalPorts: z
     .array(
@@ -49,7 +53,7 @@ export const appTemplateBlueprintRuntimeSchema = z.object({
       })
     )
     .default([]),
-  fsGroup: z.number().int().positive().optional(),
+  fsGroup: z.number().int().positive().nullable().optional(),
 })
 
 export const appTemplateBlueprintResourcesSchema = z.object({
