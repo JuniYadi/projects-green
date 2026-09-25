@@ -94,6 +94,7 @@ export default async function PortalLayout({
         surface="portal"
         user={sidebarUser}
         organization={sidebarOrganization}
+        collapsible="icon"
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">

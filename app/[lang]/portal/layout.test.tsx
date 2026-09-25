@@ -105,12 +105,14 @@ mock.module("@/components/app-sidebar", () => {
       surface,
       user,
       organization,
+      collapsible,
     }: {
       surface: string
       user: { name: string }
       organization: { name: string | null }
+      collapsible?: string
     }) => (
-      <aside>
+      <aside data-collapsible={collapsible}>
         Sidebar:{surface}:{user.name}:{organization.name ?? "none"}
       </aside>
     ),
@@ -206,6 +208,8 @@ describe("PortalLayout", () => {
     expect(
       view.getByText("Sidebar:portal:Jane Doe:Acme Inc")
     ).toBeInTheDocument()
+    const sidebar = view.getByText(/^Sidebar:/).closest("aside")
+    expect(sidebar).toHaveAttribute("data-collapsible", "icon")
     expect(view.getByText("Ask P")).toBeInTheDocument()
     expect(view.getByText("Portal")).toBeInTheDocument()
     expect(view.getByText("Documentation")).toBeInTheDocument()

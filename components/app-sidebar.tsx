@@ -1248,6 +1248,7 @@ export function AppSidebar({
   surface,
   user,
   organization,
+  collapsible = "icon",
   ...props
 }: AppSidebarProps) {
   const pathname = usePathname()
@@ -1277,7 +1278,7 @@ export function AppSidebar({
   })
 
   return (
-    <Sidebar variant="inset" {...props}>
+    <Sidebar variant="inset" collapsible={collapsible} {...props}>
       <SidebarHeader>
         <NavOrganization organization={organization} />
       </SidebarHeader>
