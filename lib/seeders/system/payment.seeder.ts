@@ -111,7 +111,7 @@ export class PaymentSeeder extends BaseSeeder {
       await this.prisma.paymentGateway.update({
         where: { id: existing.id },
         data: {
-          type: "GATEWAY",
+          type: "duitku",
           config,
           supportedCurrencies: ["IDR"],
           isActive: true,
@@ -125,7 +125,7 @@ export class PaymentSeeder extends BaseSeeder {
       await this.prisma.paymentGateway.create({
         data: {
           name: "Duitku",
-          type: "GATEWAY",
+          type: "duitku",
           config,
           supportedCurrencies: ["IDR"],
           isActive: true,

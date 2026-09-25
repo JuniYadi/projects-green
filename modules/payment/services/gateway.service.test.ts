@@ -131,6 +131,22 @@ describe("GatewayService", () => {
       const result = await service.findByType("DUITKU")
       expect(result).toBeNull()
     })
+
+    it("matches duitku gateway when queried by GATEWAY or duitku", async () => {
+      pg.findFirst.mockResolvedValueOnce({
+        id: "gw_duitku",
+        name: "Duitku",
+        type: "duitku",
+        isActive: true,
+        isDefault: true,
+        supportedCurrencies: ["IDR"],
+        config: null,
+      })
+
+      const result = await service.findByType("GATEWAY")
+      expect(result).not.toBeNull()
+      expect(result?.id).toBe("gw_duitku")
+    })
   })
 
   describe("listForCurrency", () => {
@@ -138,12 +154,48 @@ describe("GatewayService", () => {
       const result = await service.listForCurrency("USD")
       expect(result).toEqual([])
     })
+
+    it("matches duitku gateway when queried by type GATEWAY", async () => {
+      pg.findMany.mockResolvedValueOnce([
+        {
+          id: "gw_duitku",
+          name: "Duitku",
+          type: "duitku",
+          isActive: true,
+          isDefault: true,
+          supportedCurrencies: ["IDR"],
+          config: null,
+        },
+      ])
+
+      const result = await service.listForCurrency("IDR", { type: "GATEWAY" })
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe("gw_duitku")
+    })
   })
 
   describe("findByTypeForCurrency", () => {
     it("returns null when no matching gateway", async () => {
       const result = await service.findByTypeForCurrency("DUITKU", "USD")
       expect(result).toBeNull()
+    })
+
+    it("returns duitku gateway for IDR when queried with GATEWAY", async () => {
+      pg.findMany.mockResolvedValueOnce([
+        {
+          id: "gw_duitku",
+          name: "Duitku",
+          type: "duitku",
+          isActive: true,
+          isDefault: true,
+          supportedCurrencies: ["IDR"],
+          config: null,
+        },
+      ])
+
+      const result = await service.findByTypeForCurrency("GATEWAY", "IDR")
+      expect(result).not.toBeNull()
+      expect(result?.id).toBe("gw_duitku")
     })
   })
 

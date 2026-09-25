@@ -72,7 +72,7 @@ export class DuitkuService {
   }
 
   private async getActiveConfig(): Promise<DuitkuConfig | null> {
-    const gateway = await this.gatewayService.findByType("GATEWAY")
+    const gateway = await this.gatewayService.findByType("duitku")
     if (!gateway) return null
 
     return this.gatewayService.getDecryptedConfig(gateway.id)

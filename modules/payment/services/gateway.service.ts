@@ -39,21 +39,17 @@ export class GatewayService {
     const isDuitku = type.toLowerCase() === "duitku"
     const isGateway = type.toUpperCase() === "GATEWAY"
 
-    const whereClause: Prisma.PaymentGatewayWhereInput = isDuitku
-      ? {
-          isActive: true,
-          OR: [
-            { type: "duitku" },
-            {
-              type: "GATEWAY",
-              name: { contains: "Duitku", mode: "insensitive" },
-            },
-          ],
-        }
-      : isGateway
+    const whereClause: Prisma.PaymentGatewayWhereInput =
+      isDuitku || isGateway
         ? {
             isActive: true,
-            type: "GATEWAY",
+            OR: [
+              { type: "duitku" },
+              { type: "GATEWAY" },
+              {
+                name: { contains: "Duitku", mode: "insensitive" },
+              },
+            ],
           }
         : {
             isActive: true,
@@ -82,19 +78,17 @@ export class GatewayService {
     const isGateway = options.type?.toUpperCase() === "GATEWAY"
 
     const whereType: Prisma.PaymentGatewayWhereInput | undefined = options.type
-      ? isDuitku
+      ? isDuitku || isGateway
         ? {
             OR: [
               { type: "duitku" },
+              { type: "GATEWAY" },
               {
-                type: "GATEWAY",
                 name: { contains: "Duitku", mode: "insensitive" },
               },
             ],
           }
-        : isGateway
-          ? { type: "GATEWAY" }
-          : { type: options.type }
+        : { type: options.type }
       : undefined
 
     const gateways = await prisma.paymentGateway.findMany({
@@ -226,8 +220,16 @@ export class GatewayService {
     if (typeof gateway.config === "object" && gateway.config !== null) {
       return gateway.config as unknown as DuitkuConfig
     }
-    const configStr = this.encryption.decryptField(gateway.config as string)
-    return JSON.parse(configStr) as DuitkuConfig
+    try {
+      const configStr = this.encryption.decryptField(gateway.config as string)
+      return JSON.parse(configStr) as DuitkuConfig
+    } catch {
+      try {
+        return JSON.parse(gateway.config as string) as DuitkuConfig
+      } catch {
+        return null
+      }
+    }
   }
 
   private toResponse(gateway: {
