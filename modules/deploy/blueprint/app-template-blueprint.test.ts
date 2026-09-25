@@ -94,7 +94,7 @@ describe("AppTemplateBlueprint Validation & Service", () => {
       },
     })
     expect(result.valid).toBe(true)
-    expect(result.data?.access?.fields[0]?.key).toBe("ADMIN_PASSWORD")
+    expect(result.data?.access?.fields?.[0]?.key).toBe("ADMIN_PASSWORD")
   })
 
   it("rejects unsafe paths, unknown fields, and non-secret env references", () => {
