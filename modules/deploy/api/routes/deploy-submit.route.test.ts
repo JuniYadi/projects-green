@@ -35,9 +35,10 @@ mock.module("@/modules/deploy/app-managed-stock.service", () => ({
   claimManagedStock,
   releaseManagedStock,
 }))
+const mockVaultWrite = mock(async () => ({ version: 1 }))
 mock.module("@/lib/vault/vault-client", () => ({
   VaultClient: class {
-    writeKV = mock(async () => ({ version: 1 }))
+    writeKV = mockVaultWrite
     readKV = mock(async () => ({}))
     deleteKV = mock(async () => {})
     getKVMetadata = mock(async () => ({ currentVersion: 1 }))
@@ -186,6 +187,7 @@ const validBody = {
   paygBufferHours: 24,
 }
 const resetPrisma = () => {
+  mockVaultWrite.mockClear()
   claimManagedStock.mockClear()
   claimManagedStock.mockResolvedValue({ id: "stock-1" } as never)
   ensureManagedDomainForStack.mockClear()
@@ -396,6 +398,79 @@ describe("deploySubmitRoutes /submit", () => {
             }),
           ]),
         }),
+      })
+    )
+  })
+
+  it("generates the declared initial login password for a new template install", async () => {
+    mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+      id: "tpl-9router",
+      slug: "9router",
+      name: "9router",
+      blueprintJson: {
+        version: "1.0.0",
+        runtime: {
+          image: "docker.io/decolua/9router:0.5.75",
+          defaultPort: 20128,
+        },
+        resources: { defaultCpu: 250, defaultMemory: 256 },
+        envSchema: [
+          {
+            key: "INITIAL_PASSWORD",
+            label: "Initial password",
+            required: true,
+            isSecret: true,
+            dataType: "string",
+            generateRandomHex: 8,
+          },
+        ],
+        access: {
+          mode: "password-only",
+          title: "Open router",
+          fields: [
+            {
+              id: "password",
+              label: "Initial password",
+              source: "env",
+              key: "INITIAL_PASSWORD",
+              secret: true,
+            },
+          ],
+          steps: [
+            {
+              text: "See password",
+              action: { type: "reveal-field", fieldId: "password" },
+            },
+          ],
+        },
+      },
+    } as never)
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "9router",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+      envVars: [],
+    })
+    expect(res.status).toBe(200)
+    const updated = mockPrisma.applicationStack.update.mock.calls.find((call) =>
+      Array.isArray(
+        (call[0] as { data?: { envVarsJson?: unknown } })?.data?.envVarsJson
+      )
+    )?.[0] as {
+      data: { envVarsJson: Array<{ key: string; value: string }> }
+    }
+    const password = updated.data.envVarsJson.find(
+      (item) => item.key === "INITIAL_PASSWORD"
+    )
+    expect(password?.value).toBe("")
+    expect(password?.key).toBe("INITIAL_PASSWORD")
+    expect(mockVaultWrite).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        INITIAL_PASSWORD: expect.stringMatching(/^[0-9a-f]{8}$/),
       })
     )
   })

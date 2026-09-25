@@ -197,7 +197,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
   const sanitizedInitialEnvVars = mergedInputEnvVars.map((item) => {
     if (typeof item === "object" && item !== null && "key" in item) {
       const entry = item as Record<string, unknown>
-      if (entry.type === "secret_ref" || entry.type === "secret_shared_ref") {
+      if (
+        entry.type === "secret_shared_ref" ||
+        (entry.type === "secret_ref" &&
+          (!entry.value || entry.source === "vault"))
+      ) {
         return entry
       }
       const { value: _value, ...rest } = entry

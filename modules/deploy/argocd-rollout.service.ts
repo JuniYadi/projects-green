@@ -5,6 +5,7 @@ import {
 } from "./cluster-integration.service"
 import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { checkIngressReadiness } from "./ingress-readiness.service"
+import { notifyReadyTemplateDeployment } from "./app-ready-notification.service"
 
 export type ArgoCdApplicationStatus = {
   syncStatus: string | null
@@ -282,6 +283,16 @@ export async function pollDeploymentRollout(deploymentId: string): Promise<{
         where: { id: deployment.id },
         data: { ingressVerified, ingressCheckedAt: new Date() },
       })
+      if (ingressVerified) {
+        try {
+          await notifyReadyTemplateDeployment(deployment.id)
+        } catch (error) {
+          console.error(
+            "[argocd-rollout] Ready notification check failed:",
+            error
+          )
+        }
+      }
     } catch (err) {
       console.error(
         `[argocd-rollout] Failed to check ingress readiness for ${deployment.stack.slug}:`,

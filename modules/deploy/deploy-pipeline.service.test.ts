@@ -179,6 +179,51 @@ describe("deploy-pipeline.service", () => {
     expect(mockPrisma.applicationStack.update).not.toHaveBeenCalled()
   })
 
+  it("stores an initial secret only in Vault, not in stack envVarsJson", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "router",
+      slug: "router",
+      repositoryConnectionId: null,
+      branchName: "main",
+      rootDirectory: "/",
+      framework: null,
+      buildCommand: null,
+      dockerfileDetected: false,
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      hourlyCost: "1.5",
+      sourceType: "TEMPLATE",
+      envVars: [
+        {
+          key: "INITIAL_PASSWORD",
+          value: "generated-secret",
+          type: "secret_ref",
+        },
+      ],
+    })
+    const created = (
+      mockPrisma.applicationStack.create as unknown as {
+        mock: {
+          calls: Array<
+            [{ data: { envVarsJson: Array<{ value: string; key: string }> } }]
+          >
+        }
+      }
+    ).mock.calls.at(-1)?.[0]
+    expect(created).toBeDefined()
+    expect(
+      created?.data.envVarsJson.find((item) => item.key === "INITIAL_PASSWORD")
+        ?.value
+    ).toBe("")
+    expect(mockWriteSecrets).toHaveBeenCalledWith(
+      expect.objectContaining({
+        secrets: { INITIAL_PASSWORD: "generated-secret" },
+      })
+    )
+  })
+
   it("createOrUpdateStack embeds platform operational contract defaults into metadataJson", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
 
