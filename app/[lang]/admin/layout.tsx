@@ -79,6 +79,7 @@ export default async function AdminLayout({
         surface="admin"
         user={sidebarUser}
         organization={sidebarOrganization}
+        collapsible="icon"
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2">

@@ -95,6 +95,10 @@ mock.module("next/navigation", () => ({
 mock.module("@/lib/platform-role", () => {
   return {
     getPlatformRoleForUser: mockGetPlatformRoleForUser,
+    getPlatformAccessForUser: mock(async () => ({
+      exists: false,
+      role: "none" as const,
+    })),
   }
 })
 
@@ -104,12 +108,14 @@ mock.module("@/components/app-sidebar", () => {
       surface,
       user,
       organization,
+      collapsible,
     }: {
       surface: string
       user: { name: string }
       organization: { name: string | null }
+      collapsible?: string
     }) => (
-      <aside>
+      <aside data-collapsible={collapsible}>
         Sidebar:{surface}:{user.name}:{organization.name ?? "none"}
       </aside>
     ),
@@ -204,6 +210,8 @@ describe("AdminLayout", () => {
       "data-default-open",
       "true"
     )
+    const sidebar = view.getByText(/^Sidebar:/).closest("aside")
+    expect(sidebar).toHaveAttribute("data-collapsible", "icon")
     expect(view.getByText("Admin Content")).toBeInTheDocument()
   })
 
