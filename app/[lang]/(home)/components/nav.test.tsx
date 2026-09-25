@@ -24,6 +24,14 @@ describe("Home navigation", () => {
     expect(
       view.getByRole("link", { name: "WhatsApp Official" })
     ).toHaveAttribute("href", "/en/products/whatsapp-official")
+    expect(view.getAllByRole("link", { name: "Why Us" })).toHaveLength(2)
+    for (const link of view.getAllByRole("link", { name: "Why Us" })) {
+      expect(link).toHaveAttribute("href", "/en#why-us")
+    }
+    expect(view.getAllByRole("link", { name: "Templates" })).toHaveLength(2)
+    await user.click(view.getAllByRole("link", { name: "Why Us" })[1]!)
+    expect(view.queryByRole("button", { name: "Close menu" })).toBeNull()
+    await user.click(view.getByRole("button", { name: "Open menu" }))
     expect(
       view.getAllByRole("link", { name: "Sign in to Console" })
     ).toHaveLength(2)

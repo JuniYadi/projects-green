@@ -53,12 +53,13 @@ export function Footer() {
 
   const links: Record<string, { label: string; href: string }[]> = {
     [t.categoryProduct]: [
-      { label: t.linkAppHosting, href: `/${locale}#templates` },
+      { label: "Why Us", href: `/${locale}#why-us` },
+      { label: "Templates", href: `/${locale}#templates` },
       {
-        label: t.linkCommunication,
+        label: "WhatsApp Official",
         href: `/${locale}/products/whatsapp-official`,
       },
-      { label: "VPN", href: `/${locale}#vpn` },
+      { label: "WireGuard VPN", href: `/${locale}#vpn` },
     ],
     [t.categoryDevelopers]: [
       { label: t.linkDocumentation, href: `/${locale}/docs` },
@@ -80,7 +81,7 @@ export function Footer() {
           <div className="col-span-2">
             <Link
               href={`/${locale}`}
-              className="group mb-4 flex items-center gap-2.5"
+              className="mb-4 flex items-center gap-2"
               aria-label="PFNApp"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -91,12 +92,17 @@ export function Footer() {
                 height={36}
                 className="size-9 object-contain"
               />
-              <span className="font-semibold text-foreground">PFNApp</span>
+              <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
+                PFN
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  App
+                </span>
+              </span>
             </Link>
-            <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
+            <p className="mb-5 max-w-[280px] text-sm leading-relaxed text-muted-foreground">
               {locale === "id"
-                ? "Jalankan aplikasi dari template atau repo Git."
-                : "Run apps from templates or Git repositories."}
+                ? "Ide besar perlu lebih dari rencana. Bangun dan kembangkan bersama PFNApp."
+                : "Big ideas need more than a plan. Build and grow with PFNApp."}
             </p>
           </div>
 

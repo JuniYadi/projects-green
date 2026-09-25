@@ -53,7 +53,10 @@ export function WhyPFNAppSection() {
       ]
 
   return (
-    <section className="bg-white py-20 text-slate-950 md:py-28 dark:bg-[#0b1220] dark:text-white">
+    <section
+      id="why-us"
+      className="scroll-mt-16 bg-white py-20 text-slate-950 md:py-28 dark:bg-[#0b1220] dark:text-white"
+    >
       <div className="mx-auto grid max-w-7xl items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-20">
         <div
           className="min-w-0"

@@ -176,6 +176,12 @@ export function HomeNav() {
             )}
           </div>
           <Link
+            href={`/${locale}#why-us`}
+            className="rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-white/75 dark:hover:bg-white/10"
+          >
+            Why Us
+          </Link>
+          <Link
             href={`/${locale}#templates`}
             className="rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 dark:text-white/75 dark:hover:bg-white/10"
           >
@@ -223,6 +229,20 @@ export function HomeNav() {
               {product.label}
             </Link>
           ))}
+          <Link
+            href={`/${locale}#why-us`}
+            onClick={() => setMobileOpen(false)}
+            className="rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-white/75"
+          >
+            Why Us
+          </Link>
+          <Link
+            href={`/${locale}#templates`}
+            onClick={() => setMobileOpen(false)}
+            className="rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-white/75"
+          >
+            Templates
+          </Link>
           <Link
             href={`/${locale}/docs`}
             onClick={() => setMobileOpen(false)}
