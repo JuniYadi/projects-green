@@ -299,6 +299,56 @@ describe("template-sync.service", () => {
       expect(updateCall.data.metadataJson.startupProbe).toBeUndefined()
     })
 
+    it("updates imageRepository and securityContext when template runtime updates them", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-9router",
+        slug: "9router",
+        blueprintJson: {
+          version: "1.1.0",
+          runtime: {
+            image: "ghcr.io/pfnapp/9router:0.5.86",
+            defaultPort: 20128,
+            deploymentType: "statefulset",
+            runAsNonRoot: false,
+            runAsUser: null,
+            runAsGroup: null,
+          },
+        },
+      })
+
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-1",
+        slug: "app-9router-zenith-falcon-zo77",
+        organizationId: "org-1",
+        metadataJson: {
+          imageRepository: "docker.io/decolua/9router:0.5.75",
+          runAsNonRoot: true,
+          runAsUser: 10001,
+          runAsGroup: 10001,
+          deploymentType: "statefulset",
+        },
+        envVarsJson: [],
+      })
+
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-1",
+      })
+
+      const result = await syncStackFromParentTemplate({
+        templateId: "tmpl-9router",
+        stackId: "stack-1",
+      })
+
+      expect(result.ok).toBe(true)
+      const updateCall = mockPrisma.applicationStack.update.mock.calls[0][0]
+      expect(updateCall.data.metadataJson.imageRepository).toBe(
+        "ghcr.io/pfnapp/9router:0.5.86"
+      )
+      expect(updateCall.data.metadataJson.runAsNonRoot).toBe(false)
+      expect(updateCall.data.metadataJson.runAsUser).toBeUndefined()
+      expect(updateCall.data.metadataJson.runAsGroup).toBeUndefined()
+    })
+
     it("writes newly introduced template secret env vars to Vault via VaultSecretsService", async () => {
       mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
         id: "tmpl-hermes",
