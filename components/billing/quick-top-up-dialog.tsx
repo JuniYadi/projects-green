@@ -660,7 +660,7 @@ export function QuickTopUpDialog({
                       })
                     }}
                   >
-                    <span>Duitku POP Modal</span>
+                    <span>{dialogMessages.openDuitkuPop}</span>
                     <ArrowsOutSimple className="size-3.5" />
                   </Button>
                 )}
@@ -730,7 +730,7 @@ export function QuickTopUpDialog({
                       })
                     }}
                   >
-                    <span>Duitku POP Modal</span>
+                    <span>{dialogMessages.openDuitkuPop}</span>
                     <ArrowsOutSimple className="ml-1.5 size-3.5" />
                   </Button>
                 )}

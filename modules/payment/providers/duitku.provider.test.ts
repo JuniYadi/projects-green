@@ -341,7 +341,7 @@ describe("DuitkuPaymentProvider", () => {
       expect(res.reference).toBe("DUI-REF-999")
     })
 
-    it("normalizes pending callback to PENDING status", async () => {
+    it("normalizes failed callback (resultCode 01) to FAILED status", async () => {
       const merchantCode = "M12345"
       const amount = "150000"
       const merchantOrderId = "INV-001"
@@ -356,6 +356,29 @@ describe("DuitkuPaymentProvider", () => {
         merchantOrderId,
         reference: "DUI-REF-999",
         resultCode: "01",
+        signature,
+      }
+
+      const res = await duitkuProvider.handleWebhook!(payload, config)
+      expect(res.isValid).toBe(true)
+      expect(res.status).toBe("FAILED")
+    })
+
+    it("normalizes pending callback (resultCode 02) to PENDING status", async () => {
+      const merchantCode = "M12345"
+      const amount = "150000"
+      const merchantOrderId = "INV-001"
+      const signature = crypto
+        .createHmac("sha256", "secret-callback-key")
+        .update(merchantCode + amount + merchantOrderId)
+        .digest("hex")
+
+      const payload = {
+        merchantCode,
+        amount,
+        merchantOrderId,
+        reference: "DUI-REF-999",
+        resultCode: "02",
         signature,
       }
 

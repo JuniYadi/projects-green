@@ -8339,6 +8339,7 @@ export const idMessages: AppMessages = {
     copyVaNumber: "Salin Nomor VA",
     exactShortage: "Kekurangan Tepat",
     manualTransferBadge: "Transfer Manual",
+    openDuitkuPop: "Bayar dengan Duitku POP",
     paymentInstructionsTitle: "Instruksi Pembayaran:",
     shortageAmount: "Kekurangan: +{amount}",
     transferInstructionAfter:

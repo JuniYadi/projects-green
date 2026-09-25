@@ -236,7 +236,7 @@ export const duitkuProvider: PaymentProvider = {
     const resultCode = String(payload.resultCode || "")
 
     const status: "PAID" | "PENDING" | "FAILED" =
-      resultCode === "00" ? "PAID" : resultCode === "01" ? "PENDING" : "FAILED"
+      resultCode === "00" ? "PAID" : resultCode === "02" ? "PENDING" : "FAILED"
 
     return {
       isValid,
