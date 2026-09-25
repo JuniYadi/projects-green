@@ -9,85 +9,242 @@ import {
   GitBranch,
   CheckCircle,
 } from "@phosphor-icons/react"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
+import { cn } from "@/lib/utils"
 
 // Shell session title rendered in the mock terminal chrome — a technical
 // literal, identical in every locale.
-const TERMINAL_TITLE = "pfn-cli — zsh"
+const TERMINAL_TITLE = "PFNApp Hosting - Deployment"
 
-const codeLines = [
+interface TemplateDeployFlow {
+  id: string
+  label: string
+  iconUrl: string
+  lines: Array<{ content: string; color: string }>
+}
+
+const TEMPLATES: TemplateDeployFlow[] = [
   {
-    delay: 0,
-    content: "$ pfn stack deploy --template hermes-agent",
-    color: "text-emerald-400",
+    id: "hermes",
+    label: "{hermes}",
+    iconUrl: "/app-hosting/icons/hermes.svg",
+    lines: [
+      {
+        content: "> Select template: {hermes}",
+        color: "text-emerald-400 font-semibold",
+      },
+      {
+        content: "  → Provisioning isolated container (0.5 vCPU, 2GB RAM)...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Mounting 5GB Direct Enterprise NVMe (400k IOPS)...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Initializing Hermes Agent & SQLite memory...",
+        color: "text-white/50",
+      },
+      {
+        content: "  ✓ Live at https://hermes-agent.sg.pfnapp.dev",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Persistent memory mounted at /opt/data",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Cluster SG-01: Latency 12ms",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  🚀 Deploy complete in 18.4s! Ready 24/7",
+        color: "text-emerald-400 font-bold",
+      },
+    ],
   },
   {
-    delay: 600,
-    content: "  → Provisioning isolated container (0.5 vCPU, 2GB RAM)...",
-    color: "text-white/50",
+    id: "9router",
+    label: "{9router}",
+    iconUrl: "/app-hosting/icons/9router.svg",
+    lines: [
+      {
+        content: "> Select template: {9router}",
+        color: "text-emerald-400 font-semibold",
+      },
+      {
+        content: "  → Provisioning unified LLM proxy (0.25 vCPU, 256MB RAM)...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Configuring multi-provider fallback & rate limits...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Mounting 10GB Enterprise NVMe storage...",
+        color: "text-white/50",
+      },
+      {
+        content: "  ✓ Live at https://9router.sg.pfnapp.dev",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ OpenAI-compatible endpoint ready",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Cluster SG-01: Latency 9ms",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  🚀 Deploy complete in 11.2s! Ready 24/7",
+        color: "text-emerald-400 font-bold",
+      },
+    ],
   },
   {
-    delay: 1200,
-    content: "  → Mounting 5GB Direct Enterprise NVMe (400k IOPS)...",
-    color: "text-white/50",
+    id: "openclaw",
+    label: "{openclaw}",
+    iconUrl: "/app-hosting/icons/openclaw.svg",
+    lines: [
+      {
+        content: "> Select template: {openclaw}",
+        color: "text-emerald-400 font-semibold",
+      },
+      {
+        content: "  → Provisioning crawler cluster (0.5 vCPU, 1GB RAM)...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Initializing headless browser runtime...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Connecting knowledge base vector store...",
+        color: "text-white/50",
+      },
+      {
+        content: "  ✓ Live at https://openclaw.sg.pfnapp.dev",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Ready for autonomous web collection",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Cluster SG-01: Latency 14ms",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  🚀 Deploy complete in 14.7s! Ready 24/7",
+        color: "text-emerald-400 font-bold",
+      },
+    ],
   },
   {
-    delay: 1800,
-    content: "  → Initializing Hermes Agent & SQLite memory...",
-    color: "text-white/50",
-  },
-  {
-    delay: 2400,
-    content: "  ✓ Live at https://hermes-agent.sg.pfnapp.dev",
-    color: "text-cyan-400",
-  },
-  {
-    delay: 3000,
-    content: "  ✓ Persistent memory mounted at /opt/data",
-    color: "text-cyan-400",
-  },
-  {
-    delay: 3600,
-    content: "  ✓ Cluster SG-01: Latency 12ms",
-    color: "text-cyan-400",
-  },
-  {
-    delay: 4200,
-    content: "  🚀 Deploy complete in 18.4s! Ready 24/7",
-    color: "text-emerald-400 font-bold",
+    id: "n8n",
+    label: "{n8n}",
+    iconUrl: "/app-hosting/icons/n8n.svg",
+    lines: [
+      {
+        content: "> Select template: {n8n}",
+        color: "text-emerald-400 font-semibold",
+      },
+      {
+        content: "  → Provisioning workflow engine (0.5 vCPU, 512MB RAM)...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Initializing managed PostgreSQL & Redis queues...",
+        color: "text-white/50",
+      },
+      {
+        content: "  → Registering official WhatsApp webhook endpoints...",
+        color: "text-white/50",
+      },
+      {
+        content: "  ✓ Live at https://n8n.sg.pfnapp.dev",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ 300+ automation nodes loaded",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  ✓ Cluster SG-01: Latency 11ms",
+        color: "text-cyan-400",
+      },
+      {
+        content: "  🚀 Deploy complete in 15.8s! Ready 24/7",
+        color: "text-emerald-400 font-bold",
+      },
+    ],
   },
 ]
 
-function AnimatedTerminal() {
+function TerminalBody({
+  template,
+  onComplete,
+}: {
+  template: TemplateDeployFlow
+  onComplete: () => void
+}) {
   const [visibleLines, setVisibleLines] = useState(0)
-  const started = useRef(false)
 
   useEffect(() => {
-    if (started.current) return
-    started.current = true
+    const timers: NodeJS.Timeout[] = []
 
-    codeLines.forEach((line, i) => {
-      setTimeout(() => {
-        setVisibleLines(i + 1)
-      }, line.delay)
+    template.lines.forEach((_, i) => {
+      const timer = setTimeout(
+        () => {
+          setVisibleLines(i + 1)
+        },
+        100 + i * 450
+      )
+      timers.push(timer)
     })
 
-    // loop animation
-    const loop = setInterval(() => {
-      setVisibleLines(0)
-      started.current = false
-      codeLines.forEach((line, i) => {
-        setTimeout(() => {
-          setVisibleLines(i + 1)
-        }, line.delay + 200)
-      })
-    }, 6000)
+    const cycleTimer = setTimeout(
+      () => {
+        onComplete()
+      },
+      100 + template.lines.length * 450 + 2500
+    )
+    timers.push(cycleTimer)
 
-    return () => clearInterval(loop)
-  }, [])
+    return () => {
+      timers.forEach(clearTimeout)
+    }
+  }, [template, onComplete])
+
+  return (
+    <div className="min-h-[250px] p-5 font-mono text-sm">
+      {template.lines.slice(0, visibleLines).map((line, i) => (
+        <div
+          key={i}
+          className={`leading-6 transition-opacity duration-200 ${line.color}`}
+        >
+          {line.content}
+        </div>
+      ))}
+      {visibleLines < template.lines.length && (
+        <span className="mt-1 inline-block h-4 w-2 animate-pulse bg-emerald-400" />
+      )}
+    </div>
+  )
+}
+
+function AnimatedTerminal() {
+  const [activeTemplateIndex, setActiveTemplateIndex] = useState(0)
+
+  const activeTemplate = TEMPLATES[activeTemplateIndex]
+
+  const handleNext = () => {
+    setActiveTemplateIndex((prev) => (prev + 1) % TEMPLATES.length)
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-2xl shadow-black/60">
@@ -97,26 +254,56 @@ function AnimatedTerminal() {
         <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
         <div className="h-3 w-3 rounded-full bg-green-500/80" />
         <div className="flex flex-1 items-center justify-center">
-          <span className="flex items-center gap-1.5 font-mono text-xs text-white/30">
-            <Terminal className="h-3 w-3" />
+          <span className="flex items-center gap-1.5 font-mono text-xs text-white/50">
+            <Terminal className="h-3.5 w-3.5 text-emerald-400/80" />
             {TERMINAL_TITLE}
           </span>
         </div>
       </div>
-      {/* Terminal body */}
-      <div className="min-h-[220px] p-5 font-mono text-sm">
-        {codeLines.slice(0, visibleLines).map((line, i) => (
-          <div
-            key={i}
-            className={`leading-6 transition-opacity duration-200 ${line.color}`}
-          >
-            {line.content}
-          </div>
-        ))}
-        {visibleLines < codeLines.length && (
-          <span className="mt-1 inline-block h-4 w-2 animate-pulse bg-emerald-400" />
-        )}
+
+      {/* Template selector pills */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 bg-[#10141d] px-4 py-2.5 font-mono text-xs">
+        <span className="text-white/40">Select template:</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {TEMPLATES.map((tpl, idx) => {
+            const isActive = idx === activeTemplateIndex
+            return (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => {
+                  if (idx !== activeTemplateIndex) {
+                    setActiveTemplateIndex(idx)
+                  }
+                }}
+                className={cn(
+                  "inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs transition-all",
+                  isActive
+                    ? "border border-emerald-500/40 bg-emerald-500/15 font-semibold text-emerald-300 shadow-xs shadow-emerald-500/20"
+                    : "border border-white/5 bg-white/5 text-white/50 hover:border-white/15 hover:text-white/80"
+                )}
+                aria-pressed={isActive}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={tpl.iconUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 shrink-0 object-contain"
+                />
+                <span>{tpl.label}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
+
+      {/* Terminal body */}
+      <TerminalBody
+        key={activeTemplate.id}
+        template={activeTemplate}
+        onComplete={handleNext}
+      />
     </div>
   )
 }

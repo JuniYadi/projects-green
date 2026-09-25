@@ -24,6 +24,7 @@ export function TemplatesSection() {
     {
       id: "hermes",
       name: "Hermes Agent",
+      iconUrl: "/app-hosting/icons/hermes.svg",
       tagline: isId
         ? "Autonomous AI Agent Gateway by Nous Research"
         : "Autonomous AI Agent Gateway by Nous Research",
@@ -54,6 +55,7 @@ export function TemplatesSection() {
     {
       id: "9router",
       name: "9router",
+      iconUrl: "/app-hosting/icons/9router.svg",
       tagline: isId
         ? "High-Throughput LLM Gateway & Router"
         : "High-Throughput LLM Gateway & Router",
@@ -84,6 +86,7 @@ export function TemplatesSection() {
     {
       id: "n8n",
       name: "n8n Automation",
+      iconUrl: "/app-hosting/icons/n8n.svg",
       tagline: isId
         ? "Workflow & Integration Automation Platform"
         : "Workflow & Integration Automation Platform",
@@ -117,6 +120,7 @@ export function TemplatesSection() {
     {
       id: "openclaw",
       name: "OpenClaw",
+      iconUrl: "/app-hosting/icons/openclaw.svg",
       category: "AI Data Scraper",
       description: isId
         ? "Autonomous web scraper dan knowledge-base collector untuk melatih agent dengan data web terbaru."
@@ -247,12 +251,22 @@ export function TemplatesSection() {
                     {/* Header card */}
                     <div className="mb-4 flex items-start justify-between">
                       <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-xl border ${tpl.iconBg}`}
+                        className={`flex h-12 w-12 items-center justify-center rounded-xl border p-2.5 ${tpl.iconBg}`}
                       >
-                        <IconComponent
-                          weight="duotone"
-                          className={`h-6 w-6 ${tpl.iconColor}`}
-                        />
+                        {tpl.iconUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={tpl.iconUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="h-6 w-6 object-contain"
+                          />
+                        ) : (
+                          <IconComponent
+                            weight="duotone"
+                            className={`h-6 w-6 ${tpl.iconColor}`}
+                          />
+                        )}
                       </div>
                       <span
                         className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${tpl.badgeColor}`}
@@ -332,9 +346,20 @@ export function TemplatesSection() {
                       {tpl.badge}
                     </span>
                   </div>
-                  <h4 className="text-lg font-bold text-white/80">
-                    {tpl.name}
-                  </h4>
+                  <div className="flex items-center gap-2.5">
+                    {"iconUrl" in tpl && tpl.iconUrl && (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={tpl.iconUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-5 w-5 object-contain"
+                      />
+                    )}
+                    <h4 className="text-lg font-bold text-white/80">
+                      {tpl.name}
+                    </h4>
+                  </div>
                   <p className="mt-2 text-sm leading-relaxed text-white/40">
                     {tpl.description}
                   </p>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import { cleanup, render } from "@testing-library/react"
+import { cleanup, fireEvent, render } from "@testing-library/react"
 import { HeroSection } from "./hero"
 
 const mockUseParams = mock(() => ({ lang: "en" }))
@@ -47,5 +47,30 @@ describe("HeroSection", () => {
 
     const consoleCta = getByRole("link", { name: /Buka Konsol/i })
     expect(consoleCta).toHaveAttribute("href", "/id/login")
+  })
+
+  it("renders the terminal title bar and interactive template selector pills", () => {
+    mockUseParams.mockReturnValue({ lang: "en" })
+    const { getByText, getByRole } = render(<HeroSection />)
+
+    expect(getByText("PFNApp Hosting - Deployment")).toBeInTheDocument()
+    expect(getByText("Select template:")).toBeInTheDocument()
+
+    const hermesBtn = getByRole("button", { name: "{hermes}" })
+    const routerBtn = getByRole("button", { name: "{9router}" })
+    const openclawBtn = getByRole("button", { name: "{openclaw}" })
+    const n8nBtn = getByRole("button", { name: "{n8n}" })
+
+    expect(hermesBtn).toBeInTheDocument()
+    expect(routerBtn).toBeInTheDocument()
+    expect(openclawBtn).toBeInTheDocument()
+    expect(n8nBtn).toBeInTheDocument()
+
+    expect(hermesBtn).toHaveAttribute("aria-pressed", "true")
+    expect(routerBtn).toHaveAttribute("aria-pressed", "false")
+
+    fireEvent.click(routerBtn)
+    expect(routerBtn).toHaveAttribute("aria-pressed", "true")
+    expect(hermesBtn).toHaveAttribute("aria-pressed", "false")
   })
 })
