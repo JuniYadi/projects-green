@@ -3,462 +3,369 @@
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
+  ArrowDown,
+  ArrowLeft,
   ArrowRight,
-  Play,
-  Terminal,
-  GitBranch,
-  CheckCircle,
+  ArrowUp,
 } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
-import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
-import { cn } from "@/lib/utils"
+import type { HomeOffer } from "../home-offer"
+import { usePreviewCarousel } from "./use-preview-carousel"
 
-// Shell session title rendered in the mock terminal chrome — a technical
-// literal, identical in every locale.
-const TERMINAL_TITLE = "PFNApp Hosting - Deployment"
-
-interface TemplateDeployFlow {
-  id: string
-  label: string
-  iconUrl: string
-  lines: Array<{ content: string; color: string }>
-}
-
-const TEMPLATES: TemplateDeployFlow[] = [
+const featuredApps = [
   {
     id: "hermes",
-    label: "{hermes}",
-    iconUrl: "/app-hosting/icons/hermes.svg",
-    lines: [
-      {
-        content: "> Select template: {hermes}",
-        color: "text-emerald-400 font-semibold",
-      },
-      {
-        content: "  → Provisioning isolated container (0.5 vCPU, 2GB RAM)...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Mounting 5GB Direct Enterprise NVMe (400k IOPS)...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Initializing Hermes Agent & SQLite memory...",
-        color: "text-white/50",
-      },
-      {
-        content: "  ✓ Live at https://hermes-agent.sg.pfnapp.dev",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Persistent memory mounted at /opt/data",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Cluster SG-01: Latency 12ms",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  🚀 Deploy complete in 18.4s! Ready 24/7",
-        color: "text-emerald-400 font-bold",
-      },
-    ],
+    name: "Hermes Agent",
+    icon: "/app-hosting/icons/hermes.svg",
   },
   {
     id: "9router",
-    label: "{9router}",
-    iconUrl: "/app-hosting/icons/9router.svg",
-    lines: [
-      {
-        content: "> Select template: {9router}",
-        color: "text-emerald-400 font-semibold",
-      },
-      {
-        content: "  → Provisioning unified LLM proxy (0.25 vCPU, 256MB RAM)...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Configuring multi-provider fallback & rate limits...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Mounting 10GB Enterprise NVMe storage...",
-        color: "text-white/50",
-      },
-      {
-        content: "  ✓ Live at https://9router.sg.pfnapp.dev",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ OpenAI-compatible endpoint ready",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Cluster SG-01: Latency 9ms",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  🚀 Deploy complete in 11.2s! Ready 24/7",
-        color: "text-emerald-400 font-bold",
-      },
-    ],
-  },
-  {
-    id: "openclaw",
-    label: "{openclaw}",
-    iconUrl: "/app-hosting/icons/openclaw.svg",
-    lines: [
-      {
-        content: "> Select template: {openclaw}",
-        color: "text-emerald-400 font-semibold",
-      },
-      {
-        content: "  → Provisioning crawler cluster (0.5 vCPU, 1GB RAM)...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Initializing headless browser runtime...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Connecting knowledge base vector store...",
-        color: "text-white/50",
-      },
-      {
-        content: "  ✓ Live at https://openclaw.sg.pfnapp.dev",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Ready for autonomous web collection",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Cluster SG-01: Latency 14ms",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  🚀 Deploy complete in 14.7s! Ready 24/7",
-        color: "text-emerald-400 font-bold",
-      },
-    ],
+    name: "9router",
+    icon: "/app-hosting/icons/9router.svg",
   },
   {
     id: "n8n",
-    label: "{n8n}",
-    iconUrl: "/app-hosting/icons/n8n.svg",
-    lines: [
-      {
-        content: "> Select template: {n8n}",
-        color: "text-emerald-400 font-semibold",
-      },
-      {
-        content: "  → Provisioning workflow engine (0.5 vCPU, 512MB RAM)...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Initializing managed PostgreSQL & Redis queues...",
-        color: "text-white/50",
-      },
-      {
-        content: "  → Registering official WhatsApp webhook endpoints...",
-        color: "text-white/50",
-      },
-      {
-        content: "  ✓ Live at https://n8n.sg.pfnapp.dev",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ 300+ automation nodes loaded",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  ✓ Cluster SG-01: Latency 11ms",
-        color: "text-cyan-400",
-      },
-      {
-        content: "  🚀 Deploy complete in 15.8s! Ready 24/7",
-        color: "text-emerald-400 font-bold",
-      },
-    ],
+    name: "n8n Automation",
+    icon: "/app-hosting/icons/n8n.svg",
   },
-]
+] as const
 
-function TerminalBody({
-  template,
-  onComplete,
+function AppPreviewDetails({
+  appId,
+  locale,
 }: {
-  template: TemplateDeployFlow
-  onComplete: () => void
+  appId: (typeof featuredApps)[number]["id"]
+  locale: "id" | "en"
 }) {
-  const [visibleLines, setVisibleLines] = useState(0)
+  const [previewStep, setPreviewStep] = useState(0)
+  const isId = locale === "id"
 
   useEffect(() => {
-    const timers: NodeJS.Timeout[] = []
-
-    template.lines.forEach((_, i) => {
-      const timer = setTimeout(
-        () => {
-          setVisibleLines(i + 1)
-        },
-        100 + i * 450
-      )
-      timers.push(timer)
-    })
-
-    const cycleTimer = setTimeout(
-      () => {
-        onComplete()
-      },
-      100 + template.lines.length * 450 + 2500
-    )
-    timers.push(cycleTimer)
-
-    return () => {
-      timers.forEach(clearTimeout)
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const timer = window.setTimeout(() => setPreviewStep(4), 0)
+      return () => window.clearTimeout(timer)
     }
-  }, [template, onComplete])
+
+    const firstTimer = window.setTimeout(() => setPreviewStep(1), 450)
+    const secondTimer = window.setTimeout(() => setPreviewStep(2), 900)
+    const thirdTimer = window.setTimeout(() => setPreviewStep(3), 1350)
+    const fourthTimer = window.setTimeout(() => setPreviewStep(4), 1800)
+    return () => {
+      window.clearTimeout(firstTimer)
+      window.clearTimeout(secondTimer)
+      window.clearTimeout(thirdTimer)
+      window.clearTimeout(fourthTimer)
+    }
+  }, [])
+
+  const reveal = (step: number) =>
+    `transition-opacity duration-300 motion-reduce:transition-none ${previewStep >= step ? "opacity-100" : "opacity-40"}`
 
   return (
-    <div className="min-h-[250px] p-5 font-mono text-sm">
-      {template.lines.slice(0, visibleLines).map((line, i) => (
-        <div
-          key={i}
-          className={`leading-6 transition-opacity duration-200 ${line.color}`}
-        >
-          {line.content}
+    <div
+      className="min-h-48 py-4 text-xs sm:text-sm"
+      aria-label={isId ? "Ilustrasi penggunaan" : "Usage illustration"}
+    >
+      {appId === "hermes" && (
+        <div className="space-y-2">
+          {[
+            {
+              from: "you",
+              id: "Bantu pecah rencana launching jadi tugas kecil.",
+              en: "Break my launch plan into smaller tasks.",
+            },
+            {
+              from: "hermes",
+              id: "Mulai dari halaman produk, pembayaran, lalu uji coba.",
+              en: "Start with the product page, payments, then a trial run.",
+            },
+            {
+              from: "you",
+              id: "Apa yang harus dikerjakan dulu?",
+              en: "What should I work on first?",
+            },
+            {
+              from: "hermes",
+              id: "Halaman produk. Tulis manfaat utamanya dulu.",
+              en: "The product page. Write its main benefit first.",
+            },
+          ].map((message, index) => (
+            <div
+              key={index}
+              className={`${reveal(index)} ${message.from === "you" ? "ml-auto max-w-[84%]" : "max-w-[84%]"}`}
+            >
+              <p
+                className={`mb-0.5 text-[11px] ${message.from === "you" ? "text-right text-slate-500 dark:text-white/50" : "font-medium text-emerald-700 dark:text-emerald-400"}`}
+              >
+                {message.from === "you" ? (isId ? "Anda" : "You") : "Hermes"}
+              </p>
+              <p
+                className={`rounded-xl px-3 py-2 text-slate-800 dark:text-white/90 ${message.from === "you" ? "rounded-tr-sm bg-slate-100 dark:bg-white/10" : "rounded-tl-sm border border-slate-200 dark:border-white/10"}`}
+              >
+                {message[locale]}
+              </p>
+            </div>
+          ))}
         </div>
-      ))}
-      {visibleLines < template.lines.length && (
-        <span className="mt-1 inline-block h-4 w-2 animate-pulse bg-emerald-400" />
+      )}
+      {appId === "9router" && (
+        <div className="font-mono text-[10px] sm:text-xs">
+          {[
+            {
+              model: "GPT-6 Luna",
+              input: "1.384",
+              output: "839",
+              time: isId ? "baru" : "now",
+            },
+            {
+              model: "Claude Sonnet",
+              input: "890",
+              output: "318",
+              time: isId ? "2 mnt" : "2 min",
+            },
+            {
+              model: "Gemini Flash",
+              input: "624",
+              output: "211",
+              time: isId ? "5 mnt" : "5 min",
+            },
+            {
+              model: "DeepSeek V3",
+              input: "1.102",
+              output: "506",
+              time: isId ? "8 mnt" : "8 min",
+            },
+            {
+              model: "Qwen 3",
+              input: "742",
+              output: "284",
+              time: isId ? "12 mnt" : "12 min",
+            },
+          ].map((request, index) => (
+            <div
+              key={request.model}
+              className={`flex min-w-0 items-center gap-1.5 border-b border-slate-200 py-3 last:border-0 dark:border-white/10 ${reveal(index)}`}
+            >
+              <span className="min-w-0 flex-1 truncate font-medium text-slate-900 dark:text-white">
+                {request.model}
+              </span>
+              <span
+                className="inline-flex items-center gap-1 text-slate-600 tabular-nums dark:text-white/70"
+                aria-label={`Input ${request.input} token`}
+              >
+                <ArrowUp className="size-3" aria-hidden="true" />
+                {request.input}
+              </span>
+              <span
+                className="inline-flex items-center gap-1 text-slate-600 tabular-nums dark:text-white/70"
+                aria-label={`Output ${request.output} token`}
+              >
+                <ArrowDown className="size-3" aria-hidden="true" />
+                {request.output}
+              </span>
+              <span className="w-10 shrink-0 text-right whitespace-nowrap text-slate-500 dark:text-white/45">
+                {request.time}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {appId === "n8n" && (
+        <div className="relative">
+          <div
+            className="absolute top-3 bottom-3 left-1/2 w-px -translate-x-1/2 bg-emerald-500/50"
+            aria-hidden="true"
+          />
+          {(
+            [
+              { app: "Email", action: isId ? "Pesanan masuk" : "New order" },
+              {
+                app: "Google Drive",
+                action: isId ? "Simpan lampiran" : "Save attachment",
+              },
+              {
+                app: "Calendar",
+                action: isId ? "Jadwalkan tindak lanjut" : "Schedule follow-up",
+              },
+              {
+                app: "Email",
+                action: isId ? "Kirim konfirmasi" : "Send confirmation",
+              },
+            ] as const
+          ).map((step, index) => (
+            <div
+              key={index}
+              className={`relative grid grid-cols-[minmax(0,1fr)_20px_minmax(0,1fr)] items-center py-2 ${reveal(index)}`}
+            >
+              <div
+                className={
+                  index % 2 === 0
+                    ? "pr-3 text-right"
+                    : "col-start-3 pl-3 text-left"
+                }
+              >
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  {step.app}
+                </p>
+                <p className="text-slate-600 dark:text-white/65">
+                  {step.action}
+                </p>
+              </div>
+              <span
+                className="relative z-10 col-start-2 row-start-1 mx-auto size-2 rounded-full bg-emerald-500 ring-4 ring-white dark:ring-[#101923]"
+                aria-hidden="true"
+              />
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
 }
 
-function AnimatedTerminal() {
-  const [activeTemplateIndex, setActiveTemplateIndex] = useState(0)
-
-  const activeTemplate = TEMPLATES[activeTemplateIndex]
-
-  const handleNext = () => {
-    setActiveTemplateIndex((prev) => (prev + 1) % TEMPLATES.length)
-  }
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d1117] shadow-2xl shadow-black/60">
-      {/* Terminal header */}
-      <div className="flex items-center gap-2 border-b border-white/8 bg-[#161b22] px-4 py-3">
-        <div className="h-3 w-3 rounded-full bg-red-500/80" />
-        <div className="h-3 w-3 rounded-full bg-yellow-500/80" />
-        <div className="h-3 w-3 rounded-full bg-green-500/80" />
-        <div className="flex flex-1 items-center justify-center">
-          <span className="flex items-center gap-1.5 font-mono text-xs text-white/50">
-            <Terminal className="h-3.5 w-3.5 text-emerald-400/80" />
-            {TERMINAL_TITLE}
-          </span>
-        </div>
-      </div>
-
-      {/* Template selector pills */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-white/5 bg-[#10141d] px-4 py-2.5 font-mono text-xs">
-        <span className="text-white/40">Select template:</span>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {TEMPLATES.map((tpl, idx) => {
-            const isActive = idx === activeTemplateIndex
-            return (
-              <button
-                key={tpl.id}
-                type="button"
-                onClick={() => {
-                  if (idx !== activeTemplateIndex) {
-                    setActiveTemplateIndex(idx)
-                  }
-                }}
-                className={cn(
-                  "inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 font-mono text-xs transition-all",
-                  isActive
-                    ? "border border-emerald-500/40 bg-emerald-500/15 font-semibold text-emerald-300 shadow-xs shadow-emerald-500/20"
-                    : "border border-white/5 bg-white/5 text-white/50 hover:border-white/15 hover:text-white/80"
-                )}
-                aria-pressed={isActive}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={tpl.iconUrl}
-                  alt=""
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 shrink-0 object-contain"
-                />
-                <span>{tpl.label}</span>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Terminal body */}
-      <TerminalBody
-        key={activeTemplate.id}
-        template={activeTemplate}
-        onComplete={handleNext}
-      />
-    </div>
-  )
-}
-
-export function HeroSection() {
+export function HeroSection({ offer }: { offer: HomeOffer }) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
-
   const isId = locale === "id"
+  const standardPrice = offer.monthlyPriceIdr
+    ? new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0,
+      }).format(Number(offer.monthlyPriceIdr))
+    : null
+  const { activeIndex, setActiveIndex, setPaused } = usePreviewCarousel(
+    featuredApps.length
+  )
 
-  const stats = [
-    { value: "99.9%", label: messages.pHomeHero.statUptimeLabel },
-    { value: "< 2s", label: isId ? "Latensi Kirim Pesan" : "Delivery Latency" },
-    { value: "24/7", label: isId ? "Dukungan Teknis" : "Engineering Support" },
-    { value: "100%", label: isId ? "API Resmi Meta" : "Official Meta API" },
-  ]
-
-  const badges = [
-    {
-      icon: CheckCircle,
-      label: isId ? "Infrastruktur Terkelola" : "Managed Cloud Infra",
-    },
-    { icon: GitBranch, label: messages.pHomeHero.badgeGitNative },
-    { icon: Play, label: messages.pHomeHero.badgeRollbacks },
-  ]
+  const selectNext = () =>
+    setActiveIndex((index) => (index + 1) % featuredApps.length)
+  const selectPrevious = () =>
+    setActiveIndex(
+      (index) => (index - 1 + featuredApps.length) % featuredApps.length
+    )
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden pt-16">
-      {/* Background */}
-      <div className="absolute inset-0 bg-[#060b18]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.15),transparent)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_80%_60%,rgba(6,182,212,0.08),transparent)]" />
-
-      {/* Animated grid */}
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      {/* Floating orbs */}
-      <div className="absolute top-1/4 left-1/4 h-96 w-96 animate-pulse rounded-full bg-emerald-500/10 blur-3xl" />
-      <div className="absolute right-1/4 bottom-1/4 h-80 w-80 animate-pulse rounded-full bg-cyan-500/10 blur-3xl [animation-delay:1s]" />
-
-      <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 py-20 lg:grid-cols-2">
-        {/* Left – text */}
+    <section className="relative overflow-hidden bg-slate-50 pt-32 pb-20 text-slate-950 md:pt-36 md:pb-28 dark:bg-[#060b18] dark:text-white">
+      <div className="pointer-events-none absolute top-0 right-0 h-[36rem] w-[36rem] rounded-full bg-emerald-500/8 blur-[120px]" />
+      <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div>
-          <div className="mb-4 flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-              <span className="font-mono text-xs text-emerald-400">
-                {isId
-                  ? "Cluster SG-01: Operational · NVMe Direct 400k IOPS · Latensi < 15ms"
-                  : "Cluster SG-01: Operational · NVMe Direct 400k IOPS · Latency < 15ms"}
-              </span>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
-              <span>{messages.pHomeHero.betaBanner}</span>
-            </div>
-          </div>
-
-          <h1 className="mb-6 text-5xl leading-[1.08] font-bold tracking-tight text-white lg:text-6xl xl:text-7xl">
-            {messages.pHomeHero.headlineStart}{" "}
-            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              {messages.pHomeHero.headlineHighlight}
-            </span>{" "}
-            {messages.pHomeHero.headlineEnd}
-          </h1>
-
-          <p className="mb-10 max-w-xl text-lg leading-relaxed text-white/50">
-            {messages.pHomeHero.subheadline}
+          <p className="mb-6 text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase dark:text-emerald-400">
+            {isId ? "HERMES AGENT DI PFNAPP" : "HERMES AGENT ON PFNAPP"}
           </p>
-
-          {/* Badges */}
-          <div className="mb-10 flex flex-wrap gap-3">
-            {badges.map((badge) => (
-              <div
-                key={badge.label}
-                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60"
-              >
-                <badge.icon
-                  weight="fill"
-                  className="h-3.5 w-3.5 text-emerald-400"
-                />
-                {badge.label}
-              </div>
-            ))}
-          </div>
-
-          {/* CTA buttons */}
-          <div className="mb-16 flex flex-col gap-4 sm:flex-row">
+          <h1 className="max-w-2xl text-[clamp(2.65rem,5vw,4.75rem)] leading-[1.08] font-semibold tracking-tight">
+            {isId
+              ? "Jalankan AI assistant Anda tanpa mengurus server."
+              : "Run your AI assistant without managing a server."}
+          </h1>
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg dark:text-white/65">
+            {isId
+              ? `${standardPrice ? `Paket Starter mulai ${standardPrice}/bulan. ` : "Lihat paket yang tersedia di konsol. "}Jalankan Hermes sekarang, lalu ganti template tanpa langganan baru. OpenClaw sedang disiapkan.`
+              : `${standardPrice ? `Starter plans from ${standardPrice}/month. ` : "See available plans in the console. "}Start with Hermes, then switch templates without a new subscription. OpenClaw is in preparation.`}
+          </p>
+          <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Link
-              href={`/${locale}/products/whatsapp-official`}
-              id="hero-cta-whatsapp"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-7 py-3.5 font-semibold text-white shadow-lg shadow-emerald-950/20 transition-all hover:bg-emerald-500"
+              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace`)}`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 sm:px-6 sm:text-base"
             >
-              {isId ? "Lihat Solusi WhatsApp" : "Explore WhatsApp Platform"}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              {isId ? "Jelajahi marketplace" : "Explore marketplace"}
+              <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
             <Link
-              href={`/${locale}/login`}
-              id="hero-cta-signup"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-7 py-3.5 font-semibold text-white transition-all hover:bg-white/10"
+              href={`/${locale}#templates`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-medium text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:text-white/75 dark:hover:text-white"
             >
-              {isId ? "Buka Konsol" : "Open Console"}
+              {isId ? "Lihat template lain" : "Explore other templates"}
+              <ArrowDown className="size-4" aria-hidden="true" />
             </Link>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {stats.map((s) => (
-              <div key={s.label}>
-                <div className="text-2xl font-bold text-white">{s.value}</div>
-                <div className="mt-0.5 text-xs text-white/40">{s.label}</div>
-              </div>
-            ))}
           </div>
         </div>
 
-        {/* Right – animated terminal */}
-        <div className="hidden lg:block">
-          <AnimatedTerminal />
-
-          {/* Floating status cards */}
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20">
-                <span className="text-base">🚀</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-white">
-                  {messages.pHomeHero.cardDeploymentTitle}
-                </div>
-                <div className="text-xs text-emerald-400">
-                  {messages.pHomeHero.cardDeploymentStatus}
-                </div>
-              </div>
+        <div
+          className="min-w-0"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setPaused(false)
+            }
+          }}
+        >
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-xs font-medium tracking-wide text-slate-600 uppercase dark:text-white/55">
+              {isId ? "LIHAT CONTOH APLIKASI" : "APP PREVIEW"}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={selectPrevious}
+                aria-label={isId ? "Aplikasi sebelumnya" : "Previous app"}
+                className="rounded-full border border-slate-300 p-2 text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:text-white/70 dark:hover:text-white"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={selectNext}
+                aria-label={isId ? "Aplikasi berikutnya" : "Next app"}
+                className="rounded-full border border-slate-300 p-2 text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:text-white/70 dark:hover:text-white"
+              >
+                <ArrowRight className="size-4" />
+              </button>
             </div>
-            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/20">
-                <span className="text-base">📊</span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold text-white">
-                  {messages.pHomeHero.cardRequestsTitle}
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#101923] dark:shadow-2xl dark:shadow-black/30">
+            <div
+              className="flex motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out"
+              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+            >
+              {featuredApps.map((app, index) => (
+                <div
+                  key={app.id}
+                  className="min-w-full p-5 sm:p-6"
+                  aria-hidden={index !== activeIndex}
+                  inert={index !== activeIndex}
+                >
+                  <div className="flex items-center gap-3 border-b border-slate-200 pb-4 dark:border-white/10">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={app.icon}
+                        alt=""
+                        width={23}
+                        height={23}
+                        className="size-6 object-contain"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold">{app.name}</p>
+                    </div>
+                  </div>
+                  {index === activeIndex && (
+                    <AppPreviewDetails appId={app.id} locale={locale} />
+                  )}
                 </div>
-                <div className="text-xs text-cyan-400">
-                  {messages.pHomeHero.cardRequestsValue}
-                </div>
-              </div>
+              ))}
             </div>
+          </div>
+          <div
+            className="mt-4 flex justify-center gap-2"
+            role="group"
+            aria-label={isId ? "Pilih template" : "Select a template"}
+          >
+            {featuredApps.map((app, index) => (
+              <button
+                key={app.id}
+                type="button"
+                aria-label={app.name}
+                aria-pressed={index === activeIndex}
+                onClick={() => setActiveIndex(index)}
+                className={`h-2 rounded-full transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${index === activeIndex ? "w-8 bg-emerald-600" : "w-2 bg-slate-300 hover:bg-slate-500 dark:bg-white/30 dark:hover:bg-white/60"}`}
+              />
+            ))}
           </div>
         </div>
       </div>

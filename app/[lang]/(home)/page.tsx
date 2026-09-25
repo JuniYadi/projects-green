@@ -1,19 +1,19 @@
 import type { Metadata } from "next"
+import { connection } from "next/server"
 import { HomeNav } from "./components/nav"
 import { HeroSection } from "./components/hero"
+import { WhyPFNAppSection } from "./components/why-pfnapp"
 import { TemplatesSection } from "./components/templates-section"
 import { ServicesSection } from "./components/services"
-import { FeaturesSection } from "./components/features"
-import { PricingSection } from "./components/pricing"
-import { TestimonialsSection } from "./components/testimonials"
 import { CTASection, Footer } from "./components/footer"
+import { getHomeOffer } from "./home-offer"
 
 export const metadata: Metadata = {
   title: {
-    absolute: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
+    absolute: "PFNApp — Jalankan Hermes Agent",
   },
   description:
-    "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe. Claim Rp 50,000 credit voucher on launch batch.",
+    "Jalankan Hermes Agent di PFNApp tanpa mengurus server. Pilih template dan lihat penawaran yang tersedia.",
   keywords: [
     "hermes agent hosting",
     "ai agent hosting",
@@ -24,25 +24,26 @@ export const metadata: Metadata = {
     "PFNApp",
   ],
   openGraph: {
-    title: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
+    title: "PFNApp — Jalankan Hermes Agent",
     description:
-      "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe.",
+      "Jalankan Hermes Agent di PFNApp tanpa mengurus server. Pilih template dan lihat penawaran yang tersedia.",
     siteName: "PFNApp",
     type: "website",
   },
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  await connection()
+  const offer = await getHomeOffer()
+
   return (
     <div className="min-h-screen bg-background font-sans antialiased">
       <HomeNav />
       <main>
-        <HeroSection />
+        <HeroSection offer={offer} />
+        <WhyPFNAppSection />
         <TemplatesSection />
         <ServicesSection />
-        <FeaturesSection />
-        <PricingSection />
-        <TestimonialsSection />
         <CTASection />
       </main>
       <Footer />

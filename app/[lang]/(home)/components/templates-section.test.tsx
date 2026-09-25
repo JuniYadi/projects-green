@@ -15,49 +15,31 @@ describe("TemplatesSection", () => {
     cleanup()
   })
 
-  it("renders ready templates, upcoming stacks, and comparison table", () => {
+  it("renders templates without unavailable template destinations", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByText, container } = render(<TemplatesSection />)
 
     expect(container.querySelector("#templates")).toBeInTheDocument()
 
-    // 3 Ready templates
     expect(getByText("Hermes Agent")).toBeInTheDocument()
     expect(getByText("9router")).toBeInTheDocument()
     expect(getByText("n8n Automation")).toBeInTheDocument()
-
-    // 3 Available Soon stacks
     expect(getByText("OpenClaw")).toBeInTheDocument()
     expect(getByText("OmniRoute")).toBeInTheDocument()
     expect(getByText("WordPress")).toBeInTheDocument()
 
-    // Request card
     expect(
-      getByText(/Butuh Docker Image atau Template Aplikasi Lain\?/i)
+      getByText("Pilih aplikasi yang ingin dijalankan")
     ).toBeInTheDocument()
 
-    // Comparison table
+    expect(container.querySelector('a[href*="template%3D"]')).toBeNull()
+    expect(container.querySelectorAll("a")).toHaveLength(1)
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
     expect(
-      getByText(/Kenapa Infrastruktur Kami Lebih Cepat & Anti-Lag\?/i)
-    ).toBeInTheDocument()
-    expect(
-      getByText(/Direct Enterprise NVMe \(400.000 IOPS, Sub-millisecond\)/i)
-    ).toBeInTheDocument()
-
-    // Deploy links with target template intent
-    const hermesDeployLink = container.querySelector(
-      'a[href*="template%3Dhermes"]'
-    )
-    expect(hermesDeployLink).not.toBeNull()
-    expect(hermesDeployLink).toHaveAttribute(
+      container.querySelector('a[href*="support-tickets%2Fnew"]')
+    ).toHaveAttribute(
       "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+      "/id/login?next=%2Fid%2Fconsole%2Fsupport-tickets%2Fnew"
     )
-
-    // Request template email link
-    const requestLink = container.querySelector(
-      'a[href^="mailto:support@pfnapp.com"]'
-    )
-    expect(requestLink).not.toBeNull()
   })
 })
