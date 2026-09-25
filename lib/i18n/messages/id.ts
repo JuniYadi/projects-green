@@ -2263,6 +2263,8 @@ export const idMessages: AppMessages = {
         gatewayDescription:
           "Selesaikan pembayaran melalui gerbang pembayaran. Saldo Anda akan diperbarui otomatis setelah pembayaran dikonfirmasi.",
         continueToGateway: "Lanjutkan ke Gerbang Pembayaran",
+        continuePayment: "Lanjutkan Pembayaran",
+        paymentReference: "Referensi Pembayaran",
         gatewayUnavailable:
           "Tautan gerbang pembayaran tidak tersedia untuk invoice ini. Buat isi ulang baru atau hubungi dukungan.",
         noPaymentMethodSelected: "Belum ada metode pembayaran yang dipilih.",
@@ -2395,6 +2397,9 @@ export const idMessages: AppMessages = {
         referencePlaceholder: "misalnya, TRF-12345",
         virtualAccount: "Virtual Account",
         qris: "QRIS",
+        instantPayment: "Pembayaran Instan (QRIS & Virtual Account)",
+        instantPaymentDesc:
+          "Bayar otomatis melalui QRIS, Virtual Account, atau E-Wallet dalam pop-up.",
         paypal: "PayPal",
         manualBankTransfer: "Transfer Bank Manual",
         processing: "Memproses...",

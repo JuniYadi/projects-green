@@ -1,4 +1,14 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test"
+
+mock.module("server-only", () => ({}))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock().mockResolvedValue({
+    id: "org_1",
+    name: "Acme Corp",
+    primaryEmail: "owner@acme.com",
+  }),
+}))
+
 import { Elysia } from "elysia"
 import { TestDecimal as Decimal } from "@/test/helpers/prisma-mock"
 import { MockAuthContext } from "@/test/helpers/test-auth"

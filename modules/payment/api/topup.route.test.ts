@@ -333,6 +333,44 @@ describe("TopupRoute POST /topup", () => {
     )
   })
 
+  it("handles GATEWAY topup with Duitku payment gateway in POP mode", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_gw_1",
+      invoiceNumber: "INV-GW-001",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "GATEWAY",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
+    })
+    mockDuitkuCreatePayment.mockResolvedValueOnce({
+      paymentUrl: "https://duitku.com/pay",
+      vaNumber: null,
+      reference: "duitku_ref_gw",
+      mode: "POP",
+      clientScriptUrl: "https://app-sandbox.duitku.com/lib/js/duitku.js",
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "GATEWAY" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.mode).toBe("POP")
+    expect(json.reference).toBe("duitku_ref_gw")
+    expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentMethod: "" })
+    )
+  })
+
   it("rolls back invoice if Duitku payment creation fails", async () => {
     mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
     mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })

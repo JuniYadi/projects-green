@@ -2027,6 +2027,8 @@ export type AppMessages = {
         contactSupportBeforeTransfer: string
         gatewayDescription: string
         continueToGateway: string
+        continuePayment: string
+        paymentReference: string
         gatewayUnavailable: string
         noPaymentMethodSelected: string
         availableBalance: string
@@ -2143,6 +2145,8 @@ export type AppMessages = {
         referenceId: string
         virtualAccount: string
         qris: string
+        instantPayment: string
+        instantPaymentDesc: string
         paypal: string
         referencePlaceholder: string
         manualBankTransfer: string

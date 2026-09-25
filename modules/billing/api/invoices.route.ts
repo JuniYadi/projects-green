@@ -87,6 +87,25 @@ function getPaymentUrl(metadata: Prisma.JsonValue | null): string | null {
     : null
 }
 
+function getMetadataString(
+  metadata: Prisma.JsonValue | null,
+  keys: string[]
+): string | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null
+  }
+
+  const record = metadata as Record<string, unknown>
+  for (const key of keys) {
+    const val = record[key]
+    if (typeof val === "string" && val.trim().length > 0) {
+      return val
+    }
+  }
+
+  return null
+}
+
 function formatInvoiceLine(line: {
   quantity: Decimal
   unitPrice: Decimal
@@ -162,6 +181,22 @@ export const createBillingInvoicesRoutes = (
             type: inv.type,
             paymentMethod: inv.paymentMethod,
             paymentUrl: getPaymentUrl(inv.metadata),
+            paymentReference: getMetadataString(inv.metadata, [
+              "duitkuReference",
+              "reference",
+              "gatewayReference",
+            ]),
+            checkoutMode: getMetadataString(inv.metadata, [
+              "mode",
+              "checkoutMode",
+            ]),
+            clientScriptUrl: getMetadataString(inv.metadata, [
+              "clientScriptUrl",
+            ]),
+            vaNumber: getMetadataString(inv.metadata, [
+              "vaNumber",
+              "va_number",
+            ]),
             issuedAt: inv.issuedAt?.toISOString() ?? null,
             dueAt: inv.dueAt?.toISOString() ?? null,
             createdAt: inv.createdAt?.toISOString() ?? null,
@@ -259,6 +294,22 @@ export const createBillingInvoicesRoutes = (
               type: invoice.type,
               paymentMethod: invoice.paymentMethod,
               paymentUrl: getPaymentUrl(invoice.metadata),
+              paymentReference: getMetadataString(invoice.metadata, [
+                "duitkuReference",
+                "reference",
+                "gatewayReference",
+              ]),
+              checkoutMode: getMetadataString(invoice.metadata, [
+                "mode",
+                "checkoutMode",
+              ]),
+              clientScriptUrl: getMetadataString(invoice.metadata, [
+                "clientScriptUrl",
+              ]),
+              vaNumber: getMetadataString(invoice.metadata, [
+                "vaNumber",
+                "va_number",
+              ]),
               issuedAt: invoice.issuedAt?.toISOString() ?? null,
               dueAt: invoice.dueAt?.toISOString() ?? null,
               createdAt: invoice.createdAt?.toISOString() ?? null,

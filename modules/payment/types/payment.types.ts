@@ -32,7 +32,7 @@ export const CreateTopupSchema = z.object({
   // Per-currency limits are enforced in the route/service layer via the
   // Currency table. This schema only validates shape and sign.
   amount: z.number().positive(),
-  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK", "PAYPAL"]),
+  paymentMethod: z.enum(["VA", "QRIS", "MANUAL_BANK", "PAYPAL", "GATEWAY"]),
 })
 
 export const ConfirmPaymentSchema = z.object({

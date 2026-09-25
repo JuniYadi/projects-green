@@ -41,7 +41,10 @@ import {
   XCircleIcon,
   BuildingsIcon,
   UserIcon,
+  CreditCardIcon,
+  ArrowClockwiseIcon,
 } from "@phosphor-icons/react"
+import { launchDuitkuPop } from "@/lib/payment/duitku-pop"
 import { formatKey } from "@/lib/format-key"
 import { InvoiceDownloadPdfAction } from "@/modules/invoices/ui/invoice-download-pdf-action"
 import { formatInvoiceCurrency } from "@/modules/invoices/invoices.helpers"
@@ -82,6 +85,7 @@ export default function InvoiceDetailPage() {
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("")
+  const [isLaunchingPop, setIsLaunchingPop] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -203,6 +207,42 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  async function handleContinuePayment() {
+    if (!data?.invoice) return
+    const invoice = data.invoice
+
+    if (invoice.paymentReference && invoice.checkoutMode !== "REDIRECT") {
+      setIsLaunchingPop(true)
+      try {
+        await launchDuitkuPop({
+          reference: invoice.paymentReference,
+          clientScriptUrl: invoice.clientScriptUrl ?? undefined,
+          fallbackUrl: invoice.paymentUrl ?? undefined,
+          defaultLanguage: locale === "id" ? "id" : "en",
+          onSuccess: async () => {
+            setPaymentSuccess(true)
+            const result = await getInvoice(invoiceId)
+            setData(result)
+          },
+          onPending: async () => {
+            const result = await getInvoice(invoiceId)
+            setData(result)
+          },
+          onClose: () => {
+            // Popup closed by user
+          },
+        })
+      } finally {
+        setIsLaunchingPop(false)
+      }
+      return
+    }
+
+    if (invoice.paymentUrl) {
+      window.open(invoice.paymentUrl, "_blank", "noopener,noreferrer")
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -313,7 +353,12 @@ export default function InvoiceDetailPage() {
     invoice.paymentMethod === "manual_bank_transfer"
   const isGatewayPayment =
     invoice.paymentMethod === "PAYMENT_GATEWAY" ||
-    invoice.paymentMethod === "payment_gateway"
+    invoice.paymentMethod === "payment_gateway" ||
+    invoice.paymentMethod === "VA" ||
+    invoice.paymentMethod === "QRIS" ||
+    invoice.paymentMethod === "GATEWAY" ||
+    invoice.paymentMethod === "DUITKU" ||
+    Boolean(invoice.paymentReference || invoice.paymentUrl)
 
   return (
     <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -552,15 +597,34 @@ export default function InvoiceDetailPage() {
                   </div>
                 </div>
 
-                {/* Billing Period Right Aligned */}
+                {/* Billing Period Right Aligned (or Payment Information for Top-Up) */}
                 <div className="space-y-1 text-xs sm:text-right">
-                  <span className="font-semibold tracking-wider text-muted-foreground uppercase">
-                    {billing.invoices.billingPeriod}
-                  </span>
-                  <p className="font-medium text-foreground">
-                    {formatPeriodDate(invoice.periodStart)} —{" "}
-                    {formatPeriodDate(invoice.periodEnd)}
-                  </p>
+                  {isTopUp ? (
+                    <>
+                      <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                        {billing.invoices.paymentReference ||
+                          "Informasi Pembayaran"}
+                      </span>
+                      <p className="font-mono font-medium text-foreground">
+                        {invoice.paymentReference || invoice.invoiceNumber}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {isManualPayment
+                          ? billing.manualBankTransfer
+                          : "Duitku Payment Gateway"}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-semibold tracking-wider text-muted-foreground uppercase">
+                        {billing.invoices.billingPeriod}
+                      </span>
+                      <p className="font-medium text-foreground">
+                        {formatPeriodDate(invoice.periodStart)} —{" "}
+                        {formatPeriodDate(invoice.periodEnd)}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -810,13 +874,42 @@ export default function InvoiceDetailPage() {
                       <p className="leading-relaxed text-muted-foreground">
                         {billing.invoices.gatewayDescription}
                       </p>
-                      {invoice.paymentUrl ? (
-                        <Button asChild className="w-full">
+                      {invoice.paymentReference && (
+                        <div className="space-y-1 rounded-lg border bg-muted/30 p-2.5">
+                          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+                            {billing.invoices.paymentReference ||
+                              "Referensi Pembayaran"}
+                          </span>
+                          <p className="font-mono text-xs font-semibold break-all text-foreground">
+                            {invoice.paymentReference}
+                          </p>
+                        </div>
+                      )}
+                      {invoice.paymentReference &&
+                      invoice.checkoutMode !== "REDIRECT" ? (
+                        <Button
+                          onClick={handleContinuePayment}
+                          disabled={isLaunchingPop}
+                          className="w-full font-medium"
+                        >
+                          {isLaunchingPop ? (
+                            <ArrowClockwiseIcon className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CreditCardIcon className="mr-2 h-4 w-4" />
+                          )}
+                          {isLaunchingPop
+                            ? billing.processing
+                            : billing.invoices.continuePayment ||
+                              billing.invoices.continueToGateway}
+                        </Button>
+                      ) : invoice.paymentUrl ? (
+                        <Button asChild className="w-full font-medium">
                           <Link
                             href={invoice.paymentUrl}
                             target="_blank"
                             rel="noreferrer"
                           >
+                            <CreditCardIcon className="mr-2 h-4 w-4" />
                             {billing.invoices.continueToGateway}
                           </Link>
                         </Button>
