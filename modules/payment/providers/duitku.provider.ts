@@ -127,23 +127,9 @@ export const duitkuProvider: PaymentProvider = {
 
     if (checkoutMode === "REDIRECT") {
       // Legacy Duitku direct inquiry v2 flow
-      if (
-        !isSandbox &&
-        config.productionUrl &&
-        !config.productionUrl.includes("passport.duitku.com") &&
-        !config.productionUrl.includes("api-prod.duitku.com")
-      ) {
-        const clean = config.productionUrl.replace(/\/+$/, "")
-        requestUrl = clean.includes("/merchant/v2/inquiry")
-          ? clean
-          : `${clean}/merchant/v2/inquiry`
-      } else if (
-        isSandbox &&
-        config.sandboxUrl &&
-        !config.sandboxUrl.includes("sandbox.duitku.com/webapi") &&
-        !config.sandboxUrl.includes("api-sandbox.duitku.com")
-      ) {
-        const clean = config.sandboxUrl.replace(/\/+$/, "")
+      const customUrl = isSandbox ? config.sandboxUrl : config.productionUrl
+      if (customUrl) {
+        const clean = customUrl.replace(/\/+$/, "")
         requestUrl = clean.includes("/merchant/v2/inquiry")
           ? clean
           : `${clean}/merchant/v2/inquiry`

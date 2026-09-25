@@ -288,7 +288,7 @@ describe("TopupRoute POST /topup", () => {
     const json = await res.json()
     expect(json.ok).toBe(true)
     expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
-      expect.objectContaining({ paymentMethod: "SP" })
+      expect.objectContaining({ paymentMethod: "QR" })
     )
   })
 
@@ -372,6 +372,66 @@ describe("TopupRoute POST /topup", () => {
     const json = await res.json()
     expect(json.ok).toBe(true)
     expect(json.paymentUrl).toBe("https://paypal.com/checkout")
+  })
+
+  it("rolls back invoice if PayPal gateway config is missing", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_paypal" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_pp_missing_cfg",
+      invoiceNumber: "INV-PP-002",
+      totalAmount: new Decimal(50),
+      status: "UNPAID",
+      paymentMethod: "PAYPAL",
+    })
+    mockGetDecryptedConfig.mockResolvedValueOnce(null)
+    mockBillingInvoiceDelete.mockResolvedValueOnce({ id: "inv_pp_missing_cfg" })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50, paymentMethod: "PAYPAL" }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+    expect(mockBillingInvoiceDelete).toHaveBeenCalledWith({
+      where: { id: "inv_pp_missing_cfg" },
+    })
+  })
+
+  it("rolls back invoice if PayPal payment creation fails", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_paypal" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_pp_failed",
+      invoiceNumber: "INV-PP-003",
+      totalAmount: new Decimal(50),
+      status: "UNPAID",
+      paymentMethod: "PAYPAL",
+    })
+    mockGetDecryptedConfig.mockResolvedValueOnce({
+      clientId: "pp_client",
+      secret: "pp_sec",
+    })
+    mockPaypalCreatePayment.mockRejectedValueOnce(
+      new Error("PayPal API error: 500")
+    )
+    mockBillingInvoiceDelete.mockResolvedValueOnce({ id: "inv_pp_failed" })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50, paymentMethod: "PAYPAL" }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    expect(mockBillingInvoiceDelete).toHaveBeenCalledWith({
+      where: { id: "inv_pp_failed" },
+    })
   })
 
   it("returns 400 / 500 when service throws an error", async () => {

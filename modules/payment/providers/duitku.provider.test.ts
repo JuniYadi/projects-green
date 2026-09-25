@@ -168,6 +168,19 @@ describe("DuitkuPaymentProvider", () => {
       ).rejects.toThrow("Duitku API error: 502")
     })
 
+    it("handles non-ok response when response.text is missing", async () => {
+      globalThis.fetch = (async () => {
+        return {
+          ok: false,
+          status: 500,
+        } as unknown as Response
+      }) as unknown as typeof fetch
+
+      await expect(
+        duitkuProvider.createPayment(paymentRequest, validConfig)
+      ).rejects.toThrow("Duitku API error: 500")
+    })
+
     it("throws when Duitku returns non-00 statusCode", async () => {
       globalThis.fetch = (async () => {
         return {

@@ -143,7 +143,7 @@ export const createTopupRoutes = () =>
           if (paymentMethod === "VA" || paymentMethod === "QRIS") {
             const duitkuMethod =
               paymentMethod === "QRIS"
-                ? "SP"
+                ? "QR"
                 : paymentMethod === "VA"
                   ? ""
                   : paymentMethod
