@@ -141,17 +141,38 @@ export const createTopupRoutes = () =>
           })
 
           if (paymentMethod === "VA" || paymentMethod === "QRIS") {
-            const duitkuMethod = paymentMethod === "VA" ? "VC" : "QR"
+            let duitkuResult
+            try {
+              const gatewayConfig = gatewayId
+                ? await gatewayService.getDecryptedConfig(gatewayId)
+                : null
+              const isPopMode = gatewayConfig?.checkoutMode !== "REDIRECT"
 
-            const duitkuResult = await duitkuService.createPayment({
-              invoiceId: invoice.id,
-              amount,
-              email: `${auth.organizationId}@payment.local`,
-              customerName: `Org ${auth.organizationId}`,
-              productDetails:
-                `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
-              paymentMethod: duitkuMethod,
-            })
+              const duitkuMethod =
+                paymentMethod === "QRIS"
+                  ? "QR"
+                  : paymentMethod === "VA"
+                    ? isPopMode
+                      ? ""
+                      : "VC"
+                    : paymentMethod
+
+              duitkuResult = await duitkuService.createPayment({
+                invoiceId: invoice.id,
+                amount,
+                email: `${auth.organizationId}@payment.local`,
+                customerName: `Org ${auth.organizationId}`,
+                productDetails:
+                  `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
+                paymentMethod: duitkuMethod,
+              })
+            } catch (gatewayError) {
+              // Roll back the topup invoice only if payment gateway setup/creation fails
+              await prisma.billingInvoice
+                .delete({ where: { id: invoice.id } })
+                .catch(() => {})
+              throw gatewayError
+            }
 
             await prisma.$transaction([
               prisma.billingInvoice.update({
@@ -189,31 +210,40 @@ export const createTopupRoutes = () =>
           }
 
           if (paymentMethod === "PAYPAL") {
-            if (!gatewayId) {
-              throw new Error("PayPal gateway not configured")
-            }
+            let paypalResult
+            try {
+              if (!gatewayId) {
+                throw new Error("PayPal gateway not configured")
+              }
 
-            const config = await gatewayService.getDecryptedConfig(gatewayId)
-            if (!config) {
-              throw new Error("PayPal gateway not configured")
-            }
+              const config = await gatewayService.getDecryptedConfig(gatewayId)
+              if (!config) {
+                throw new Error("PayPal gateway not configured")
+              }
 
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
-            const paypalResult = await paypalProvider.createPayment(
-              {
-                invoiceId: invoice.id,
-                amount,
-                currency,
-                email: `${auth.organizationId}@payment.local`,
-                customerName: `Org ${auth.organizationId}`,
-                productDetails:
-                  `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
-                paymentMethod: "paypal",
-                callbackUrl: `${appUrl}/api/webhooks/paypal/callback`,
-                returnUrl: `${appUrl}/console/billing/invoices/${invoice.id}`,
-              },
-              config as unknown as Record<string, string>
-            )
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
+              paypalResult = await paypalProvider.createPayment(
+                {
+                  invoiceId: invoice.id,
+                  amount,
+                  currency,
+                  email: `${auth.organizationId}@payment.local`,
+                  customerName: `Org ${auth.organizationId}`,
+                  productDetails:
+                    `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
+                  paymentMethod: "paypal",
+                  callbackUrl: `${appUrl}/api/webhooks/paypal/callback`,
+                  returnUrl: `${appUrl}/console/billing/invoices/${invoice.id}`,
+                },
+                config as unknown as Record<string, string>
+              )
+            } catch (gatewayError) {
+              // Roll back the topup invoice only if payment gateway setup/creation fails
+              await prisma.billingInvoice
+                .delete({ where: { id: invoice.id } })
+                .catch(() => {})
+              throw gatewayError
+            }
 
             await prisma.billingInvoice.update({
               where: { id: invoice.id },

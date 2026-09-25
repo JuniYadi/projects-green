@@ -29,7 +29,12 @@ describe("DuitkuPaymentProvider", () => {
       expect(duitkuProvider.paymentMethods).toContain("VA")
       expect(duitkuProvider.paymentMethods).toContain("QRIS")
       expect(duitkuProvider.configFields).toBeDefined()
-      expect(duitkuProvider.configFields.length).toBe(5)
+      expect(duitkuProvider.configFields.length).toBe(4)
+      const fieldKeys = duitkuProvider.configFields.map((f) => f.key)
+      expect(fieldKeys).toContain("merchantCode")
+      expect(fieldKeys).toContain("apiKey")
+      expect(fieldKeys).toContain("environment")
+      expect(fieldKeys).toContain("checkoutMode")
     })
   })
 
@@ -37,6 +42,7 @@ describe("DuitkuPaymentProvider", () => {
     const validConfig = {
       merchantCode: "M12345",
       apiKey: "secret-api-key",
+      checkoutMode: "REDIRECT",
       sandboxUrl: "https://sandbox.duitku.com",
       productionUrl: "https://api.duitku.com",
     }
@@ -142,10 +148,37 @@ describe("DuitkuPaymentProvider", () => {
       )
 
       expect(interceptedUrl).toBe(
-        "https://sandbox.duitku.com/merchant/v2/inquiry"
+        "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry"
       )
       expect(result.paymentUrl).toBe("https://sandbox.duitku.com/pay/12345")
       expect(result.reference).toBe("INV-2026-001") // falls back to invoiceId
+    })
+
+    it("recognizes old default stored configs in REDIRECT mode and uses endpoints.legacy", async () => {
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl: "https://passport.duitku.com/pay/123",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "M12345",
+        apiKey: "secret-key",
+        checkoutMode: "REDIRECT",
+        productionUrl: "https://passport.duitku.com/webapi/api/merchant",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://passport.duitku.com/webapi/api/merchant/v2/inquiry"
+      )
     })
 
     it("throws when fetch response is not ok", async () => {
@@ -153,12 +186,26 @@ describe("DuitkuPaymentProvider", () => {
         return {
           ok: false,
           status: 502,
+          text: async () => "Bad Gateway",
         } as unknown as Response
       }) as unknown as typeof fetch
 
       await expect(
         duitkuProvider.createPayment(paymentRequest, validConfig)
       ).rejects.toThrow("Duitku API error: 502")
+    })
+
+    it("handles non-ok response when response.text is missing", async () => {
+      globalThis.fetch = (async () => {
+        return {
+          ok: false,
+          status: 500,
+        } as unknown as Response
+      }) as unknown as typeof fetch
+
+      await expect(
+        duitkuProvider.createPayment(paymentRequest, validConfig)
+      ).rejects.toThrow("Duitku API error: 500")
     })
 
     it("throws when Duitku returns non-00 statusCode", async () => {
@@ -308,6 +355,98 @@ describe("DuitkuPaymentProvider", () => {
       expect(result.clientScriptUrl).toBeUndefined()
       expect(result.paymentUrl).toBe(
         "https://app-sandbox.duitku.com/redirect_checkout?reference=DUI-REDIRECT-123"
+      )
+    })
+
+    it("auto-detects sandbox when merchantCode starts with DS", async () => {
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl:
+              "https://app-sandbox.duitku.com/redirect_checkout?reference=DS-123",
+            reference: "DS-123",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      const result = await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "DS35800",
+        apiKey: "secret-key",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://api-sandbox.duitku.com/api/merchant/createInvoice"
+      )
+      expect(result.clientScriptUrl).toBe(
+        "https://app-sandbox.duitku.com/lib/js/duitku.js"
+      )
+    })
+
+    it("respects explicit environment configuration", async () => {
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl:
+              "https://app-prod.duitku.com/redirect_checkout?reference=PROD-123",
+            reference: "PROD-123",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      const result = await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "M12345",
+        apiKey: "secret-key",
+        environment: "production",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://api-prod.duitku.com/api/merchant/createInvoice"
+      )
+      expect(result.clientScriptUrl).toBe(
+        "https://app-prod.duitku.com/lib/js/duitku.js"
+      )
+    })
+
+    it("respects DUITKU_SANDBOX=false over merchantCode prefix", async () => {
+      process.env.DUITKU_SANDBOX = "false"
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl:
+              "https://app-prod.duitku.com/redirect_checkout?reference=PROD-DS",
+            reference: "PROD-DS",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      const result = await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "DS35800",
+        apiKey: "secret-key",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://api-prod.duitku.com/api/merchant/createInvoice"
+      )
+      expect(result.clientScriptUrl).toBe(
+        "https://app-prod.duitku.com/lib/js/duitku.js"
       )
     })
   })

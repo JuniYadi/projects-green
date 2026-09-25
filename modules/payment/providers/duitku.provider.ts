@@ -12,12 +12,60 @@ import type {
   DuitkuInquiryResponse,
 } from "../types/payment.types"
 
+export const DUITKU_ENDPOINTS = {
+  sandbox: {
+    pop: "https://api-sandbox.duitku.com/api/merchant/createInvoice",
+    legacy: "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry",
+    script: "https://app-sandbox.duitku.com/lib/js/duitku.js",
+  },
+  production: {
+    pop: "https://api-prod.duitku.com/api/merchant/createInvoice",
+    legacy: "https://passport.duitku.com/webapi/api/merchant/v2/inquiry",
+    script: "https://app-prod.duitku.com/lib/js/duitku.js",
+  },
+} as const
+
+export function resolveIsSandbox(config: Record<string, string>): boolean {
+  if (config.environment) {
+    return config.environment.toLowerCase() === "sandbox"
+  }
+  if (process.env.DUITKU_SANDBOX === "false") {
+    return false
+  }
+  if (config.merchantCode?.toUpperCase().startsWith("DS")) {
+    return true
+  }
+  if (process.env.DUITKU_SANDBOX === "true") {
+    return true
+  }
+  if (config.sandboxUrl && !config.productionUrl) {
+    return true
+  }
+  return false
+}
+
+function isOldDefaultOrCanonicalDuitkuHost(urlStr?: string): boolean {
+  if (!urlStr) return true
+  try {
+    const { hostname } = new URL(urlStr)
+    const host = hostname.toLowerCase()
+    return (
+      host === "passport.duitku.com" ||
+      host === "sandbox.duitku.com" ||
+      host === "api-prod.duitku.com" ||
+      host === "api-sandbox.duitku.com"
+    )
+  } catch {
+    return false
+  }
+}
+
 const CONFIG_FIELDS: ConfigFieldDef[] = [
   {
     key: "merchantCode",
     type: "string",
     label: "Merchant Code",
-    placeholder: "M12345",
+    placeholder: "e.g. DS35800 or M12345",
     required: true,
   },
   {
@@ -26,6 +74,23 @@ const CONFIG_FIELDS: ConfigFieldDef[] = [
     label: "API Key",
     placeholder: "Your Duitku API key",
     required: true,
+  },
+  {
+    key: "environment",
+    type: "select",
+    label: "Environment",
+    required: true,
+    defaultValue: "sandbox",
+    options: [
+      {
+        label: "Sandbox (Testing)",
+        value: "sandbox",
+      },
+      {
+        label: "Production (Live)",
+        value: "production",
+      },
+    ],
   },
   {
     key: "checkoutMode",
@@ -44,22 +109,6 @@ const CONFIG_FIELDS: ConfigFieldDef[] = [
       },
     ],
   },
-  {
-    key: "sandboxUrl",
-    type: "url",
-    label: "Sandbox URL",
-    placeholder: "https://api-sandbox.duitku.com",
-    required: false,
-    defaultValue: "https://api-sandbox.duitku.com",
-  },
-  {
-    key: "productionUrl",
-    type: "url",
-    label: "Production URL",
-    placeholder: "https://api-prod.duitku.com",
-    required: false,
-    defaultValue: "https://api-prod.duitku.com",
-  },
 ]
 
 export const duitkuProvider: PaymentProvider = {
@@ -73,10 +122,10 @@ export const duitkuProvider: PaymentProvider = {
     request: PaymentRequest,
     config: Record<string, string>
   ): Promise<PaymentResult> {
-    const isSandbox = process.env.DUITKU_SANDBOX === "true"
-    const rawBaseUrl = isSandbox
-      ? config.sandboxUrl || "https://api-sandbox.duitku.com"
-      : config.productionUrl || "https://api-prod.duitku.com"
+    const isSandbox = resolveIsSandbox(config)
+    const endpoints = isSandbox
+      ? DUITKU_ENDPOINTS.sandbox
+      : DUITKU_ENDPOINTS.production
 
     const merchantCode = config.merchantCode || ""
     const apiKey = config.apiKey || ""
@@ -87,32 +136,25 @@ export const duitkuProvider: PaymentProvider = {
       )
     }
 
-    // Determine checkout mode
+    // Determine checkout mode (defaults to modern POP)
     const checkoutMode: CheckoutMode =
-      request.checkoutMode ||
-      (config.checkoutMode as CheckoutMode) ||
-      (rawBaseUrl.includes("api-sandbox") || rawBaseUrl.includes("api-prod")
-        ? "POP"
-        : "REDIRECT")
-
-    // Determine whether to use modern POP endpoint or legacy inquiry endpoint
-    const isLegacyInquiry =
-      checkoutMode === "REDIRECT" &&
-      (rawBaseUrl.includes("/merchant/v2/inquiry") ||
-        (!rawBaseUrl.includes("api-sandbox") &&
-          !rawBaseUrl.includes("api-prod") &&
-          !rawBaseUrl.includes("createInvoice")))
+      request.checkoutMode || (config.checkoutMode as CheckoutMode) || "POP"
 
     let requestUrl: string
     let headers: Record<string, string>
     let bodyJson: Record<string, unknown>
 
-    if (isLegacyInquiry) {
+    if (checkoutMode === "REDIRECT") {
       // Legacy Duitku direct inquiry v2 flow
-      const cleanBase = rawBaseUrl.replace(/\/+$/, "")
-      requestUrl = cleanBase.includes("/merchant/v2/inquiry")
-        ? cleanBase
-        : `${cleanBase}/merchant/v2/inquiry`
+      const customUrl = isSandbox ? config.sandboxUrl : config.productionUrl
+      if (customUrl && !isOldDefaultOrCanonicalDuitkuHost(customUrl)) {
+        const clean = customUrl.replace(/\/+$/, "")
+        requestUrl = clean.includes("/merchant/v2/inquiry")
+          ? clean
+          : `${clean}/merchant/v2/inquiry`
+      } else {
+        requestUrl = endpoints.legacy
+      }
 
       const legacySig = generateLegacySignature(
         merchantCode,
@@ -121,13 +163,18 @@ export const duitkuProvider: PaymentProvider = {
         apiKey
       )
 
+      const legacyPaymentMethod =
+        request.paymentMethod === "VA" || !request.paymentMethod
+          ? "VC"
+          : request.paymentMethod
+
       const body: DuitkuInquiryRequest = {
         merchantCode,
         paymentAmount: request.amount,
         merchantOrderId: request.invoiceId,
         productDetails: request.productDetails,
         email: request.email,
-        paymentMethod: request.paymentMethod,
+        paymentMethod: legacyPaymentMethod,
         customerVaName: request.customerName,
         returnUrl: request.returnUrl,
         callbackUrl: request.callbackUrl,
@@ -138,10 +185,7 @@ export const duitkuProvider: PaymentProvider = {
       bodyJson = body as unknown as Record<string, unknown>
     } else {
       // Modern Duitku POP / Create Invoice flow
-      const cleanBase = rawBaseUrl.replace(/\/+$/, "")
-      requestUrl = cleanBase.includes("createInvoice")
-        ? cleanBase
-        : `${cleanBase}/api/merchant/createInvoice`
+      requestUrl = endpoints.pop
 
       const timestamp = Date.now().toString()
       const popSignature = generatePopSignature(merchantCode, timestamp, apiKey)
@@ -152,6 +196,12 @@ export const duitkuProvider: PaymentProvider = {
         "x-duitku-timestamp": timestamp,
         "x-duitku-merchantcode": merchantCode,
       }
+
+      // For POP, VA should not be passed as "VC" (Credit Card); empty string allows choosing any channel
+      const effectivePaymentMethod =
+        request.paymentMethod === "VA" || request.paymentMethod === "VC"
+          ? ""
+          : request.paymentMethod || ""
 
       bodyJson = {
         paymentAmount: request.amount,
@@ -165,7 +215,7 @@ export const duitkuProvider: PaymentProvider = {
         callbackUrl: request.callbackUrl,
         returnUrl: request.returnUrl,
         expiryPeriod: 1440,
-        paymentMethod: request.paymentMethod || "",
+        paymentMethod: effectivePaymentMethod,
       }
     }
 
@@ -176,7 +226,13 @@ export const duitkuProvider: PaymentProvider = {
     })
 
     if (!response.ok) {
-      throw new Error(`Duitku API error: ${response.status}`)
+      const errorText =
+        typeof response.text === "function"
+          ? await response.text().catch(() => "")
+          : ""
+      throw new Error(
+        `Duitku API error: ${response.status}${errorText ? ` - ${errorText}` : ""}`
+      )
     }
 
     const result = (await response.json()) as DuitkuInquiryResponse
@@ -185,9 +241,7 @@ export const duitkuProvider: PaymentProvider = {
       throw new Error(`Duitku error: ${result.statusMessage}`)
     }
 
-    const clientScriptUrl = isSandbox
-      ? "https://app-sandbox.duitku.com/lib/js/duitku.js"
-      : "https://app-prod.duitku.com/lib/js/duitku.js"
+    const clientScriptUrl = endpoints.script
 
     return {
       mode: checkoutMode,
