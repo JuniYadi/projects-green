@@ -29,6 +29,9 @@ export function resolveIsSandbox(config: Record<string, string>): boolean {
   if (config.environment) {
     return config.environment.toLowerCase() === "sandbox"
   }
+  if (process.env.DUITKU_SANDBOX === "false") {
+    return false
+  }
   if (config.merchantCode?.toUpperCase().startsWith("DS")) {
     return true
   }

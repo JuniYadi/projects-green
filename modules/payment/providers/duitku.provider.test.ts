@@ -418,6 +418,37 @@ describe("DuitkuPaymentProvider", () => {
         "https://app-prod.duitku.com/lib/js/duitku.js"
       )
     })
+
+    it("respects DUITKU_SANDBOX=false over merchantCode prefix", async () => {
+      process.env.DUITKU_SANDBOX = "false"
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl:
+              "https://app-prod.duitku.com/redirect_checkout?reference=PROD-DS",
+            reference: "PROD-DS",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      const result = await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "DS35800",
+        apiKey: "secret-key",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://api-prod.duitku.com/api/merchant/createInvoice"
+      )
+      expect(result.clientScriptUrl).toBe(
+        "https://app-prod.duitku.com/lib/js/duitku.js"
+      )
+    })
   })
 
   describe("handleWebhook", () => {

@@ -93,10 +93,20 @@ export class PaymentSeeder extends BaseSeeder {
   private async seedDuitkuGateway(): Promise<void> {
     this.log("Seeding Duitku payment gateway...")
 
+    const merchantCode = process.env.DUITKU_MERCHANT_CODE ?? "DS00000"
+    const isSandbox =
+      process.env.DUITKU_ENVIRONMENT === "sandbox" ||
+      (!process.env.DUITKU_ENVIRONMENT &&
+        process.env.DUITKU_SANDBOX !== "false" &&
+        (process.env.DUITKU_SANDBOX === "true" ||
+          merchantCode.startsWith("DS")))
+
     const config = {
-      merchantCode: process.env.DUITKU_MERCHANT_CODE ?? "DS00000",
+      merchantCode,
       apiKey: process.env.DUITKU_API_KEY ?? "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-      environment: process.env.DUITKU_ENVIRONMENT ?? "sandbox",
+      environment:
+        process.env.DUITKU_ENVIRONMENT ??
+        (isSandbox ? "sandbox" : "production"),
       checkoutMode: process.env.DUITKU_CHECKOUT_MODE ?? "POP",
     }
 
