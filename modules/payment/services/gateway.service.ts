@@ -36,16 +36,32 @@ export class GatewayService {
   }
 
   async findByType(type: string): Promise<PaymentGatewayResponse | null> {
-    const isDuitkuOrGateway =
-      type.toLowerCase() === "gateway" || type.toLowerCase() === "duitku"
+    const isDuitku = type.toLowerCase() === "duitku"
+    const isGateway = type.toUpperCase() === "GATEWAY"
 
-    const gateway = await prisma.paymentGateway.findFirst({
-      where: isDuitkuOrGateway
+    const whereClause: Prisma.PaymentGatewayWhereInput = isDuitku
+      ? {
+          isActive: true,
+          OR: [
+            { type: "duitku" },
+            {
+              type: "GATEWAY",
+              name: { contains: "Duitku", mode: "insensitive" },
+            },
+          ],
+        }
+      : isGateway
         ? {
             isActive: true,
-            OR: [{ type: "GATEWAY" }, { type: "duitku" }, { name: "Duitku" }],
+            type: "GATEWAY",
           }
-        : { type, isActive: true },
+        : {
+            isActive: true,
+            type,
+          }
+
+    const gateway = await prisma.paymentGateway.findFirst({
+      where: whereClause,
       orderBy: { isDefault: "desc" },
     })
     if (!gateway) return null
@@ -62,25 +78,29 @@ export class GatewayService {
     currency: string,
     options: { type?: string } = {}
   ): Promise<PaymentGatewayResponse[]> {
-    const isDuitkuOrGateway =
-      options.type &&
-      (options.type.toLowerCase() === "gateway" ||
-        options.type.toLowerCase() === "duitku")
+    const isDuitku = options.type?.toLowerCase() === "duitku"
+    const isGateway = options.type?.toUpperCase() === "GATEWAY"
+
+    const whereType: Prisma.PaymentGatewayWhereInput | undefined = options.type
+      ? isDuitku
+        ? {
+            OR: [
+              { type: "duitku" },
+              {
+                type: "GATEWAY",
+                name: { contains: "Duitku", mode: "insensitive" },
+              },
+            ],
+          }
+        : isGateway
+          ? { type: "GATEWAY" }
+          : { type: options.type }
+      : undefined
 
     const gateways = await prisma.paymentGateway.findMany({
       where: {
         isActive: true,
-        ...(options.type
-          ? isDuitkuOrGateway
-            ? {
-                OR: [
-                  { type: "GATEWAY" },
-                  { type: "duitku" },
-                  { name: "Duitku" },
-                ],
-              }
-            : { type: options.type }
-          : {}),
+        ...whereType,
       },
       orderBy: [
         { isDefault: "desc" },
@@ -219,18 +239,38 @@ export class GatewayService {
     isActive: boolean
     isDefault: boolean
   }): PaymentGatewayResponse {
-    let config: Record<string, string> | null = null
+    let rawConfig: Record<string, string> | null = null
     try {
       if (typeof gateway.config === "object" && gateway.config !== null) {
-        config = gateway.config as Record<string, string>
+        rawConfig = gateway.config as Record<string, string>
       } else if (typeof gateway.config === "string") {
         const decrypted = this.encryption.decryptFieldOptional(gateway.config)
         if (decrypted) {
-          config = JSON.parse(decrypted)
+          rawConfig = JSON.parse(decrypted)
         }
       }
     } catch {
-      config = null
+      rawConfig = null
+    }
+
+    const config: Record<string, string> = {
+      ...(rawConfig || {
+        sandboxUrl: "",
+        productionUrl: "",
+      }),
+    }
+
+    // Security: Always redact sensitive secrets in API responses!
+    // Masked fields show as '***ENCRYPTED***' in the UI so passwords/secrets are never leaked over the wire.
+    if (
+      "apiKey" in config ||
+      gateway.type === "GATEWAY" ||
+      gateway.type === "duitku"
+    ) {
+      config.apiKey = "***ENCRYPTED***"
+    }
+    if ("clientSecret" in config || gateway.type === "paypal") {
+      config.clientSecret = "***ENCRYPTED***"
     }
 
     return {
@@ -240,12 +280,7 @@ export class GatewayService {
       supportedCurrencies: gateway.supportedCurrencies ?? [],
       isActive: gateway.isActive,
       isDefault: gateway.isDefault,
-      config: config || {
-        merchantCode: "***ENCRYPTED***",
-        apiKey: "***ENCRYPTED***",
-        sandboxUrl: "",
-        productionUrl: "",
-      },
+      config,
     }
   }
 }
