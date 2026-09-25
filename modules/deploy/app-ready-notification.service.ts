@@ -182,11 +182,15 @@ export async function notifyReadyTemplateDeployment(
   const subject = `${stack.template.name} siap digunakan`
   const workspaceUrl = `${getEmailBaseUrl()}/id/console/app/platform/${encodeURIComponent(stack.slug)}?tab=overview`
   const appUrl = `https://${domain}${access.loginPath ?? ""}`
+  const docsUrl = `${getEmailBaseUrl()}/id/docs`
+  const supportUrl = `${getEmailBaseUrl()}/id/console/support-tickets/new`
   const html =
     `<h1>${escapeHtml(access.title)}</h1><p>Aplikasi Anda siap digunakan.</p>` +
     `<ol>${access.steps.map((step) => `<li>${escapeHtml(step.text)}</li>`).join("")}</ol>` +
     `<p><a href="${escapeHtml(workspaceUrl)}">Masuk ke PFNApp untuk melihat panduan dan kredensial awal</a></p>` +
-    `<p><a href="${escapeHtml(appUrl)}">Buka aplikasi</a></p>`
+    `<p><a href="${escapeHtml(appUrl)}">Buka aplikasi</a></p>` +
+    `<p><a href="${escapeHtml(docsUrl)}">Lihat dokumentasi</a> · ` +
+    `<a href="${escapeHtml(supportUrl)}">Hubungi support</a></p>`
 
   // A deployment may be retried or reinstalled; the first ready email for a
   // stack wins. A database unique key protects concurrent monitor workers.

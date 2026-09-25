@@ -69,6 +69,12 @@ describe("TemplateAccessCard", () => {
     expect(
       view.getByRole("link", { name: "Buka aplikasi" }).getAttribute("href")
     ).toBe("https://router.example.test/login")
+    expect(
+      view.getByRole("link", { name: "Lihat dokumentasi" }).getAttribute("href")
+    ).toBe("/id/docs")
+    expect(
+      view.getByRole("link", { name: "Hubungi support" }).getAttribute("href")
+    ).toBe("/id/console/support-tickets/new")
     expect(view.queryByText("123456")).toBeNull()
   })
 })

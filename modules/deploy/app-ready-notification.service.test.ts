@@ -212,6 +212,8 @@ describe("ready template notification", () => {
     expect(payload.data.bodyHtml).toContain(
       "/id/console/app/platform/router-app?tab=overview"
     )
+    expect(payload.data.bodyHtml).toContain("/id/docs")
+    expect(payload.data.bodyHtml).toContain("/id/console/support-tickets/new")
     expect(payload.data.bodyHtml).not.toContain("private-value")
     expect(payload.data.eventKey).toBe("app-ready:stack-1")
   })

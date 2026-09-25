@@ -154,19 +154,31 @@ export function TemplateAccessCard({
               : "These are initial credentials. If changed in the app, use the new ones."}
           </p>
         )}
-        {appUrl ? (
-          <Button asChild size="sm">
-            <a href={appUrl} target="_blank" rel="noopener noreferrer">
-              {id ? "Buka aplikasi" : "Open app"}
+        <div className="flex flex-wrap gap-2">
+          {appUrl ? (
+            <Button asChild size="sm">
+              <a href={appUrl} target="_blank" rel="noopener noreferrer">
+                {id ? "Buka aplikasi" : "Open app"}
+              </a>
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {id
+                ? "Alamat web belum tersedia."
+                : "App address is not available yet."}
+            </p>
+          )}
+          <Button asChild size="sm" variant="outline">
+            <a href={`/${locale}/docs`}>
+              {id ? "Lihat dokumentasi" : "View documentation"}
             </a>
           </Button>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {id
-              ? "Alamat web belum tersedia."
-              : "App address is not available yet."}
-          </p>
-        )}
+          <Button asChild size="sm" variant="outline">
+            <a href={`/${locale}/console/support-tickets/new`}>
+              {id ? "Hubungi support" : "Contact support"}
+            </a>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
