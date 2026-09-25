@@ -19,28 +19,44 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 const TERMINAL_TITLE = "pfn-cli — zsh"
 
 const codeLines = [
-  { delay: 0, content: "$ pfn deploy", color: "text-emerald-400" },
+  {
+    delay: 0,
+    content: "$ pfn stack deploy --template hermes-agent",
+    color: "text-emerald-400",
+  },
   {
     delay: 600,
-    content: "  → Building application...",
+    content: "  → Provisioning isolated container (0.5 vCPU, 2GB RAM)...",
     color: "text-white/50",
   },
-  { delay: 1200, content: "  → Optimizing assets...", color: "text-white/50" },
-  { delay: 1800, content: "  → Deploying to edge...", color: "text-white/50" },
+  {
+    delay: 1200,
+    content: "  → Mounting 5GB Direct Enterprise NVMe (400k IOPS)...",
+    color: "text-white/50",
+  },
+  {
+    delay: 1800,
+    content: "  → Initializing Hermes Agent & SQLite memory...",
+    color: "text-white/50",
+  },
   {
     delay: 2400,
-    content: "  ✓ Live at https://myapp.pfnapp.com",
+    content: "  ✓ Live at https://hermes-agent.sg.pfnapp.dev",
     color: "text-cyan-400",
   },
-  { delay: 3000, content: "  ✓ SSL enabled", color: "text-cyan-400" },
+  {
+    delay: 3000,
+    content: "  ✓ Persistent memory mounted at /opt/data",
+    color: "text-cyan-400",
+  },
   {
     delay: 3600,
-    content: "  ✓ CDN configured (42 regions)",
+    content: "  ✓ Cluster SG-01: Latency 12ms",
     color: "text-cyan-400",
   },
   {
     delay: 4200,
-    content: "  🚀 Deploy complete in 12.3s",
+    content: "  🚀 Deploy complete in 18.4s! Ready 24/7",
     color: "text-emerald-400 font-bold",
   },
 ]
@@ -152,11 +168,18 @@ export function HeroSection() {
       <div className="relative mx-auto grid max-w-7xl items-center gap-16 px-6 py-20 lg:grid-cols-2">
         {/* Left – text */}
         <div>
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            <span className="text-sm font-medium text-emerald-400">
-              {messages.pHomeHero.betaBanner}
-            </span>
+          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3.5 py-1">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
+              <span className="font-mono text-xs text-emerald-400">
+                {isId
+                  ? "Cluster SG-01: Operational · NVMe Direct 400k IOPS · Latensi < 15ms"
+                  : "Cluster SG-01: Operational · NVMe Direct 400k IOPS · Latency < 15ms"}
+              </span>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/60">
+              <span>{messages.pHomeHero.betaBanner}</span>
+            </div>
           </div>
 
           <h1 className="mb-6 text-5xl leading-[1.08] font-bold tracking-tight text-white lg:text-6xl xl:text-7xl">

@@ -2,8 +2,13 @@
 
 import { useState } from "react"
 import { useParams } from "next/navigation"
-import { Check, X } from "@phosphor-icons/react"
-import { getMessages } from "@/lib/i18n/messages"
+import {
+  Check,
+  X,
+  Sparkle,
+  ShieldCheck,
+  CreditCard,
+} from "@phosphor-icons/react"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 type PlanFeature = {
@@ -15,136 +20,327 @@ type PricingPlan = {
   id: string
   name: string
   badge: string | null
-  monthlyPrice: number | null
-  yearlyPrice: number | null
+  monthlyPrice: number
+  yearlyPrice: number
   description: string
+  voucherNote: string
   cta: string
   ctaHref: string
   ctaStyle: "border" | "primary"
   highlight: boolean
   features: PlanFeature[]
 }
+
 export function PricingSection() {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
-  const messages = getMessages(locale)
-  const t = messages.pHomePricing
+  const isId = locale === "id"
+
+  const [yearly, setYearly] = useState(false)
 
   const plans: PricingPlan[] = [
     {
-      id: "hobby",
-      name: t.planHobbyName,
-      badge: null,
-      monthlyPrice: 0,
-      yearlyPrice: 0,
-      description: t.planHobbyDescription,
-      cta: t.planHobbyCta,
-      ctaHref: "/login/start?intent=signup",
+      id: "starter",
+      name: "Starter",
+      badge: isId ? "Testing & Personal" : "Testing & Personal",
+      monthlyPrice: 29000,
+      yearlyPrice: 20000,
+      description: isId
+        ? "Ideal untuk bot AI personal, testing webhook, dan eksplorasi Hermes Agent."
+        : "Ideal for personal AI bots, testing webhooks, and exploring Hermes Agent.",
+      voucherNote: isId
+        ? "Rp 0 di bln ke-1 dg Voucher!"
+        : "Rp 0 first month w/ Voucher!",
+      cta: isId ? "Mulai Starter" : "Start Starter",
+      ctaHref: `/${locale}/login`,
       ctaStyle: "border",
       highlight: false,
       features: [
-        { label: t.feature3Projects, included: true },
-        { label: t.feature100GbBandwidth, included: true },
-        { label: t.feature1GbStorage, included: true },
-        { label: t.feature10kEmails, included: true },
-        { label: t.featureCommunitySupport, included: true },
-        { label: t.featureCustomDomains, included: false },
-        { label: t.featureTeamMembers, included: false },
-        { label: t.featureSla, included: false },
+        {
+          label: isId
+            ? "0.5 vCPU Burstable (500m)"
+            : "0.5 vCPU Burstable (500m)",
+          included: true,
+        },
+        {
+          label: isId ? "2 GB RAM (Ekstra Lega)" : "2 GB RAM (Generous)",
+          included: true,
+        },
+        {
+          label: isId
+            ? "5 GB Enterprise NVMe (400k IOPS)"
+            : "5 GB Enterprise NVMe (400k IOPS)",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Shared CPU Pool (Anti-Crash CFS)"
+            : "Shared CPU Pool (Anti-Crash CFS)",
+          included: true,
+        },
+        {
+          label: isId ? "SSL Otomatis & Subdomain" : "Auto SSL & Subdomain",
+          included: true,
+        },
+        {
+          label: isId ? "Dukungan Komunitas" : "Community Support",
+          included: true,
+        },
+        {
+          label: isId ? "Dedicated CPU Pinning" : "Dedicated CPU Pinning",
+          included: false,
+        },
+        {
+          label: isId
+            ? "Otomatis Backup Cloud R2"
+            : "Automated Cloud R2 Backup",
+          included: false,
+        },
       ],
     },
     {
       id: "pro",
-      name: t.planProName,
-      badge: t.planProBadge,
-      monthlyPrice: 29,
-      yearlyPrice: 23,
-      description: t.planProDescription,
-      cta: t.planProCta,
-      ctaHref: "/login/start?intent=signup",
+      name: "Pro",
+      badge: isId ? "Paling Populer 🌟" : "Most Popular 🌟",
+      monthlyPrice: 69000,
+      yearlyPrice: 55000,
+      description: isId
+        ? "Rekomendasi terbaik untuk bot CS WhatsApp bisnis, toko online, dan automasi n8n."
+        : "Best for business WhatsApp CS bots, online stores, and n8n workflows.",
+      voucherNote: isId
+        ? "Hanya Rp 19k dg Voucher!"
+        : "Only Rp 19k w/ Voucher!",
+      cta: isId ? "Pilih Paket Pro" : "Get Pro Plan",
+      ctaHref: `/${locale}/login`,
       ctaStyle: "primary",
       highlight: true,
       features: [
-        { label: t.featureUnlimitedProjects, included: true },
-        { label: t.feature1TbBandwidth, included: true },
-        { label: t.feature100GbStorage, included: true },
-        { label: t.feature100kEmails, included: true },
-        { label: t.featurePrioritySupport, included: true },
-        { label: t.featureCustomDomains, included: true },
-        { label: t.feature5TeamMembers, included: true },
-        { label: t.feature999Sla, included: false },
+        {
+          label: isId
+            ? "1.0 vCPU Burstable (1000m)"
+            : "1.0 vCPU Burstable (1000m)",
+          included: true,
+        },
+        {
+          label: isId ? "4 GB RAM" : "4 GB RAM",
+          included: true,
+        },
+        {
+          label: isId
+            ? "10 GB Enterprise NVMe Direct"
+            : "10 GB Enterprise NVMe Direct",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Backup Harian Cloudflare R2"
+            : "Daily Cloudflare R2 Backup",
+          included: true,
+        },
+        {
+          label: isId
+            ? "WhatsApp Official Webhook Ready"
+            : "Official WhatsApp Webhook Ready",
+          included: true,
+        },
+        {
+          label: isId ? "Prioritas Support" : "Priority Support",
+          included: true,
+        },
+        {
+          label: isId ? "Dedicated CPU Pinning" : "Dedicated CPU Pinning",
+          included: false,
+        },
+        {
+          label: isId ? "SLA Ketersediaan 99.9%" : "99.9% Availability SLA",
+          included: true,
+        },
       ],
     },
     {
-      id: "team",
-      name: t.planTeamName,
-      badge: null,
-      monthlyPrice: 99,
-      yearlyPrice: 79,
-      description: t.planTeamDescription,
-      cta: t.planTeamCta,
-      ctaHref: "/login/start?intent=signup",
+      id: "business",
+      name: "Business Dedicated",
+      badge: isId ? "100% Dedicated CPU 🔥" : "100% Dedicated CPU 🔥",
+      monthlyPrice: 189000,
+      yearlyPrice: 149000,
+      description: isId
+        ? "CPU murni di-pinning secara eksklusif. Anti-throttling untuk beban kerja kritis."
+        : "Exclusive CPU core pinning. Zero throttling for mission-critical production.",
+      voucherNote: isId
+        ? "Potongan Rp 50k dg Voucher!"
+        : "Save Rp 50k w/ Voucher!",
+      cta: isId ? "Pilih Dedicated" : "Get Dedicated",
+      ctaHref: `/${locale}/login`,
       ctaStyle: "border",
       highlight: false,
       features: [
-        { label: t.featureUnlimitedProjects, included: true },
-        { label: t.feature5TbBandwidth, included: true },
-        { label: t.feature1TbStorage, included: true },
-        { label: t.feature1mEmails, included: true },
-        { label: t.featurePrioritySupport, included: true },
-        { label: t.featureCustomDomains, included: true },
-        { label: t.feature25TeamMembers, included: true },
-        { label: t.feature999Sla, included: true },
+        {
+          label: isId
+            ? "2.0 vCPU DEDICATED (Guaranteed)"
+            : "2.0 vCPU DEDICATED (Guaranteed)",
+          included: true,
+        },
+        {
+          label: isId ? "8 GB RAM Dedicated" : "8 GB Dedicated RAM",
+          included: true,
+        },
+        {
+          label: isId
+            ? "25 GB Enterprise NVMe Direct"
+            : "25 GB Enterprise NVMe Direct",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Anti-Throttling CPU Pinning"
+            : "Anti-Throttling CPU Pinning",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Backup Harian Cloudflare R2"
+            : "Daily Cloudflare R2 Backup",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Prioritas Disk I/O Tercepat"
+            : "Highest Disk I/O Priority",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Multi-Stack & Webhook Ready"
+            : "Multi-Stack & Webhook Ready",
+          included: true,
+        },
+        {
+          label: isId ? "SLA Ketersediaan 99.9%" : "99.9% Availability SLA",
+          included: true,
+        },
       ],
     },
     {
       id: "enterprise",
-      name: t.planEnterpriseName,
-      badge: null,
-      monthlyPrice: null,
-      yearlyPrice: null,
-      description: t.planEnterpriseDescription,
-      cta: t.planEnterpriseCta,
-      ctaHref: "/contact",
+      name: "Enterprise Dedicated",
+      badge: isId ? "Maximum Isolation" : "Maximum Isolation",
+      monthlyPrice: 349000,
+      yearlyPrice: 279000,
+      description: isId
+        ? "Beban kerja berat, multi-agent pipeline, scraping data, dan SLA prioritas tinggi."
+        : "Heavy workloads, multi-agent pipelines, web scraping, and VIP SLA support.",
+      voucherNote: isId
+        ? "Potongan Rp 50k dg Voucher!"
+        : "Save Rp 50k w/ Voucher!",
+      cta: isId ? "Pilih Enterprise" : "Get Enterprise",
+      ctaHref: `/${locale}/login`,
       ctaStyle: "border",
       highlight: false,
       features: [
-        { label: t.featureUnlimitedProjects, included: true },
-        { label: t.featureUnlimitedBandwidth, included: true },
-        { label: t.featureUnlimitedStorage, included: true },
-        { label: t.featureUnlimitedEmails, included: true },
-        { label: t.featureDedicatedSupport, included: true },
-        { label: t.featureCustomDomains, included: true },
-        { label: t.featureUnlimitedMembers, included: true },
-        { label: t.feature9999Sla, included: true },
+        {
+          label: isId
+            ? "3.0 vCPU DEDICATED (Guaranteed)"
+            : "3.0 vCPU DEDICATED (Guaranteed)",
+          included: true,
+        },
+        {
+          label: isId ? "16 GB RAM Dedicated" : "16 GB Dedicated RAM",
+          included: true,
+        },
+        {
+          label: isId
+            ? "50 GB Enterprise NVMe Direct"
+            : "50 GB Enterprise NVMe Direct",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Multi-Agent Pipeline Ready"
+            : "Multi-Agent Pipeline Ready",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Backup Harian Cloudflare R2"
+            : "Daily Cloudflare R2 Backup",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Direct Engineer & VIP 24/7"
+            : "Direct Engineer & 24/7 VIP",
+          included: true,
+        },
+        {
+          label: isId
+            ? "Custom Reverse Proxy & IP"
+            : "Custom Reverse Proxy & IP",
+          included: true,
+        },
+        {
+          label: isId ? "SLA Ketersediaan 99.99%" : "99.99% Availability SLA",
+          included: true,
+        },
       ],
     },
   ]
 
-  const [yearly, setYearly] = useState(true)
+  const formatIdr = (val: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      maximumFractionDigits: 0,
+    }).format(val)
+  }
+
   return (
     <section id="pricing" className="relative bg-background py-28">
+      {/* Background radial glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_40%_at_50%_50%,color-mix(in_oklch,var(--chart-3)_7%,transparent),transparent)]" />
 
       <div className="relative mx-auto max-w-7xl px-6">
-        {/* Header */}
+        {/* Launching Voucher Announcement Banner */}
+        <div className="mb-12 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center shadow-lg shadow-emerald-500/5 sm:p-5">
+          <div className="inline-flex items-center gap-2 font-semibold text-emerald-400">
+            <Sparkle className="h-5 w-5" weight="fill" />
+            <span className="text-sm tracking-wide uppercase">
+              {isId
+                ? "🎁 Promo Peluncuran Batch 1"
+                : "🎁 Batch 1 Launching Promo"}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-foreground/90 sm:text-base">
+            {isId
+              ? "Klaim Voucher Saldo Rp 50.000 untuk order pertama! Paket Starter (Rp 29.000) langsung GRATIS bulan pertama, atau nikmati paket Pro (Rp 69.000) hanya dengan Rp 19.000."
+              : "Claim your Rp 50,000 Credit Voucher on first checkout! Starter plan becomes 100% FREE for Month 1, or enjoy Pro for only Rp 19,000."}
+          </p>
+          <div className="mt-2 text-xs text-muted-foreground">
+            {isId
+              ? "⚡ Promo Terbatas: Berlaku untuk pendaftar batch early-adopter selama periode launching."
+              : "⚡ Limited Time Promo: Valid for early-adopter signups during the launch period."}
+          </div>
+        </div>
+
+        {/* Section Header */}
         <div className="mb-14 text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5">
             <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              {t.badgePricing}
+              {isId ? "Harga Transparan" : "Pricing & Specs"}
             </span>
           </div>
           <h2 className="mb-5 text-4xl font-bold tracking-tight text-foreground lg:text-5xl">
-            {t.headingStart}{" "}
+            {isId ? "Harga Simpel & " : "Simple & "}{" "}
             <span className="bg-gradient-to-r from-chart-3 to-chart-2 bg-clip-text text-transparent">
-              {t.headingHighlight}
+              {isId ? "Transparan" : "Transparent"}
             </span>
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
-            {t.subheading}
+            {isId
+              ? "Pilih antara shared burstable untuk bot personal atau 100% dedicated resource untuk bisnis anti-throttling."
+              : "Choose between burstable shared CPU for lightweight bots or 100% dedicated cores for unthrottled performance."}
           </p>
 
-          {/* Toggle */}
+          {/* Toggle Monthly / Yearly */}
           <div className="inline-flex items-center gap-0 rounded-full border border-border bg-secondary p-1">
             <button
               id="pricing-toggle-monthly"
@@ -155,7 +351,7 @@ export function PricingSection() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.toggleMonthly}
+              {isId ? "Bulanan" : "Monthly"}
             </button>
             <button
               id="pricing-toggle-yearly"
@@ -166,15 +362,15 @@ export function PricingSection() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t.toggleYearly}
-              <span className="rounded-full bg-primary px-1.5 py-0.5 text-xs text-primary-foreground">
-                -20%
+              {isId ? "Tahunan" : "Yearly"}
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-primary-foreground">
+                {isId ? "Hemat 2 Bln" : "Save ~20%"}
               </span>
             </button>
           </div>
         </div>
 
-        {/* Plans */}
+        {/* Pricing Cards Grid */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
             <div
@@ -187,13 +383,13 @@ export function PricingSection() {
               }`}
             >
               {plan.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-4 py-1 text-xs font-bold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/30">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3.5 py-1 text-xs font-bold whitespace-nowrap text-primary-foreground shadow-lg shadow-primary/30">
                   {plan.badge}
                 </div>
               )}
 
-              <div className="mb-6">
-                <h3 className="mb-1 text-base font-bold text-foreground">
+              <div className="mb-4">
+                <h3 className="mb-1 text-lg font-bold text-foreground">
                   {plan.name}
                 </h3>
                 <p className="text-xs leading-relaxed text-muted-foreground">
@@ -201,33 +397,25 @@ export function PricingSection() {
                 </p>
               </div>
 
-              <div className="mb-6">
-                {plan.monthlyPrice !== null ? (
-                  <div className="flex items-end gap-1">
-                    <span className="text-4xl font-bold text-foreground">
-                      ${yearly ? plan.yearlyPrice : plan.monthlyPrice}
-                    </span>
-                    <span className="mb-1 text-sm text-muted-foreground">
-                      {t.perMonth}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="text-3xl font-bold text-foreground">
-                    {t.priceCustom}
-                  </div>
-                )}
-                {yearly &&
-                  plan.monthlyPrice !== null &&
-                  plan.monthlyPrice > 0 && (
-                    <div className="mt-1 text-xs text-primary">
-                      {t.saveYearly.replace(
-                        "{amount}",
-                        String((plan.monthlyPrice - plan.yearlyPrice!) * 12)
-                      )}
-                    </div>
-                  )}
+              {/* Price */}
+              <div className="mb-4">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-foreground lg:text-3xl">
+                    {formatIdr(yearly ? plan.yearlyPrice : plan.monthlyPrice)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {isId ? "/bln" : "/mo"}
+                  </span>
+                </div>
+
+                {/* Voucher notice badge */}
+                <div className="mt-2 inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                  <Sparkle className="h-3 w-3" />
+                  <span>{plan.voucherNote}</span>
+                </div>
               </div>
 
+              {/* CTA button */}
               <a
                 href={plan.ctaHref}
                 id={`pricing-cta-${plan.id}`}
@@ -240,11 +428,12 @@ export function PricingSection() {
                 {plan.cta}
               </a>
 
+              {/* Features list */}
               <ul className="flex-1 space-y-2.5">
                 {plan.features.map((f) => (
                   <li
                     key={f.label}
-                    className="flex items-center gap-2.5 text-sm"
+                    className="flex items-center gap-2.5 text-xs sm:text-sm"
                   >
                     {f.included ? (
                       <Check
@@ -273,8 +462,49 @@ export function PricingSection() {
           ))}
         </div>
 
-        <p className="mt-10 text-center text-xs text-muted-foreground/50">
-          {t.disclaimer}
+        {/* Local Payment Methods & Guarantee Badges */}
+        <div className="mt-14 flex flex-col items-center justify-between gap-4 rounded-2xl border border-border bg-card/60 p-6 text-center sm:flex-row sm:text-left">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-foreground">
+                {isId
+                  ? "Metode Pembayaran Lokal Resmi"
+                  : "Local Instant Payment Methods"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {isId
+                  ? "QRIS (GoPay, OVO, Dana, ShopeePay), BCA, Mandiri, BNI, BRI Virtual Account."
+                  : "QRIS (GoPay, OVO, Dana, ShopeePay), BCA, Mandiri, BNI, BRI Virtual Account."}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-foreground">
+                {isId
+                  ? "Garansi Keamanan & Anti-Hilang"
+                  : "Data Safety Guarantee"}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {isId
+                  ? "Penyimpanan Enterprise NVMe Direct + Backup Harian Cloudflare R2."
+                  : "Enterprise NVMe Direct Storage + Daily Automated Cloudflare R2 Backups."}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-8 text-center text-xs text-muted-foreground/50">
+          {isId
+            ? "Semua paket sudah termasuk kuota bandwidth unmetered dengan fair-usage policy. Harga belum termasuk PPN bila berlaku."
+            : "All plans include unmetered bandwidth under fair usage policy. Cancel anytime with zero lock-in."}
         </p>
       </div>
     </section>
