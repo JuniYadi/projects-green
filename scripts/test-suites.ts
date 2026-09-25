@@ -11,6 +11,18 @@ export type FeatureMapping = {
 
 export const FEATURE_MAPPINGS: FeatureMapping[] = [
   {
+    name: "home-preview",
+    sourcePrefixes: [
+      "app/[lang]/(home)/components/use-preview-carousel.ts",
+      "app/[lang]/(home)/components/why-pfnapp.tsx",
+    ],
+    testPrefixes: [
+      "app/[lang]/(home)/components/hero.test.tsx",
+      "app/[lang]/(home)/page.test.tsx",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "cron",
     sourcePrefixes: [
       "lib/cron/",
