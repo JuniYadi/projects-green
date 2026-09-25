@@ -148,10 +148,37 @@ describe("DuitkuPaymentProvider", () => {
       )
 
       expect(interceptedUrl).toBe(
-        "https://sandbox.duitku.com/merchant/v2/inquiry"
+        "https://sandbox.duitku.com/webapi/api/merchant/v2/inquiry"
       )
       expect(result.paymentUrl).toBe("https://sandbox.duitku.com/pay/12345")
       expect(result.reference).toBe("INV-2026-001") // falls back to invoiceId
+    })
+
+    it("recognizes old default stored configs in REDIRECT mode and uses endpoints.legacy", async () => {
+      let interceptedUrl = ""
+      globalThis.fetch = (async (url: string) => {
+        interceptedUrl = url
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl: "https://passport.duitku.com/pay/123",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      await duitkuProvider.createPayment(paymentRequest, {
+        merchantCode: "M12345",
+        apiKey: "secret-key",
+        checkoutMode: "REDIRECT",
+        productionUrl: "https://passport.duitku.com/webapi/api/merchant",
+      })
+
+      expect(interceptedUrl).toBe(
+        "https://passport.duitku.com/webapi/api/merchant/v2/inquiry"
+      )
     })
 
     it("throws when fetch response is not ok", async () => {

@@ -41,6 +41,22 @@ export function resolveIsSandbox(config: Record<string, string>): boolean {
   return false
 }
 
+function isOldDefaultOrCanonicalDuitkuHost(urlStr?: string): boolean {
+  if (!urlStr) return true
+  try {
+    const { hostname } = new URL(urlStr)
+    const host = hostname.toLowerCase()
+    return (
+      host === "passport.duitku.com" ||
+      host === "sandbox.duitku.com" ||
+      host === "api-prod.duitku.com" ||
+      host === "api-sandbox.duitku.com"
+    )
+  } catch {
+    return false
+  }
+}
+
 const CONFIG_FIELDS: ConfigFieldDef[] = [
   {
     key: "merchantCode",
@@ -128,7 +144,7 @@ export const duitkuProvider: PaymentProvider = {
     if (checkoutMode === "REDIRECT") {
       // Legacy Duitku direct inquiry v2 flow
       const customUrl = isSandbox ? config.sandboxUrl : config.productionUrl
-      if (customUrl) {
+      if (customUrl && !isOldDefaultOrCanonicalDuitkuHost(customUrl)) {
         const clean = customUrl.replace(/\/+$/, "")
         requestUrl = clean.includes("/merchant/v2/inquiry")
           ? clean
