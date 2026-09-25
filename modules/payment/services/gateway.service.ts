@@ -36,8 +36,16 @@ export class GatewayService {
   }
 
   async findByType(type: string): Promise<PaymentGatewayResponse | null> {
+    const isDuitkuOrGateway =
+      type.toLowerCase() === "gateway" || type.toLowerCase() === "duitku"
+
     const gateway = await prisma.paymentGateway.findFirst({
-      where: { type, isActive: true },
+      where: isDuitkuOrGateway
+        ? {
+            isActive: true,
+            OR: [{ type: "GATEWAY" }, { type: "duitku" }, { name: "Duitku" }],
+          }
+        : { type, isActive: true },
       orderBy: { isDefault: "desc" },
     })
     if (!gateway) return null
@@ -54,10 +62,25 @@ export class GatewayService {
     currency: string,
     options: { type?: string } = {}
   ): Promise<PaymentGatewayResponse[]> {
+    const isDuitkuOrGateway =
+      options.type &&
+      (options.type.toLowerCase() === "gateway" ||
+        options.type.toLowerCase() === "duitku")
+
     const gateways = await prisma.paymentGateway.findMany({
       where: {
         isActive: true,
-        ...(options.type ? { type: options.type } : {}),
+        ...(options.type
+          ? isDuitkuOrGateway
+            ? {
+                OR: [
+                  { type: "GATEWAY" },
+                  { type: "duitku" },
+                  { name: "Duitku" },
+                ],
+              }
+            : { type: options.type }
+          : {}),
       },
       orderBy: [
         { isDefault: "desc" },
@@ -119,7 +142,8 @@ export class GatewayService {
     id: string,
     input: {
       name?: string
-      config?: DuitkuConfig
+      type?: string
+      config?: Record<string, string>
       isDefault?: boolean
       supportedCurrencies?: string[]
     }
@@ -136,8 +160,21 @@ export class GatewayService {
 
     const data: Prisma.PaymentGatewayUpdateInput = {}
     if (input.name) data.name = input.name
-    if (input.config)
-      data.config = this.encryption.encryptField(JSON.stringify(input.config))
+    if (input.type) data.type = input.type
+    if (input.config) {
+      let currentConfig: Record<string, string> = {}
+      try {
+        currentConfig =
+          ((await this.getDecryptedConfig(id)) as unknown as Record<
+            string,
+            string
+          >) || {}
+      } catch {
+        currentConfig = {}
+      }
+      const mergedConfig = { ...currentConfig, ...input.config }
+      data.config = this.encryption.encryptField(JSON.stringify(mergedConfig))
+    }
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
     if (input.supportedCurrencies !== undefined)
       data.supportedCurrencies = input.supportedCurrencies
@@ -166,6 +203,9 @@ export class GatewayService {
     const gateway = await prisma.paymentGateway.findUnique({ where: { id } })
     if (!gateway) return null
 
+    if (typeof gateway.config === "object" && gateway.config !== null) {
+      return gateway.config as unknown as DuitkuConfig
+    }
     const configStr = this.encryption.decryptField(gateway.config as string)
     return JSON.parse(configStr) as DuitkuConfig
   }
@@ -179,18 +219,14 @@ export class GatewayService {
     isActive: boolean
     isDefault: boolean
   }): PaymentGatewayResponse {
-    let config: DuitkuConfig | null = null
+    let config: Record<string, string> | null = null
     try {
-      const decrypted = this.encryption.decryptFieldOptional(
-        gateway.config as string
-      )
-      if (decrypted) {
-        const parsed = JSON.parse(decrypted)
-        config = {
-          merchantCode: parsed.merchantCode || "",
-          apiKey: parsed.apiKey || "",
-          sandboxUrl: parsed.sandboxUrl || "",
-          productionUrl: parsed.productionUrl || "",
+      if (typeof gateway.config === "object" && gateway.config !== null) {
+        config = gateway.config as Record<string, string>
+      } else if (typeof gateway.config === "string") {
+        const decrypted = this.encryption.decryptFieldOptional(gateway.config)
+        if (decrypted) {
+          config = JSON.parse(decrypted)
         }
       }
     } catch {

@@ -73,9 +73,35 @@ function readConfigValues(
   const config: Record<string, string> = {}
   for (const field of fields) {
     const value = String(formData.get(field.key) || "")
-    if (value) config[field.key] = value
+    if (value && value !== "***ENCRYPTED***") config[field.key] = value
   }
   return config
+}
+
+function findMatchingProvider(
+  providers: ProviderOptionDTO[],
+  type?: string,
+  name?: string
+): ProviderOptionDTO | undefined {
+  if (!type && !name) return undefined
+  const t = (type || "").toLowerCase()
+  const n = (name || "").toLowerCase()
+
+  return (
+    providers.find((p) => p.value.toLowerCase() === t) ||
+    providers.find((p) => p.label.toLowerCase() === t) ||
+    providers.find((p) => p.label.toLowerCase() === n) ||
+    providers.find((p) => p.value.toLowerCase() === n) ||
+    (t === "gateway" && n.includes("duitku")
+      ? providers.find((p) => p.value === "duitku")
+      : undefined) ||
+    (t === "gateway" && n.includes("paypal")
+      ? providers.find((p) => p.value === "paypal")
+      : undefined) ||
+    (t === "gateway"
+      ? providers.find((p) => p.value === "duitku") || providers[0]
+      : undefined)
+  )
 }
 
 type GatewaysRequestState =
@@ -108,7 +134,7 @@ export function GatewaysTab() {
   const currentProvider = providers.find((p) => p.value === selectedProvider)
   const editProvider =
     providers.find((p) => p.value === editProviderType) ||
-    providers.find((p) => p.value === editingGateway?.type)
+    findMatchingProvider(providers, editingGateway?.type, editingGateway?.name)
 
   const gatewayColumns = useMemo<ColumnDef<PaymentGateway>[]>(
     () => [
@@ -127,8 +153,11 @@ export function GatewaysTab() {
           <div className="grid gap-1">
             <span className="font-medium">{row.original.name}</span>
             <span className="text-xs text-muted-foreground">
-              {providers.find((p) => p.value === row.original.type)?.label ||
-                row.original.type}
+              {findMatchingProvider(
+                providers,
+                row.original.type,
+                row.original.name
+              )?.label || row.original.type}
             </span>
           </div>
         ),
@@ -205,8 +234,13 @@ export function GatewaysTab() {
               size="sm"
               variant="outline"
               onClick={() => {
+                const matched = findMatchingProvider(
+                  providers,
+                  row.original.type,
+                  row.original.name
+                )
                 setEditingGateway(row.original)
-                setEditProviderType(row.original.type)
+                setEditProviderType(matched?.value || row.original.type)
               }}
             >
               {messages.pBillingPaymentsGatewaysGatewaysTab.configureButton}
@@ -330,9 +364,16 @@ export function GatewaysTab() {
     const formData = new FormData(event.currentTarget)
     setIsSubmitting(true)
 
-    const providerDef = providers.find(
-      (p) => p.value === (editProviderType || editingGateway.type)
-    )
+    const providerDef =
+      providers.find(
+        (p) => p.value === (editProviderType || editingGateway.type)
+      ) ||
+      findMatchingProvider(
+        providers,
+        editProviderType || editingGateway.type,
+        editingGateway.name
+      )
+
     const config = providerDef
       ? readConfigValues(formData, providerDef.configFields)
       : {}
@@ -341,6 +382,7 @@ export function GatewaysTab() {
     try {
       const body = {
         name: String(formData.get("name") || ""),
+        type: providerDef?.value || editProviderType || editingGateway.type,
         supportedCurrencies: currencies,
         config,
       }
@@ -371,13 +413,20 @@ export function GatewaysTab() {
     defaults?: Record<string, string>
   ) {
     return fields.map((field) => {
+      const defaultValue =
+        defaults?.[field.key] !== undefined && defaults[field.key] !== ""
+          ? defaults[field.key]
+          : field.defaultValue || ""
+
+      const isEncrypted = defaults?.[field.key] === "***ENCRYPTED***"
+
       if (field.type === "select" && field.options) {
         return (
           <label key={field.key} className="space-y-2 text-sm font-medium">
             <span>{field.label}</span>
             <select
               name={field.key}
-              defaultValue={defaults?.[field.key] || field.options[0].value}
+              defaultValue={defaultValue || field.options[0].value}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             >
               {field.options.map((opt) => (
@@ -396,8 +445,12 @@ export function GatewaysTab() {
           <Input
             name={field.key}
             type={field.type === "password" ? "password" : "text"}
-            placeholder={field.placeholder}
-            defaultValue={defaults?.[field.key] || ""}
+            placeholder={
+              isEncrypted
+                ? "•••••••• (Leave blank to keep current)"
+                : field.placeholder
+            }
+            defaultValue={isEncrypted ? "" : defaultValue}
           />
         </label>
       )
@@ -499,7 +552,8 @@ export function GatewaysTab() {
                             ? "Failed to load providers"
                             : providers.length === 0
                               ? "No providers available"
-                              : "Select a provider..."
+                              : messages.pBillingPaymentsGatewaysGatewaysTab
+                                  .selectProviderPlaceholder
                       }
                     />
                   </SelectTrigger>
@@ -600,9 +654,28 @@ export function GatewaysTab() {
                       .providerColumnTitle
                   }
                 </span>
-                <div className="flex items-center gap-2 pt-1 text-sm text-muted-foreground">
-                  <Badge variant="outline">{editingGateway.type}</Badge>
-                </div>
+                <Select
+                  name="type"
+                  value={editProvider?.value || editingGateway.type}
+                  onValueChange={(val) => setEditProviderType(val)}
+                  disabled={providersLoading || providers.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={
+                        messages.pBillingPaymentsGatewaysGatewaysTab
+                          .selectProviderPlaceholder
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {providers.map((provider) => (
+                      <SelectItem key={provider.value} value={provider.value}>
+                        {provider.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Label>
 
               {editProvider &&

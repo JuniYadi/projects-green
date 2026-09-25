@@ -7489,6 +7489,7 @@ export const idMessages: AppMessages = {
     gatewayNameLabel: "Nama gerbang",
     gatewayNamePlaceholder: "Gerbang Duitku Saya",
     providerTypeLabel: "Jenis penyedia",
+    selectProviderPlaceholder: "Pilih penyedia...",
     supportedCurrenciesLabel: "Mata uang yang didukung",
     currenciesHint:
       "Secara default menggunakan mata uang yang didukung oleh penyedia. Hapus centang untuk membatasi.",

@@ -62,11 +62,7 @@ export interface PaymentGatewayResponse {
   supportedCurrencies: string[]
   isActive: boolean
   isDefault: boolean
-  config: {
-    merchantCode: string
-    sandboxUrl: string
-    productionUrl: string
-  }
+  config: Record<string, string>
 }
 
 export interface BankAccountResponse {
