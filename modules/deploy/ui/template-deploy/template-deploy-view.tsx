@@ -192,7 +192,8 @@ export function TemplateDeployView({
   }, [accountRefreshKey])
 
   const fetchAccount = () => setAccountRefreshKey((k) => k + 1)
-  const currency = accountData?.currency || (lang === "id" ? "IDR" : "USD")
+  const currency: "USD" | "IDR" =
+    accountData?.currency === "IDR" || lang === "id" ? "IDR" : "USD"
   const currentBalance = accountData ? Number(accountData.balanceIdr) : 0
   const requiredStorage = useMemo(() => {
     return getTemplateRequiredStorageGb(template?.blueprint)
@@ -548,7 +549,8 @@ export function TemplateDeployView({
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-5">
           <div className="flex items-start gap-3">
             <TemplateLogo
-              src={template.iconUrl}
+              iconUrl={template.iconUrl}
+              slug={template.slug}
               name={template.name}
               className="size-12 rounded-xl"
             />
@@ -846,11 +848,8 @@ export function TemplateDeployView({
                                 </SelectTrigger>
                                 <SelectContent>
                                   {field.options.map((opt) => (
-                                    <SelectItem
-                                      key={opt.value}
-                                      value={opt.value}
-                                    >
-                                      {opt.label} ({opt.value})
+                                    <SelectItem key={opt} value={opt}>
+                                      {opt}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
