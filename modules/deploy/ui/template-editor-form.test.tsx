@@ -25,6 +25,7 @@ interface SavePayload {
       runAsNonRoot?: boolean
       runAsUser?: number | null
       runAsGroup?: number | null
+      fsGroup?: number | null
       readOnlyRootFilesystem?: boolean
     }
   }
@@ -388,5 +389,52 @@ describe("TemplateEditorForm", () => {
     expect(payload?.blueprintJson?.runtime?.runAsNonRoot).toBe(true)
     expect(payload?.blueprintJson?.runtime?.runAsUser).toBe(1000)
     expect(payload?.blueprintJson?.runtime?.runAsGroup).toBe(2000)
+  })
+
+  it("switches activePreset to custom when readOnlyRootFilesystem or fsGroup is configured", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const {
+      getByTestId,
+      getByText,
+      getAllByText,
+      getByLabelText,
+      queryByText,
+    } = render(<TemplateEditorForm isNew={true} onSave={onSave} />)
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Sec Dev App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "App testing custom presets"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Initially with image_default_non_root (runAsNonRoot: true, empty UID/GID), badge indicates Auto
+    expect(getByText("Auto")).toBeTruthy()
+
+    // Toggle Read-Only Root Filesystem
+    const readOnlySwitch = getByLabelText(/Read-Only Root Filesystem/i)
+    await user.click(readOnlySwitch)
+
+    // Now preset indicator switches to Custom Configuration
+    expect(queryByText("Auto")).toBeNull()
+    expect(getAllByText("Custom Configuration").length).toBeGreaterThan(0)
+
+    // Enter fsGroup
+    const fsGroupInput = getByLabelText(/Storage FSGroup/i)
+    await user.type(fsGroupInput, "3000")
+    expect(getAllByText("Custom Configuration").length).toBeGreaterThan(0)
+
+    // Save and assert payload has both values
+    await user.click(getByText("Create Template"))
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.readOnlyRootFilesystem).toBe(true)
+    expect(payload?.blueprintJson?.runtime?.fsGroup).toBe(3000)
   })
 })

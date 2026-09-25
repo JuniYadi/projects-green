@@ -192,25 +192,39 @@ export function TemplateEditorForm({
       setRunAsNonRoot(false)
       setRunAsUser("")
       setRunAsGroup("")
+      setRuntimeFsGroup("")
       setReadOnlyRootFilesystem(false)
     } else if (preset === "strict_non_root") {
       setRunAsNonRoot(true)
       setRunAsUser("10001")
       setRunAsGroup("10001")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
     } else if (preset === "standard_non_root") {
       setRunAsNonRoot(true)
       setRunAsUser("1000")
       setRunAsGroup("1000")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
     } else if (preset === "image_default_non_root") {
       setRunAsNonRoot(true)
       setRunAsUser("")
       setRunAsGroup("")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
     }
   }
 
   const activePreset = useMemo(() => {
     const trimmedUser = runAsUser.trim()
     const trimmedGroup = runAsGroup.trim()
+    const trimmedFsGroup = runtimeFsGroup.trim()
+
+    // Deviations with read-only root or custom fsGroup belong to custom configuration
+    if (readOnlyRootFilesystem || trimmedFsGroup) {
+      return "custom"
+    }
+
     if (!runAsNonRoot && !trimmedUser && !trimmedGroup) return "root_default"
     if (runAsNonRoot && trimmedUser === "10001" && trimmedGroup === "10001")
       return "strict_non_root"
@@ -219,7 +233,13 @@ export function TemplateEditorForm({
     if (runAsNonRoot && !trimmedUser && !trimmedGroup)
       return "image_default_non_root"
     return "custom"
-  }, [runAsNonRoot, runAsUser, runAsGroup])
+  }, [
+    runAsNonRoot,
+    runAsUser,
+    runAsGroup,
+    runtimeFsGroup,
+    readOnlyRootFilesystem,
+  ])
   const [runtimeCommand, setRuntimeCommand] = useState(
     Array.isArray(initialData?.blueprintJson?.runtime?.command)
       ? initialData.blueprintJson.runtime.command.join(" ")
