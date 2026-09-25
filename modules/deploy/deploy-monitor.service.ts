@@ -12,12 +12,12 @@ import { recordDeployEventOnce, recordDeployLog } from "./deploy-event.service"
 import { processQueuedDeployment } from "./deploy-builder.service"
 import { pollDeploymentRollout } from "./argocd-rollout.service"
 import { checkIngressReadiness } from "./ingress-readiness.service"
+import { notifyReadyTemplateDeployment } from "./app-ready-notification.service"
 
 const BATCH_SIZE = 10
 
-// Bounds how long a RUNNING deployment stays in the ingress recheck set —
-// beyond this window we stop retrying and leave ingressVerified as-is.
-const INGRESS_RECHECK_WINDOW_MS = 30 * 60 * 1000
+// Recheck recently running deployments while metrics, Vault or ingress settle.
+const INGRESS_RECHECK_WINDOW_MS = 24 * 60 * 60 * 1000
 const BUILDING_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes max build time
 
 async function chunkArray<T>(array: T[], size: number): Promise<T[][]> {
@@ -35,7 +35,6 @@ export async function monitorActiveDeployments() {
         { status: { in: ["QUEUED", "BUILDING", "DEPLOYING"] } },
         {
           status: "RUNNING",
-          ingressVerified: false,
           completedAt: {
             gt: new Date(Date.now() - INGRESS_RECHECK_WINDOW_MS),
           },
@@ -176,6 +175,16 @@ async function checkDeploymentStatus(deployment: {
       where: { id: deployment.id },
       data: { ingressVerified, ingressCheckedAt: new Date() },
     })
+    if (ingressVerified) {
+      try {
+        await notifyReadyTemplateDeployment(deployment.id)
+      } catch (error) {
+        console.error(
+          "[deploy-monitor] Ready notification check failed:",
+          error
+        )
+      }
+    }
     return {
       deploymentId: deployment.id,
       status: deployment.status,

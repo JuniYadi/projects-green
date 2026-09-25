@@ -69,6 +69,66 @@ const validSampleBlueprint: AppTemplateBlueprint = {
 }
 
 describe("AppTemplateBlueprint Validation & Service", () => {
+  it("accepts access steps referring to a declared secret env", () => {
+    const result = validateBlueprint({
+      ...validSampleBlueprint,
+      access: {
+        mode: "password-only",
+        title: "Open Ghost",
+        loginPath: "/login",
+        fields: [
+          {
+            id: "password",
+            label: "Password",
+            source: "env",
+            key: "ADMIN_PASSWORD",
+            secret: true,
+          },
+        ],
+        steps: [
+          {
+            text: "See password",
+            action: { type: "reveal-field", fieldId: "password" },
+          },
+        ],
+      },
+    })
+    expect(result.valid).toBe(true)
+    expect(result.data?.access?.fields?.[0]?.key).toBe("ADMIN_PASSWORD")
+  })
+
+  it("rejects unsafe paths, unknown fields, and non-secret env references", () => {
+    const access = {
+      mode: "password-only",
+      title: "Open Ghost",
+      fields: [
+        {
+          id: "password",
+          label: "Password",
+          source: "env",
+          key: "url",
+          secret: true,
+        },
+      ],
+      steps: [
+        {
+          text: "See password",
+          action: { type: "reveal-field", fieldId: "missing" },
+        },
+      ],
+    }
+    const result = validateBlueprint({
+      ...validSampleBlueprint,
+      access: { ...access, loginPath: "//other.host/login" },
+    })
+    expect(result.valid).toBe(false)
+    expect(Object.keys(result.errors ?? {})).toContain("access.loginPath")
+    expect(Object.keys(result.errors ?? {})).toContain("access.fields.0.key")
+    expect(Object.keys(result.errors ?? {})).toContain(
+      "access.steps.0.action.fieldId"
+    )
+  })
+
   it("should validate a valid blueprint successfully", () => {
     const result = validateBlueprint(validSampleBlueprint)
     expect(result.valid).toBe(true)

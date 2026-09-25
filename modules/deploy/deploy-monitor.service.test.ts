@@ -41,6 +41,10 @@ const mockCheckIngressReadiness = mock(() => Promise.resolve(true))
 mock.module("./ingress-readiness.service", () => ({
   checkIngressReadiness: mockCheckIngressReadiness,
 }))
+const mockNotifyReady = mock(async (_id: string) => {})
+mock.module("./app-ready-notification.service", () => ({
+  notifyReadyTemplateDeployment: mockNotifyReady,
+}))
 
 import {
   getMonitorStats,
@@ -59,6 +63,7 @@ describe("deploy-monitor.service", () => {
     mockPollDeploymentRollout.mockClear()
     mockCheckIngressReadiness.mockClear()
     mockCheckIngressReadiness.mockResolvedValue(true)
+    mockNotifyReady.mockClear()
   })
 
   it("monitors active deployments and processes queued ones", async () => {
@@ -234,7 +239,7 @@ describe("deploy-monitor.service", () => {
     })
   })
 
-  it("queries RUNNING deployments with ingressVerified false bounded by a 30 minute window", async () => {
+  it("queries recent RUNNING deployments for readiness rechecks", async () => {
     mockFindMany.mockResolvedValueOnce([])
 
     await monitorActiveDeployments()
@@ -251,10 +256,10 @@ describe("deploy-monitor.service", () => {
       completedAt: { gt: Date }
     }
     expect(runningClause).toBeTruthy()
-    expect(runningClause.ingressVerified).toBe(false)
+    expect(runningClause.ingressVerified).toBeUndefined()
     const boundMs = Date.now() - runningClause.completedAt.gt.getTime()
-    expect(boundMs).toBeGreaterThan(29 * 60 * 1000)
-    expect(boundMs).toBeLessThan(31 * 60 * 1000)
+    expect(boundMs).toBeGreaterThan(23 * 60 * 60 * 1000)
+    expect(boundMs).toBeLessThan(25 * 60 * 60 * 1000)
   })
 
   it("re-checks ingress readiness for a RUNNING-but-unverified deployment without touching status", async () => {

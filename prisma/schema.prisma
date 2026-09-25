@@ -3117,6 +3117,7 @@ model BillingAlertRule {
 
 model EmailLog {
   id                String         @id @default(cuid())
+  eventKey          String?        @unique
   ticketId          String?
   ticketNumber      String?
   recipientEmail    String
@@ -3149,6 +3150,7 @@ model EmailLog {
 // ─── Email Log Model ──────────────────────────────────────────────────────────
 
 enum EmailLogType {
+  APP_HOSTING_READY
   TICKET_CREATED
   TICKET_REPLIED
   TICKET_CLOSED

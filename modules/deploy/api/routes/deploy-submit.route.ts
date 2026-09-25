@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia"
+import { randomBytes } from "node:crypto"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { prisma } from "@/lib/prisma"
 import { getPlatformRoleForUser } from "@/lib/platform-role"
@@ -28,6 +29,7 @@ import {
   validatePlanStorageForTemplate,
 } from "../../catalog-plan-utils"
 import type { CatalogPlan } from "@/lib/billing-client"
+import { appTemplateBlueprintSchema } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
 interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
@@ -429,6 +431,30 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         isStoredSecret: true,
       }
     })
+
+    // Initial login credentials declared by the template must be created per
+    // installation, not inferred later from the template definition.
+    const blueprintAccess = appTemplateBlueprintSchema.safeParse(
+      resolvedTemplateBlueprint
+    ).data
+    if (blueprintAccess?.access) {
+      for (const field of blueprintAccess.access.fields) {
+        if (processedEnvVars.some((item) => item.key === field.key)) continue
+        const envDef = blueprintAccess.envSchema.find(
+          (item) => item.key === field.key
+        )
+        if (!envDef?.generateRandomHex) continue
+        processedEnvVars.push({
+          key: field.key,
+          value: randomBytes(Math.ceil(envDef.generateRandomHex / 2))
+            .toString("hex")
+            .slice(0, envDef.generateRandomHex),
+          type: "secret_ref",
+          masked: true,
+          isStoredSecret: true,
+        })
+      }
+    }
 
     // Persist the stack as the single source of truth before any deploy.
     let stack

@@ -12,7 +12,6 @@ import {
   ChartLine,
   ChartBar,
   GearSix,
-  ArrowsClockwise,
   TerminalWindow,
   GitBranch,
   Cube,
@@ -285,27 +284,7 @@ export function AppWorkspaceHeader({
 
         {/* Action Controls (Right-aligned CTA) */}
         <div className="flex flex-wrap items-center justify-end gap-2 sm:ml-auto">
-          {isTemplate ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setReinstallOpen(true)}
-              className="h-8 gap-1.5 px-3 text-xs"
-              title={
-                locale.startsWith("id")
-                  ? "Ganti atau install ulang template aplikasi"
-                  : "Reinstall or change application template"
-              }
-            >
-              <ArrowsClockwise size={14} />
-              <span>
-                {locale.startsWith("id")
-                  ? "Ganti Template"
-                  : "Reinstall Template"}
-              </span>
-            </Button>
-          ) : onDeploy ? (
+          {!isTemplate && onDeploy ? (
             <Button
               type="button"
               variant="default"
@@ -334,23 +313,6 @@ export function AppWorkspaceHeader({
               </span>
             </Button>
           ) : null}
-          {onSync && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onSync}
-              disabled={isSyncing}
-              className="h-8 gap-1.5 px-3 text-xs"
-              title={messages.syncTooltip}
-            >
-              <ArrowsClockwise
-                size={14}
-                className={isSyncing ? "animate-spin" : ""}
-              />
-              <span>{isSyncing ? messages.syncing : messages.syncConfig}</span>
-            </Button>
-          )}
           {targetDomain ? (
             <div className="inline-flex items-center rounded-md border border-border bg-background shadow-xs">
               <Button
@@ -386,6 +348,34 @@ export function AppWorkspaceHeader({
               </button>
             </div>
           ) : null}
+          {(isTemplate || onSync) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                >
+                  {locale.startsWith("id") ? "Kelola" : "Manage"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onSync && (
+                  <DropdownMenuItem disabled={isSyncing} onSelect={onSync}>
+                    {isSyncing ? messages.syncing : messages.syncConfig}
+                  </DropdownMenuItem>
+                )}
+                {isTemplate && (
+                  <DropdownMenuItem onSelect={() => setReinstallOpen(true)}>
+                    {locale.startsWith("id")
+                      ? "Ganti Template"
+                      : "Reinstall Template"}
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 

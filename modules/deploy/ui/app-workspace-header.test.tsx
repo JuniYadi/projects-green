@@ -116,7 +116,7 @@ describe("AppWorkspaceHeader", () => {
     expect(view.queryByText("Ganti Template")).toBeNull()
   })
 
-  it("renders 'Reinstall Template' / 'Ganti Template' and hides 'Deploy Update' for template apps", () => {
+  it("puts template management behind the Manage menu and hides Deploy Update", () => {
     const onDeployMock = mock(() => {})
     const view = render(
       <AppWorkspaceHeader
@@ -126,7 +126,8 @@ describe("AppWorkspaceHeader", () => {
       />
     )
 
-    expect(view.getByText("Ganti Template")).toBeDefined()
+    expect(view.getByText("Kelola")).toBeDefined()
+    expect(view.queryByText("Ganti Template")).toBeNull()
     expect(view.queryByText("Deploy Update")).toBeNull()
   })
 

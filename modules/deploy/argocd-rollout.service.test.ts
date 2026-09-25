@@ -78,6 +78,10 @@ const checkIngressReadinessMock = mock((deploymentId: string) =>
 mock.module("./ingress-readiness.service", () => ({
   checkIngressReadiness: checkIngressReadinessMock,
 }))
+const mockNotifyReady = mock(async (_id: string) => {})
+mock.module("./app-ready-notification.service", () => ({
+  notifyReadyTemplateDeployment: mockNotifyReady,
+}))
 
 const originalFetch = globalThis.fetch
 
