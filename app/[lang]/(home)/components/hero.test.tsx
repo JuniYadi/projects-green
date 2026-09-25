@@ -33,11 +33,8 @@ describe("HeroSection", () => {
       "/en/login?next=%2Fen%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
     )
     expect(
-      getByRole("link", { name: /Explore larger plans/i })
-    ).toHaveAttribute(
-      "href",
-      "/en/login?next=%2Fen%2Fconsole%2Fbilling%2Fservices%2FAPP_HOSTING"
-    )
+      getByRole("link", { name: "Explore other templates" })
+    ).toHaveAttribute("href", "/en#templates")
     expect(
       getByRole("heading", { level: 1 }).nextElementSibling
     ).toHaveTextContent("first 15 customers")
@@ -73,6 +70,10 @@ describe("HeroSection", () => {
     ).toHaveAttribute(
       "href",
       "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+    )
+    expect(getByRole("link", { name: "Lihat template lain" })).toHaveAttribute(
+      "href",
+      "/id#templates"
     )
     const offer = getByText(/Mulai Rp9.900\/bulan untuk 15 pelanggan pertama/)
     expect(offer).toHaveTextContent("harga tetap saat perpanjangan")

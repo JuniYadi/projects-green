@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { connection } from "next/server"
 import { HomeNav } from "./components/nav"
 import { HeroSection } from "./components/hero"
+import { WhyPFNAppSection } from "./components/why-pfnapp"
 import { TemplatesSection } from "./components/templates-section"
 import { ServicesSection } from "./components/services"
 import { CTASection, Footer } from "./components/footer"
@@ -40,6 +41,7 @@ export default async function HomePage() {
       <HomeNav />
       <main>
         <HeroSection offer={offer} />
+        <WhyPFNAppSection />
         <TemplatesSection />
         <ServicesSection />
         <CTASection />

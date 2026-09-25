@@ -12,6 +12,7 @@ import { useEffect, useState } from "react"
 
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import type { HomeOffer } from "../home-offer"
+import { usePreviewCarousel } from "./use-preview-carousel"
 
 const featuredApps = [
   {
@@ -238,7 +239,9 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
         }).format(Number(offer.monthlyPriceIdr))
       : null
   const ctaPrice = promo ? "Rp9.900" : standardPrice
-  const [activeIndex, setActiveIndex] = useState(0)
+  const { activeIndex, setActiveIndex, setPaused } = usePreviewCarousel(
+    featuredApps.length
+  )
 
   const selectNext = () =>
     setActiveIndex((index) => (index + 1) % featuredApps.length)
@@ -294,15 +297,26 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
             <Link
-              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/billing/services/APP_HOSTING`)}`}
-              className="inline-flex items-center justify-center rounded-xl px-5 py-3.5 font-medium text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:text-white/75 dark:hover:text-white"
+              href={`/${locale}#templates`}
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3.5 font-medium text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:text-white/75 dark:hover:text-white"
             >
-              {isId ? "Lihat paket lebih besar →" : "Explore larger plans →"}
+              {isId ? "Lihat template lain" : "Explore other templates"}
+              <ArrowDown className="size-4" aria-hidden="true" />
             </Link>
           </div>
         </div>
 
-        <div className="min-w-0">
+        <div
+          className="min-w-0"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setPaused(false)
+            }
+          }}
+        >
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="text-xs font-medium tracking-wide text-slate-600 uppercase dark:text-white/55">
               {isId ? "LIHAT CONTOH APLIKASI" : "APP PREVIEW"}
@@ -354,7 +368,7 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
                     </div>
                     <Link
                       href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace?template=${app.id}`)}`}
-                      className="inline-flex shrink-0 items-center gap-1 self-stretch border-l-2 border-emerald-500 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-700 hover:bg-emerald-500/20 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:text-emerald-300"
+                      className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:border-white/25 dark:hover:bg-white/10"
                     >
                       Deploy{" "}
                       <ArrowRight className="size-3" aria-hidden="true" />
