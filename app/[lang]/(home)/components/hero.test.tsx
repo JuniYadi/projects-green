@@ -26,11 +26,9 @@ describe("HeroSection", () => {
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
       "An AI assistant for the price of a cup of coffee? Really?"
     )
-    expect(
-      getByRole("link", { name: /Start Hermes · Rp9.900\/month/i })
-    ).toHaveAttribute(
+    expect(getByRole("link", { name: "Explore marketplace" })).toHaveAttribute(
       "href",
-      "/en/login?next=%2Fen%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+      "/en/login?next=%2Fen%2Fconsole%2Fapp%2Fmarketplace"
     )
     expect(
       getByRole("link", { name: "Explore other templates" })
@@ -46,7 +44,9 @@ describe("HeroSection", () => {
 
   it("shows localized deployment copy and destinations in Indonesian", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
-    const { getByRole, getByText } = render(<HeroSection offer={promoOffer} />)
+    const { getByRole, getByText, queryByRole } = render(
+      <HeroSection offer={promoOffer} />
+    )
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
       "AI Assistance seharga secangkir kopi? Emang bisa?"
@@ -61,15 +61,10 @@ describe("HeroSection", () => {
     expect(
       getByText("Halaman produk. Tulis manfaat utamanya dulu.")
     ).toBeInTheDocument()
-    expect(getByRole("link", { name: "Deploy" })).toHaveAttribute(
+    expect(queryByRole("link", { name: "Deploy" })).not.toBeInTheDocument()
+    expect(getByRole("link", { name: "Jelajahi marketplace" })).toHaveAttribute(
       "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
-    )
-    expect(
-      getByRole("link", { name: /Mulai Hermes · Rp9.900\/bulan/i })
-    ).toHaveAttribute(
-      "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace"
     )
     expect(getByRole("link", { name: "Lihat template lain" })).toHaveAttribute(
       "href",
@@ -82,9 +77,9 @@ describe("HeroSection", () => {
     expect(offer.textContent?.match(/Rp9\.900/g)).toHaveLength(1)
   })
 
-  it("slides between available apps and updates the deploy destination", () => {
+  it("slides between available app previews without template deploy links", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
-    const { getByRole, getByText, getAllByText } = render(
+    const { getByRole, getByText, getAllByText, queryByRole } = render(
       <HeroSection offer={promoOffer} />
     )
 
@@ -96,19 +91,13 @@ describe("HeroSection", () => {
     expect(getByText("Claude Sonnet")).toBeInTheDocument()
     expect(getByText("DeepSeek V3")).toBeInTheDocument()
     expect(getByText("Qwen 3")).toBeInTheDocument()
-    expect(getByRole("link", { name: "Deploy" })).toHaveAttribute(
-      "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3D9router"
-    )
+    expect(queryByRole("link", { name: "Deploy" })).not.toBeInTheDocument()
     fireEvent.click(getByRole("button", { name: "n8n Automation" }))
     expect(getByRole("button", { name: "n8n Automation" })).toHaveAttribute(
       "aria-pressed",
       "true"
     )
-    expect(getByRole("link", { name: "Deploy" })).toHaveAttribute(
-      "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dn8n"
-    )
+    expect(queryByRole("link", { name: "Deploy" })).not.toBeInTheDocument()
     expect(getAllByText("Email")).toHaveLength(2)
     expect(getByText("Google Drive")).toBeInTheDocument()
     expect(getByText("Calendar")).toBeInTheDocument()
@@ -128,11 +117,9 @@ describe("HeroSection", () => {
     expect(
       getByText(/Paket Starter mulai Rp\s?29.000\/bulan/)
     ).toBeInTheDocument()
-    expect(
-      getByRole("link", { name: /Mulai Hermes · Rp\s?29.000\/bulan/ })
-    ).toHaveAttribute(
+    expect(getByRole("link", { name: "Jelajahi marketplace" })).toHaveAttribute(
       "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace"
     )
     expect(queryByText(/15 pelanggan pertama/)).not.toBeInTheDocument()
     expect(queryByText(/secangkir kopi/)).not.toBeInTheDocument()
@@ -147,6 +134,8 @@ describe("HeroSection", () => {
     )
     expect(queryByText(/Starter plans from/)).not.toBeInTheDocument()
     expect(queryByText(/Regular pricing applies/)).toBeInTheDocument()
-    expect(getByRole("link", { name: "View Hermes plans" })).toBeInTheDocument()
+    expect(
+      getByRole("link", { name: "Explore marketplace" })
+    ).toBeInTheDocument()
   })
 })

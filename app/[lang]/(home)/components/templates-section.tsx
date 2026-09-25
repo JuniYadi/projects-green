@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { ArrowRight } from "@phosphor-icons/react"
 
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
@@ -126,15 +125,6 @@ export function TemplatesSection() {
                 <p className="mt-1 text-sm text-slate-600 dark:text-white/60">
                   {app.description[locale]}
                 </p>
-                {app.available && (
-                  <Link
-                    href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace?template=${app.id}`)}`}
-                    className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-slate-900 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-500 dark:text-white dark:hover:text-emerald-300"
-                  >
-                    {isId ? "Lihat template" : "View template"}
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  </Link>
-                )}
               </div>
             </div>
           ))}

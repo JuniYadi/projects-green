@@ -15,7 +15,7 @@ describe("TemplatesSection", () => {
     cleanup()
   })
 
-  it("renders available templates with deploy destinations", () => {
+  it("renders templates without unavailable template destinations", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByText, container } = render(<TemplatesSection />)
 
@@ -32,24 +32,8 @@ describe("TemplatesSection", () => {
       getByText("Pilih aplikasi yang ingin dijalankan")
     ).toBeInTheDocument()
 
-    // Deploy links with target template intent
-    const hermesDeployLink = container.querySelector(
-      'a[href*="template%3Dhermes"]'
-    )
-    expect(hermesDeployLink).not.toBeNull()
-    expect(hermesDeployLink).toHaveAttribute(
-      "href",
-      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
-    )
-
-    expect(container.querySelectorAll('a[href*="template%3D"]')).toHaveLength(3)
-    expect(container.querySelector('a[href*="template%3Dopenclaw"]')).toBeNull()
-    expect(
-      container.querySelector('a[href*="template%3Domniroute"]')
-    ).toBeNull()
-    expect(
-      container.querySelector('a[href*="template%3Dwordpress"]')
-    ).toBeNull()
+    expect(container.querySelector('a[href*="template%3D"]')).toBeNull()
+    expect(container.querySelectorAll("a")).toHaveLength(1)
     expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
     expect(
       container.querySelector('a[href*="support-tickets%2Fnew"]')

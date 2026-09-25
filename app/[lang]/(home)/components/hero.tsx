@@ -238,7 +238,6 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
           maximumFractionDigits: 0,
         }).format(Number(offer.monthlyPriceIdr))
       : null
-  const ctaPrice = promo ? "Rp9.900" : standardPrice
   const { activeIndex, setActiveIndex, setPaused } = usePreviewCarousel(
     featuredApps.length
   )
@@ -284,16 +283,10 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
           </p>
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Link
-              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace?template=hermes`)}`}
+              href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace`)}`}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 sm:px-6 sm:text-base"
             >
-              {ctaPrice
-                ? isId
-                  ? `Mulai Hermes · ${ctaPrice}/bulan`
-                  : `Start Hermes · ${ctaPrice}/month`
-                : isId
-                  ? "Lihat paket Hermes"
-                  : "View Hermes plans"}
+              {isId ? "Jelajahi marketplace" : "Explore marketplace"}
               <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
             <Link
@@ -366,13 +359,6 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{app.name}</p>
                     </div>
-                    <Link
-                      href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace?template=${app.id}`)}`}
-                      className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:border-white/25 dark:hover:bg-white/10"
-                    >
-                      Deploy{" "}
-                      <ArrowRight className="size-3" aria-hidden="true" />
-                    </Link>
                   </div>
                   {index === activeIndex && (
                     <AppPreviewDetails appId={app.id} locale={locale} />
