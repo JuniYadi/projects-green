@@ -7,6 +7,17 @@ import {
   waitFor,
   within,
 } from "@testing-library/react"
+
+let mockTemplateParam: string | null = null
+
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
+  useSearchParams: () => ({
+    get: (key: string) => (key === "template" ? mockTemplateParam : null),
+  }),
+  useRouter: () => ({ push: mock(() => {}) }),
+}))
+
 import DeployPageClient from "./page-client"
 
 const mockInspectResponse = {
@@ -146,6 +157,7 @@ describe("DeployPage Client", () => {
   })
 
   it("renders Tanya P Chat-First Deploy Assistant (Fase 1)", async () => {
+    mockTemplateParam = null
     const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
 
     expect(
@@ -768,6 +780,18 @@ describe("DeployPage Client", () => {
       expect(
         view.queryByText("SIAP DEPLOY -> LANJUT KE LAUNCH CARD")
       ).toBeNull()
+    })
+  })
+
+  it("renders dedicated TemplateDeployView when template query param is present", async () => {
+    mockTemplateParam = "hermes"
+    const view = render(<DeployPageClient initialUserName="Alex" lang="en" />)
+
+    await waitFor(() => {
+      expect(view.getByText("Hermes Agent")).toBeTruthy()
+      expect(view.getByText("Official")).toBeTruthy()
+      expect(view.getByText("Back to Marketplace")).toBeTruthy()
+      expect(view.getByText("Estimasi Biaya")).toBeTruthy()
     })
   })
 })

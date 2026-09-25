@@ -2282,6 +2282,9 @@ export type AppMessages = {
           perSubscription: string
           perDevice: string
           currencyPlaceholder: string
+          appHostingNotice: string
+          deployViaTemplate: string
+          deployViaGit: string
         }
       }
       adminOrgSubscriptionManager: {
@@ -5151,6 +5154,11 @@ export type AppMessages = {
           cancel: string
           deployingStack: string
           confirmDeploy: string
+          rawEnvPaste: string
+          keyValueEditor: string
+          pasteEnvPlaceholder: string
+          applyEnv: string
+          backToMarketplace: string
         }
       }
       marketplaceBuilder: {

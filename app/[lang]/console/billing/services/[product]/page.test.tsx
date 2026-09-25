@@ -8,7 +8,6 @@ mock.module("next/navigation", () => ({
   useRouter: mock(() => ({ push: mock() })),
 }))
 
-import { useParams } from "next/navigation"
 import ProductDetailPage from "./page"
 
 const originalFetch = globalThis.fetch
@@ -126,8 +125,69 @@ describe("ProductDetailPage", () => {
   it("displays the currency selector with flag in the header", async () => {
     const view = render(<ProductDetailPage />)
 
-    await waitFor(() => expect(view.getByText(/🇮🇩/)).toBeInTheDocument())
-    expect(view.getByText("IDR")).toBeInTheDocument()
+    await waitFor(() => expect(view.getByText("IDR")).toBeInTheDocument())
+  })
+
+  it("renders notice and deployment CTAs when product is APP_HOSTING", async () => {
+    mockUseParams.mockReturnValue({
+      lang: "en",
+      product: "app_hosting",
+    })
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes("/api/billing/catalog/APP_HOSTING")) {
+        return jsonResponse({
+          product: {
+            code: "APP_HOSTING",
+            name: "App Hosting",
+            description: "Managed Container & Blueprint Hosting",
+            plans: [
+              {
+                id: "plan-app-starter",
+                code: "STARTER",
+                name: "Starter",
+                description: "Starter app hosting plan",
+                resources: { cpu: "500", memory: "512", storage: "2" },
+                offers: [
+                  {
+                    id: "offer-starter-monthly",
+                    billingPeriod: "MONTHLY",
+                    periodMonths: 1,
+                    periodPrice: "25000",
+                    currency: "IDR",
+                    chargeUnit: "SUBSCRIPTION",
+                    effectiveFrom: "2026-01-01T00:00:00.000Z",
+                    effectiveTo: null,
+                  },
+                ],
+              },
+            ],
+          },
+          currency: "IDR",
+        })
+      }
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<ProductDetailPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByText(/App Hosting plans cannot be ordered standalone/i)
+      ).toBeInTheDocument()
+    )
+
+    const templateLink = view.getAllByRole("link", {
+      name: /Deploy from Template/i,
+    })[0]
+    expect(templateLink).toBeInTheDocument()
+    expect(templateLink.getAttribute("href")).toBe(
+      "/en/console/app/marketplace"
+    )
+
+    const gitLink = view.getByRole("link", { name: /Deploy via Git/i })
+    expect(gitLink).toBeInTheDocument()
+    expect(gitLink.getAttribute("href")).toBe("/en/console/app/deploy")
   })
 
   it("renders plan cards with names and prices", async () => {

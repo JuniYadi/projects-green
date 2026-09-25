@@ -85,49 +85,76 @@ export function TemplatesSection() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {apps.map((app) => (
-            <div
-              key={app.id}
-              className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/[0.03]"
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5">
-                {app.icon ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={app.icon}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="size-6 object-contain"
-                  />
-                ) : (
-                  <span
-                    aria-hidden="true"
-                    className="size-2 rounded-full bg-slate-400"
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h3 className="font-semibold text-slate-900 dark:text-white">
-                    {app.name}
-                  </h3>
-                  <span className="text-xs text-slate-500 dark:text-white/50">
-                    {app.available
-                      ? isId
-                        ? "Tersedia"
-                        : "Available"
-                      : isId
-                        ? "Dalam persiapan"
-                        : "In preparation"}
-                  </span>
+          {apps.map((app) => {
+            const content = (
+              <>
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5">
+                  {app.icon ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={app.icon}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 object-contain"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="size-2 rounded-full bg-slate-400"
+                    />
+                  )}
                 </div>
-                <p className="mt-1 text-sm text-slate-600 dark:text-white/60">
-                  {app.description[locale]}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">
+                      {app.name}
+                    </h3>
+                    <span
+                      className={`text-xs ${
+                        app.available
+                          ? "font-medium text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-500 dark:text-white/50"
+                      }`}
+                    >
+                      {app.available
+                        ? isId
+                          ? "Deploy →"
+                          : "Deploy →"
+                        : isId
+                          ? "Dalam persiapan"
+                          : "In preparation"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-white/60">
+                    {app.description[locale]}
+                  </p>
+                </div>
+              </>
+            )
+
+            if (app.available) {
+              const deployPath = `/${locale}/console/app/deploy?template=${app.id}`
+              return (
+                <Link
+                  key={app.id}
+                  href={`/${locale}/login?next=${encodeURIComponent(deployPath)}`}
+                  className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition-all hover:border-emerald-500/50 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-emerald-500/30"
+                >
+                  {content}
+                </Link>
+              )
+            }
+
+            return (
+              <div
+                key={app.id}
+                className="flex min-w-0 items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 opacity-75 dark:border-white/10 dark:bg-white/[0.03]"
+              >
+                {content}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6 text-sm dark:border-white/10">

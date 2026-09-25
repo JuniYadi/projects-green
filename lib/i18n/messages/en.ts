@@ -2522,6 +2522,10 @@ export const enMessages: AppMessages = {
           perSubscription: "Per subscription",
           perDevice: "Per device",
           currencyPlaceholder: "Currency",
+          appHostingNotice:
+            "App Hosting plans cannot be ordered standalone. They are automatically provisioned when deploying an application from a Marketplace Template or a Git Repository.",
+          deployViaTemplate: "Deploy from Template",
+          deployViaGit: "Deploy via Git",
         },
       },
       adminOrgSubscriptionManager: {
@@ -5661,6 +5665,11 @@ export const enMessages: AppMessages = {
           cancel: "Cancel",
           deployingStack: "Deploying Stack…",
           confirmDeploy: "Confirm & Deploy Instantly",
+          rawEnvPaste: "Raw .env",
+          keyValueEditor: "Key-Value",
+          pasteEnvPlaceholder: "Paste KEY=VALUE lines here...",
+          applyEnv: "Apply .env",
+          backToMarketplace: "Back to Marketplace",
         },
       },
       marketplaceBuilder: {

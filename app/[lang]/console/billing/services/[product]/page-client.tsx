@@ -212,6 +212,31 @@ export default function ProductDetailPage() {
 
       {!error && data && (
         <>
+          {productCode === "APP_HOSTING" && (
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {messages.console.billing.services.product.appHostingNotice}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <Button asChild size="sm">
+                  <Link href={`/${locale}/console/app/marketplace`}>
+                    {
+                      messages.console.billing.services.product
+                        .deployViaTemplate
+                    }
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                  <Link href={`/${locale}/console/app/deploy`}>
+                    {messages.console.billing.services.product.deployViaGit}
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Plan cards */}
           {plansWithOffer.length === 0 ? (
             <Card>
@@ -241,43 +266,44 @@ export default function ProductDetailPage() {
                     <CardContent className="flex flex-1 flex-col justify-between gap-4">
                       <div className="space-y-3">
                         {/* Resources */}
-                        {Object.keys(plan.resources).length > 0 && (
-                          <div>
-                            <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                              {
-                                messages.console.billing.services.product
-                                  .resources
-                              }
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {Object.entries(plan.resources)
-                                .filter(
-                                  ([name, value]) =>
-                                    name !== "provisioningFields" &&
-                                    typeof value !== "object" &&
-                                    value !== null &&
-                                    value !== undefined
-                                )
-                                .map(([name, value]) => {
-                                  const formatName = (k: string) =>
-                                    k
-                                      .replace(/([A-Z])/g, " $1")
-                                      .replace(/_/g, " ")
-                                      .replace(/^\w/, (c) => c.toUpperCase())
-
-                                  return (
-                                    <Badge
-                                      key={name}
-                                      variant="secondary"
-                                      className="text-xs"
-                                    >
-                                      {formatName(name)}: {String(value)}
-                                    </Badge>
+                        {plan.resources &&
+                          Object.keys(plan.resources).length > 0 && (
+                            <div>
+                              <p className="mb-2 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                {
+                                  messages.console.billing.services.product
+                                    .resources
+                                }
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {Object.entries(plan.resources)
+                                  .filter(
+                                    ([name, value]) =>
+                                      name !== "provisioningFields" &&
+                                      typeof value !== "object" &&
+                                      value !== null &&
+                                      value !== undefined
                                   )
-                                })}
+                                  .map(([name, value]) => {
+                                    const formatName = (k: string) =>
+                                      k
+                                        .replace(/([A-Z])/g, " $1")
+                                        .replace(/_/g, " ")
+                                        .replace(/^\w/, (c) => c.toUpperCase())
+
+                                    return (
+                                      <Badge
+                                        key={name}
+                                        variant="secondary"
+                                        className="text-xs"
+                                      >
+                                        {formatName(name)}: {String(value)}
+                                      </Badge>
+                                    )
+                                  })}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
                         {/* Charge unit */}
                         {offer && (
@@ -308,16 +334,30 @@ export default function ProductDetailPage() {
                             </p>
                           )}
                         </div>
-                        <Button asChild disabled={!offer}>
-                          <Link
-                            href={checkoutUrl}
-                            className={cn(
-                              !offer && "cursor-not-allowed opacity-50"
-                            )}
-                          >
-                            {messages.console.billing.services.product.checkout}
-                          </Link>
-                        </Button>
+                        {productCode === "APP_HOSTING" ? (
+                          <Button asChild>
+                            <Link href={`/${locale}/console/app/marketplace`}>
+                              {
+                                messages.console.billing.services.product
+                                  .deployViaTemplate
+                              }
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button asChild disabled={!offer}>
+                            <Link
+                              href={checkoutUrl}
+                              className={cn(
+                                !offer && "cursor-not-allowed opacity-50"
+                              )}
+                            >
+                              {
+                                messages.console.billing.services.product
+                                  .checkout
+                              }
+                            </Link>
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

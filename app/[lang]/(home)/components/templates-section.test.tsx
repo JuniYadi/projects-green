@@ -32,8 +32,28 @@ describe("TemplatesSection", () => {
       getByText("Pilih aplikasi yang ingin dijalankan")
     ).toBeInTheDocument()
 
-    expect(container.querySelector('a[href*="template%3D"]')).toBeNull()
-    expect(container.querySelectorAll("a")).toHaveLength(1)
+    // Available templates link to deploy page with template param
+    const hermesLink = container.querySelector(
+      'a[href*="deploy%3Ftemplate%3Dhermes"]'
+    )
+    expect(hermesLink).toBeInTheDocument()
+    expect(hermesLink).toHaveAttribute(
+      "href",
+      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fdeploy%3Ftemplate%3Dhermes"
+    )
+
+    const n8nLink = container.querySelector(
+      'a[href*="deploy%3Ftemplate%3Dn8n"]'
+    )
+    expect(n8nLink).toBeInTheDocument()
+
+    const routerLink = container.querySelector(
+      'a[href*="deploy%3Ftemplate%3D9router"]'
+    )
+    expect(routerLink).toBeInTheDocument()
+
+    // 3 available templates + 1 support ticket link = 4 total links
+    expect(container.querySelectorAll("a")).toHaveLength(4)
     expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
     expect(
       container.querySelector('a[href*="support-tickets%2Fnew"]')

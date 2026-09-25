@@ -1,24 +1,39 @@
 "use client"
 
-import React, { useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import React, { useEffect, useState } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { eden } from "@/lib/eden"
 import { MarketplaceShowcase } from "./_components/marketplace-showcase"
 import { DynamicLaunchDrawer } from "./_components/dynamic-launch-drawer"
 import type { MarketplaceTemplateItem } from "./_components/template-card"
+
 export default function ConsoleMarketplacePage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const lang = (params?.lang as string) || "en"
   const currency = lang === "id" ? "IDR" : "USD"
   const [selectedTemplate, setSelectedTemplate] =
     useState<MarketplaceTemplateItem | null>(null)
-  const router = useRouter()
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isDeploying, setIsDeploying] = useState(false)
+
+  // Deep-link redirection: if ?template={slug} is provided, redirect to dedicated deploy page
+  useEffect(() => {
+    const templateParam = searchParams?.get?.("template")
+    if (templateParam) {
+      router.push(
+        `/${lang}/console/app/deploy?template=${encodeURIComponent(templateParam)}`
+      )
+    }
+  }, [searchParams, lang, router])
+
   const handleDeploy = (template: MarketplaceTemplateItem) => {
     setSelectedTemplate(template)
-    setIsDrawerOpen(true)
+    router.push(
+      `/${lang}/console/app/deploy?template=${encodeURIComponent(template.slug)}`
+    )
   }
 
   return (

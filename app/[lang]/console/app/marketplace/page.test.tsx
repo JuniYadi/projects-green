@@ -10,6 +10,7 @@ import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 const mockPush = mock(() => {})
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
+  useSearchParams: () => ({ get: () => null }),
   useRouter: () => ({ push: mockPush }),
 }))
 
@@ -276,28 +277,18 @@ describe("Console Marketplace Hub & Template Cards", () => {
     expect(getByText("App Marketplace")).toBeInTheDocument()
   })
 
-  it("launches drawer and handles deploy submit with targeted app query redirect", async () => {
+  it("navigates to dedicated deploy page when clicking Deploy on a template card", async () => {
+    mockPush.mockClear()
     const user = userEvent.setup()
-    const { getAllByRole, getByText } = render(<ConsoleMarketplacePage />)
+    const { getAllByRole } = render(<ConsoleMarketplacePage />)
 
     // Find first Deploy button in template cards
     const deployButtons = getAllByRole("button", { name: /^deploy$/i })
     expect(deployButtons.length).toBeGreaterThan(0)
     await user.click(deployButtons[0])
 
-    // The drawer should open, enter app name if needed and submit
-    const appNameInput = document.querySelector(
-      "#app-name-input"
-    ) as HTMLInputElement
-    expect(appNameInput).toBeDefined()
-    await user.clear(appNameInput)
-    await user.type(appNameInput, "my-n8n-app")
-
-    const submitDeployBtn = getByText("Confirm & Deploy Instantly")
-    await user.click(submitDeployBtn)
-
     expect(mockPush).toHaveBeenCalledWith(
-      "/en/console/app/platform/my-n8n-app?tab=deployments"
+      expect.stringMatching(/\/en\/console\/app\/deploy\?template=/i)
     )
   })
 })

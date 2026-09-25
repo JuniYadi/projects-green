@@ -2541,6 +2541,10 @@ export const idMessages: AppMessages = {
           perSubscription: "Per langganan",
           perDevice: "Per perangkat",
           currencyPlaceholder: "Mata uang",
+          appHostingNotice:
+            "Layanan App Hosting tidak dapat dipesan secara mandiri. Layanan ini otomatis dibuat saat Anda men-deploy aplikasi melalui Templat Marketplace atau Repositori Git.",
+          deployViaTemplate: "Deploy dari Templat",
+          deployViaGit: "Deploy via Git",
         },
       },
       adminOrgSubscriptionManager: {
@@ -5706,6 +5710,11 @@ export const idMessages: AppMessages = {
           cancel: "Batal",
           deployingStack: "Menerapkan Stack…",
           confirmDeploy: "Konfirmasi & Deploy Instan",
+          rawEnvPaste: "Raw .env",
+          keyValueEditor: "Key-Value",
+          pasteEnvPlaceholder: "Tempel baris KEY=VALUE di sini...",
+          applyEnv: "Terapkan .env",
+          backToMarketplace: "Kembali ke Marketplace",
         },
       },
       marketplaceBuilder: {
