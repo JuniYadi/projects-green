@@ -199,8 +199,7 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       const entry = item as Record<string, unknown>
       if (
         entry.type === "secret_shared_ref" ||
-        (entry.type === "secret_ref" &&
-          (!entry.value || entry.source === "vault"))
+        (entry.type === "secret_ref" && !entry.value)
       ) {
         return entry
       }
