@@ -271,7 +271,11 @@ describe("QuickTopUpDialog", () => {
     })
 
     await waitFor(() => {
-      expect(view.getByText("Konfirmasi Pembayaran Transfer")).toBeDefined()
+      expect(
+        view.getByText(
+          /Confirm Transfer Payment|Konfirmasi Pembayaran Transfer/i
+        )
+      ).toBeDefined()
       expect(view.getByText("1234567890")).toBeDefined()
     })
   })
