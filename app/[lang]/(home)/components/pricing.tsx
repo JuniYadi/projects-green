@@ -310,38 +310,14 @@ export function PricingSection() {
             </span>
           </div>
           <p className="mt-1 text-sm text-foreground/90 sm:text-base">
-            {isId ? (
-              <>
-                Klaim{" "}
-                <strong className="text-emerald-400">
-                  Voucher Saldo Rp 50.000
-                </strong>{" "}
-                untuk order pertama! Paket Starter (Rp 29.000) langsung{" "}
-                <strong className="text-emerald-300">
-                  GRATIS bulan pertama
-                </strong>
-                , atau nikmati paket Pro (Rp 69.000) hanya dengan{" "}
-                <strong className="text-emerald-300">Rp 19.000</strong>.
-              </>
-            ) : (
-              <>
-                Claim your{" "}
-                <strong className="text-emerald-400">
-                  Rp 50,000 Credit Voucher
-                </strong>{" "}
-                on first checkout! Starter plan becomes{" "}
-                <strong className="text-emerald-300">
-                  100% FREE for Month 1
-                </strong>
-                , or enjoy Pro for only{" "}
-                <strong className="text-emerald-300">Rp 19,000</strong>.
-              </>
-            )}
+            {isId
+              ? "Klaim Voucher Saldo Rp 50.000 untuk order pertama! Paket Starter (Rp 29.000) langsung GRATIS bulan pertama, atau nikmati paket Pro (Rp 69.000) hanya dengan Rp 19.000."
+              : "Claim your Rp 50,000 Credit Voucher on first checkout! Starter plan becomes 100% FREE for Month 1, or enjoy Pro for only Rp 19,000."}
           </p>
           <div className="mt-2 text-xs text-muted-foreground">
             {isId
-              ? "⚡ Kuota Terbatas: Berlaku khusus 50 pendaftar pertama periode launching."
-              : "⚡ Limited Inventory: Valid for the first 50 early-adopter signups."}
+              ? "⚡ Kuota Terbatas: Khusus 50 pendaftar pertama periode launching (Sisa 18 kuota)."
+              : "⚡ Limited Inventory: Valid for the first 50 early-adopter signups (18 remaining)."}
           </div>
         </div>
 
@@ -499,8 +475,9 @@ export function PricingSection() {
                   : "Local Instant Payment Methods"}
               </div>
               <div className="text-xs text-muted-foreground">
-                QRIS (GoPay, OVO, Dana, ShopeePay), BCA, Mandiri, BNI, BRI
-                Virtual Account.
+                {isId
+                  ? "QRIS (GoPay, OVO, Dana, ShopeePay), BCA, Mandiri, BNI, BRI Virtual Account."
+                  : "QRIS (GoPay, OVO, Dana, ShopeePay), BCA, Mandiri, BNI, BRI Virtual Account."}
               </div>
             </div>
           </div>

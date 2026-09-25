@@ -43,5 +43,15 @@ describe("TemplatesSection", () => {
     expect(
       getByText(/Direct Enterprise NVMe \(400.000 IOPS, Sub-millisecond\)/i)
     ).toBeInTheDocument()
+
+    // Deploy links with target template intent
+    const hermesDeployLink = container.querySelector(
+      'a[href*="template%3Dhermes"]'
+    )
+    expect(hermesDeployLink).not.toBeNull()
+    expect(hermesDeployLink).toHaveAttribute(
+      "href",
+      "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
+    )
   })
 })

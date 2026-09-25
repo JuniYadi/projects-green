@@ -47,7 +47,9 @@ export function TemplatesSection() {
             "Supervised Web Dashboard Included",
             "Direct 9router & LLM Connection",
           ],
-      deployHref: `/${locale}/login`,
+      deployHref: `/${locale}/login?next=${encodeURIComponent(
+        `/${locale}/console/app/marketplace?template=hermes`
+      )}`,
     },
     {
       id: "9router",
@@ -75,7 +77,9 @@ export function TemplatesSection() {
             "Automatic Model Fallbacks",
             "Real-time Token & Cost Tracking",
           ],
-      deployHref: `/${locale}/login`,
+      deployHref: `/${locale}/login?next=${encodeURIComponent(
+        `/${locale}/console/app/marketplace?template=9router`
+      )}`,
     },
     {
       id: "n8n",
@@ -103,7 +107,9 @@ export function TemplatesSection() {
             "Official WhatsApp Webhook Ready",
             "PostgreSQL Managed Database",
           ],
-      deployHref: `/${locale}/login`,
+      deployHref: `/${locale}/login?next=${encodeURIComponent(
+        `/${locale}/console/app/marketplace?template=n8n`
+      )}`,
     },
   ]
 
@@ -207,21 +213,12 @@ export function TemplatesSection() {
             </span>
           </div>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-            {isId ? (
-              <>
-                Deploy AI Agent, LLM Gateway, &{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  Otomasi dalam 30 Detik
-                </span>
-              </>
-            ) : (
-              <>
-                Deploy AI Agents, LLM Gateways, &{" "}
-                <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                  Automation in 30s
-                </span>
-              </>
-            )}
+            {isId
+              ? "Deploy AI Agent, LLM Gateway, & "
+              : "Deploy AI Agents, LLM Gateways, & "}
+            <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+              {isId ? "Otomasi dalam 30 Detik" : "Automation in 30s"}
+            </span>
           </h2>
           <p className="mx-auto max-w-2xl text-base text-white/50 sm:text-lg">
             {isId

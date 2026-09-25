@@ -81,8 +81,8 @@ export function HomeNav() {
           </span>
           <span>
             {isId
-              ? "Klaim Voucher Rp 50.000 Saldo Pertama (Sisa 18 Kuota)"
-              : "Claim Rp 50,000 Credit Voucher for First Order"}
+              ? "Klaim Voucher Rp 50.000 Saldo Pertama (Khusus 50 Pendaftar Pertama · Sisa 18 Kuota)"
+              : "Claim Rp 50,000 Credit Voucher (First 50 Signups · 18 Remaining)"}
           </span>
           <span className="ml-1 font-semibold text-emerald-400 underline underline-offset-2">
             {isId ? "Klaim Sekarang →" : "Claim Now →"}
