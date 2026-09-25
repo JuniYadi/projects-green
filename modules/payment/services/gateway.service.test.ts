@@ -147,6 +147,24 @@ describe("GatewayService", () => {
       expect(result).not.toBeNull()
       expect(result?.id).toBe("gw_duitku")
     })
+
+    it("restricts duitku query to type duitku or GATEWAY with name containing Duitku", async () => {
+      await service.findByType("duitku")
+
+      expect(pg.findFirst).toHaveBeenCalledWith({
+        where: {
+          isActive: true,
+          OR: [
+            { type: "duitku" },
+            {
+              type: "GATEWAY",
+              name: { contains: "Duitku", mode: "insensitive" },
+            },
+          ],
+        },
+        orderBy: { isDefault: "desc" },
+      })
+    })
   })
 
   describe("listForCurrency", () => {

@@ -39,17 +39,21 @@ export class GatewayService {
     const isDuitku = type.toLowerCase() === "duitku"
     const isGateway = type.toUpperCase() === "GATEWAY"
 
-    const whereClause: Prisma.PaymentGatewayWhereInput =
-      isDuitku || isGateway
+    const whereClause: Prisma.PaymentGatewayWhereInput = isDuitku
+      ? {
+          isActive: true,
+          OR: [
+            { type: "duitku" },
+            {
+              type: "GATEWAY",
+              name: { contains: "Duitku", mode: "insensitive" },
+            },
+          ],
+        }
+      : isGateway
         ? {
             isActive: true,
-            OR: [
-              { type: "duitku" },
-              { type: "GATEWAY" },
-              {
-                name: { contains: "Duitku", mode: "insensitive" },
-              },
-            ],
+            OR: [{ type: "GATEWAY" }, { type: "duitku" }],
           }
         : {
             isActive: true,
@@ -78,17 +82,21 @@ export class GatewayService {
     const isGateway = options.type?.toUpperCase() === "GATEWAY"
 
     const whereType: Prisma.PaymentGatewayWhereInput | undefined = options.type
-      ? isDuitku || isGateway
+      ? isDuitku
         ? {
             OR: [
               { type: "duitku" },
-              { type: "GATEWAY" },
               {
+                type: "GATEWAY",
                 name: { contains: "Duitku", mode: "insensitive" },
               },
             ],
           }
-        : { type: options.type }
+        : isGateway
+          ? {
+              OR: [{ type: "GATEWAY" }, { type: "duitku" }],
+            }
+          : { type: options.type }
       : undefined
 
     const gateways = await prisma.paymentGateway.findMany({
