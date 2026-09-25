@@ -53,7 +53,7 @@ export class GatewayService {
       : isGateway
         ? {
             isActive: true,
-            type: "GATEWAY",
+            OR: [{ type: "GATEWAY" }, { type: "duitku" }],
           }
         : {
             isActive: true,
@@ -93,7 +93,9 @@ export class GatewayService {
             ],
           }
         : isGateway
-          ? { type: "GATEWAY" }
+          ? {
+              OR: [{ type: "GATEWAY" }, { type: "duitku" }],
+            }
           : { type: options.type }
       : undefined
 
@@ -226,8 +228,16 @@ export class GatewayService {
     if (typeof gateway.config === "object" && gateway.config !== null) {
       return gateway.config as unknown as DuitkuConfig
     }
-    const configStr = this.encryption.decryptField(gateway.config as string)
-    return JSON.parse(configStr) as DuitkuConfig
+    try {
+      const configStr = this.encryption.decryptField(gateway.config as string)
+      return JSON.parse(configStr) as DuitkuConfig
+    } catch {
+      try {
+        return JSON.parse(gateway.config as string) as DuitkuConfig
+      } catch {
+        return null
+      }
+    }
   }
 
   private toResponse(gateway: {
