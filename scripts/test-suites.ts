@@ -75,6 +75,19 @@ export const FEATURE_MAPPINGS: FeatureMapping[] = [
     smokeProjects: ["smoke-deploy"],
   },
   {
+    name: "payment",
+    sourcePrefixes: [
+      "modules/payment/",
+      "lib/payment/",
+      "lib/seeders/system/payment.seeder.ts",
+    ],
+    testPrefixes: [
+      "modules/payment/providers/duitku.provider.test.ts",
+      "lib/payment/duitku-pop.test.ts",
+    ],
+    smokeProjects: [],
+  },
+  {
     name: "billing",
     sourcePrefixes: [
       "app/[lang]/console/billing/",

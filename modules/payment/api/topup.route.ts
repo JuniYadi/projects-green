@@ -161,6 +161,8 @@ export const createTopupRoutes = () =>
                     paymentUrl: duitkuResult.paymentUrl,
                     vaNumber: duitkuResult.vaNumber,
                     duitkuReference: duitkuResult.reference,
+                    mode: duitkuResult.mode,
+                    clientScriptUrl: duitkuResult.clientScriptUrl,
                   },
                 },
               }),
@@ -180,6 +182,9 @@ export const createTopupRoutes = () =>
               },
               paymentUrl: duitkuResult.paymentUrl,
               vaNumber: duitkuResult.vaNumber,
+              reference: duitkuResult.reference,
+              mode: duitkuResult.mode,
+              clientScriptUrl: duitkuResult.clientScriptUrl,
             }
           }
 

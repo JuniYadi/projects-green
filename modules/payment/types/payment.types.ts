@@ -104,12 +104,13 @@ export interface PaymentConfirmationResponse {
 export interface DuitkuConfig {
   merchantCode: string
   apiKey: string
+  checkoutMode?: "POP" | "REDIRECT"
   sandboxUrl: string
   productionUrl: string
 }
 
 export interface DuitkuInquiryRequest {
-  merchantCode: string
+  merchantCode?: string
   paymentAmount: number
   merchantOrderId: string
   productDetails: string
@@ -118,11 +119,15 @@ export interface DuitkuInquiryRequest {
   customerVaName: string
   returnUrl: string
   callbackUrl: string
-  signature: string
+  signature?: string
+  phoneNumber?: string
+  additionalParam?: string
+  merchantUserInfo?: string
+  expiryPeriod?: number
 }
 
 export interface DuitkuInquiryResponse {
-  amount: number
+  amount?: number
   statusCode: string
   statusMessage: string
   paymentUrl?: string

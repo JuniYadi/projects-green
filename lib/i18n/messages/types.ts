@@ -7584,6 +7584,7 @@ export type AppMessages = {
     copyVaNumber: string
     exactShortage: string
     manualTransferBadge: string
+    openDuitkuPop: string
     paymentInstructionsTitle: string
     shortageAmount: string
     transferInstructionAfter: string

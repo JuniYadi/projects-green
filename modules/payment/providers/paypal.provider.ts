@@ -86,7 +86,9 @@ export const paypalProvider: PaymentProvider = {
     }
 
     return {
+      mode: "REDIRECT",
       redirectUrl: approveLink,
+      paymentUrl: approveLink,
       reference: order.id,
     }
   },

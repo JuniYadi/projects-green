@@ -8255,6 +8255,7 @@ export const enMessages: AppMessages = {
     copyVaNumber: "Copy VA Number",
     exactShortage: "Exact Shortage",
     manualTransferBadge: "Manual Transfer",
+    openDuitkuPop: "Pay with Duitku POP",
     paymentInstructionsTitle: "Payment Instructions:",
     shortageAmount: "Shortage: +{amount}",
     transferInstructionAfter:

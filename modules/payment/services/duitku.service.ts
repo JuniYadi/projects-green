@@ -1,10 +1,11 @@
-import crypto from "crypto"
 import { GatewayService } from "./gateway.service"
+import { duitkuProvider } from "../providers/duitku.provider"
 import type {
-  DuitkuConfig,
-  DuitkuInquiryRequest,
-  DuitkuInquiryResponse,
-} from "../types/payment.types"
+  PaymentRequest,
+  PaymentResult,
+  CheckoutMode,
+} from "../providers/provider.interface"
+import type { DuitkuConfig } from "../types/payment.types"
 
 export class DuitkuService {
   private gatewayService: GatewayService
@@ -19,58 +20,38 @@ export class DuitkuService {
     email: string
     customerName: string
     productDetails: string
-    paymentMethod: "VC" | "QR"
-  }): Promise<{ paymentUrl: string; vaNumber?: string; reference: string }> {
+    paymentMethod: string
+    currency?: string
+    returnUrl?: string
+    callbackUrl?: string
+    checkoutMode?: CheckoutMode
+  }): Promise<PaymentResult> {
     const config = await this.getActiveConfig()
     if (!config) {
       throw new Error("Duitku gateway not configured")
     }
 
-    const isSandbox = process.env.NODE_ENV !== "production"
-    const baseUrl = isSandbox ? config.sandboxUrl : config.productionUrl
-
-    const merchantOrderId = input.invoiceId
-    const signature = this.generateSignature(
-      config.merchantCode,
-      merchantOrderId,
-      input.amount,
-      config.apiKey
-    )
-
-    const request: DuitkuInquiryRequest = {
-      merchantCode: config.merchantCode,
-      paymentAmount: input.amount,
-      merchantOrderId,
-      productDetails: input.productDetails,
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || ""
+    const paymentRequest: PaymentRequest = {
+      invoiceId: input.invoiceId,
+      amount: input.amount,
+      currency: input.currency || "IDR",
       email: input.email,
+      customerName: input.customerName,
+      productDetails: input.productDetails,
       paymentMethod: input.paymentMethod,
-      customerVaName: input.customerName,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/console/billing/invoices/${input.invoiceId}`,
-      callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/duitku/callback`,
-      signature,
+      returnUrl:
+        input.returnUrl ||
+        `${appUrl}/console/billing/invoices/${input.invoiceId}`,
+      callbackUrl:
+        input.callbackUrl || `${appUrl}/api/webhooks/duitku/callback`,
+      checkoutMode: input.checkoutMode,
     }
 
-    const response = await fetch(`${baseUrl}/merchant/v2/inquiry`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Duitku API error: ${response.status}`)
-    }
-
-    const result = (await response.json()) as DuitkuInquiryResponse
-
-    if (result.statusCode !== "00") {
-      throw new Error(`Duitku error: ${result.statusMessage}`)
-    }
-
-    return {
-      paymentUrl: result.paymentUrl || "",
-      vaNumber: result.vaNumber,
-      reference: result.reference || merchantOrderId,
-    }
+    return duitkuProvider.createPayment(
+      paymentRequest,
+      config as unknown as Record<string, string>
+    )
   }
 
   async verifyCallback(params: {
@@ -84,28 +65,10 @@ export class DuitkuService {
       throw new Error("Duitku gateway not configured")
     }
 
-    // Order: merchantCode + amount + merchantOrderId (berbeda dengan request signing)
-    const stringToSign =
-      params.merchantCode + params.amount + params.merchantOrderId
-    const expectedSignature = crypto
-      .createHmac("sha256", config.apiKey)
-      .update(stringToSign)
-      .digest("hex")
-
-    return params.signature === expectedSignature
-  }
-
-  private generateSignature(
-    merchantCode: string,
-    merchantOrderId: string,
-    paymentAmount: number,
-    apiKey: string
-  ): string {
-    const stringToSign = merchantCode + merchantOrderId + paymentAmount
-    return crypto
-      .createHmac("sha256", apiKey)
-      .update(stringToSign)
-      .digest("hex")
+    return duitkuProvider.verifyCallback!(
+      params as unknown as Record<string, unknown>,
+      config as unknown as Record<string, string>
+    )
   }
 
   private async getActiveConfig(): Promise<DuitkuConfig | null> {

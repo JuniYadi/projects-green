@@ -24,9 +24,12 @@ describe("DuitkuPaymentProvider", () => {
       expect(duitkuProvider.id).toBe("duitku")
       expect(duitkuProvider.name).toBe("Duitku")
       expect(duitkuProvider.supportedCurrencies).toEqual(["IDR"])
-      expect(duitkuProvider.paymentMethods).toEqual(["VC", "QR"])
+      expect(duitkuProvider.paymentMethods).toContain("VC")
+      expect(duitkuProvider.paymentMethods).toContain("QR")
+      expect(duitkuProvider.paymentMethods).toContain("VA")
+      expect(duitkuProvider.paymentMethods).toContain("QRIS")
       expect(duitkuProvider.configFields).toBeDefined()
-      expect(duitkuProvider.configFields.length).toBe(4)
+      expect(duitkuProvider.configFields.length).toBe(5)
     })
   })
 
@@ -215,6 +218,173 @@ describe("DuitkuPaymentProvider", () => {
 
       const isValid = await duitkuProvider.verifyCallback!(payload, config)
       expect(isValid).toBe(false)
+    })
+  })
+
+  describe("createPayment in POP Mode", () => {
+    const validConfig = {
+      merchantCode: "M12345",
+      apiKey: "secret-api-key",
+      checkoutMode: "POP",
+      sandboxUrl: "https://api-sandbox.duitku.com",
+      productionUrl: "https://api-prod.duitku.com",
+    }
+
+    const paymentRequest = {
+      invoiceId: "INV-2026-001",
+      amount: 150000,
+      currency: "IDR",
+      productDetails: "Pro Plan Subscription",
+      email: "user@example.com",
+      paymentMethod: "",
+      customerName: "Jane Doe",
+      returnUrl: "https://app.example.com/billing/return",
+      callbackUrl: "https://app.example.com/api/webhooks/duitku",
+    }
+
+    it("sends x-duitku-* headers and returns mode POP with clientScriptUrl", async () => {
+      process.env.DUITKU_SANDBOX = "true"
+      let interceptedUrl = ""
+      let interceptedHeaders: Record<string, string> | undefined
+      let interceptedBody: Record<string, unknown> | undefined
+
+      globalThis.fetch = (async (url: string, init?: RequestInit) => {
+        interceptedUrl = url
+        interceptedHeaders = init?.headers as Record<string, string>
+        interceptedBody = JSON.parse(init?.body as string)
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            statusCode: "00",
+            statusMessage: "SUCCESS",
+            paymentUrl:
+              "https://app-sandbox.duitku.com/redirect_checkout?reference=DUI-POP-123",
+            reference: "DUI-POP-123",
+          }),
+        } as unknown as Response
+      }) as typeof fetch
+
+      const result = await duitkuProvider.createPayment(
+        paymentRequest,
+        validConfig
+      )
+
+      expect(interceptedUrl).toBe(
+        "https://api-sandbox.duitku.com/api/merchant/createInvoice"
+      )
+      expect(result.mode).toBe("POP")
+      expect(result.reference).toBe("DUI-POP-123")
+      expect(result.clientScriptUrl).toContain("duitku.js")
+
+      expect(interceptedHeaders?.["x-duitku-merchantcode"]).toBe("M12345")
+      expect(interceptedHeaders?.["x-duitku-timestamp"]).toBeDefined()
+      expect(interceptedHeaders?.["x-duitku-signature"]).toBeDefined()
+
+      // Signature & merchantCode should not be in body for POP
+      expect(interceptedBody?.signature).toBeUndefined()
+      expect(interceptedBody?.merchantCode).toBeUndefined()
+    })
+
+    it("supports REDIRECT mode switcher", async () => {
+      globalThis.fetch = (async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          statusCode: "00",
+          statusMessage: "SUCCESS",
+          paymentUrl:
+            "https://app-sandbox.duitku.com/redirect_checkout?reference=DUI-REDIRECT-123",
+          reference: "DUI-REDIRECT-123",
+        }),
+      })) as unknown as typeof fetch
+
+      const result = await duitkuProvider.createPayment(paymentRequest, {
+        ...validConfig,
+        checkoutMode: "REDIRECT",
+      })
+
+      expect(result.mode).toBe("REDIRECT")
+      expect(result.clientScriptUrl).toBeUndefined()
+      expect(result.paymentUrl).toBe(
+        "https://app-sandbox.duitku.com/redirect_checkout?reference=DUI-REDIRECT-123"
+      )
+    })
+  })
+
+  describe("handleWebhook", () => {
+    const config = { apiKey: "secret-callback-key" }
+
+    it("normalizes successful callback to PAID status", async () => {
+      const merchantCode = "M12345"
+      const amount = "150000"
+      const merchantOrderId = "INV-001"
+      const signature = crypto
+        .createHmac("sha256", "secret-callback-key")
+        .update(merchantCode + amount + merchantOrderId)
+        .digest("hex")
+
+      const payload = {
+        merchantCode,
+        amount,
+        merchantOrderId,
+        reference: "DUI-REF-999",
+        resultCode: "00",
+        signature,
+      }
+
+      const res = await duitkuProvider.handleWebhook!(payload, config)
+      expect(res.isValid).toBe(true)
+      expect(res.status).toBe("PAID")
+      expect(res.merchantOrderId).toBe("INV-001")
+      expect(res.amount).toBe("150000")
+      expect(res.reference).toBe("DUI-REF-999")
+    })
+
+    it("normalizes failed callback (resultCode 01) to FAILED status", async () => {
+      const merchantCode = "M12345"
+      const amount = "150000"
+      const merchantOrderId = "INV-001"
+      const signature = crypto
+        .createHmac("sha256", "secret-callback-key")
+        .update(merchantCode + amount + merchantOrderId)
+        .digest("hex")
+
+      const payload = {
+        merchantCode,
+        amount,
+        merchantOrderId,
+        reference: "DUI-REF-999",
+        resultCode: "01",
+        signature,
+      }
+
+      const res = await duitkuProvider.handleWebhook!(payload, config)
+      expect(res.isValid).toBe(true)
+      expect(res.status).toBe("FAILED")
+    })
+
+    it("normalizes pending callback (resultCode 02) to PENDING status", async () => {
+      const merchantCode = "M12345"
+      const amount = "150000"
+      const merchantOrderId = "INV-001"
+      const signature = crypto
+        .createHmac("sha256", "secret-callback-key")
+        .update(merchantCode + amount + merchantOrderId)
+        .digest("hex")
+
+      const payload = {
+        merchantCode,
+        amount,
+        merchantOrderId,
+        reference: "DUI-REF-999",
+        resultCode: "02",
+        signature,
+      }
+
+      const res = await duitkuProvider.handleWebhook!(payload, config)
+      expect(res.isValid).toBe(true)
+      expect(res.status).toBe("PENDING")
     })
   })
 })

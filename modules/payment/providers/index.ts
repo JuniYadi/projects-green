@@ -18,6 +18,8 @@ export type {
   ConfigFieldDef,
   PaymentResult,
   PaymentRequest,
+  CheckoutMode,
+  WebhookResult,
 } from "./provider.interface"
 export { duitkuProvider } from "./duitku.provider"
 export { paypalProvider } from "./paypal.provider"
