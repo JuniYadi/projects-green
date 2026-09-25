@@ -57,6 +57,7 @@ export function HomeNav() {
         },
       ],
     },
+    { label: isId ? "Templates" : "Templates", href: "#templates" },
     { label: isId ? "Harga" : "Pricing", href: "#pricing" },
     { label: isId ? "Dokumentasi" : "Docs", href: `/${locale}/docs` },
   ]
@@ -69,6 +70,26 @@ export function HomeNav() {
           : "border-b border-white/5 bg-[#060b18]/80 backdrop-blur-sm"
       }`}
     >
+      {/* Top Launch Announcement Bar */}
+      <div className="border-b border-emerald-500/20 bg-emerald-950/40 px-4 py-1.5 text-center text-xs text-white/90 backdrop-blur-sm">
+        <Link
+          href="#pricing"
+          className="inline-flex items-center gap-1.5 transition-colors hover:text-emerald-300"
+        >
+          <span className="font-semibold text-emerald-400">
+            {isId ? "🎁 BATCH 1 LAUNCHING:" : "🎁 BATCH 1 LAUNCH:"}
+          </span>
+          <span>
+            {isId
+              ? "Klaim Voucher Rp 50.000 Saldo Pertama (Sisa 18 Kuota)"
+              : "Claim Rp 50,000 Credit Voucher for First Order"}
+          </span>
+          <span className="ml-1 font-semibold text-emerald-400 underline underline-offset-2">
+            {isId ? "Klaim Sekarang →" : "Claim Now →"}
+          </span>
+        </Link>
+      </div>
+
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         {/* Logo */}
         <Link href={`/${locale}`} className="group flex items-center gap-2.5">

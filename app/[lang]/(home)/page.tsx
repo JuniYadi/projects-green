@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { HomeNav } from "./components/nav"
 import { HeroSection } from "./components/hero"
+import { TemplatesSection } from "./components/templates-section"
 import { ServicesSection } from "./components/services"
 import { FeaturesSection } from "./components/features"
 import { PricingSection } from "./components/pricing"
@@ -9,23 +10,23 @@ import { CTASection, Footer } from "./components/footer"
 
 export const metadata: Metadata = {
   title: {
-    absolute: "PFNApp — The Full-Stack Cloud Platform for Developers",
+    absolute: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
   },
   description:
-    "Deploy apps, send emails & SMS, store files, and scale your infrastructure — all from a single developer-first platform. Start free, scale effortlessly.",
+    "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe. Claim Rp 50,000 credit voucher on launch batch.",
   keywords: [
+    "hermes agent hosting",
+    "ai agent hosting",
+    "9router",
+    "n8n hosting",
     "cloud platform",
     "app hosting",
-    "email service",
-    "S3 storage",
-    "developer tools",
-    "SaaS",
     "PFNApp",
   ],
   openGraph: {
-    title: "PFNApp — The Full-Stack Cloud Platform for Developers",
+    title: "PFNApp — Deploy Hermes AI Agent & Curated Cloud Stacks",
     description:
-      "Deploy apps, send emails & SMS, store files, and scale your infrastructure — all from a single developer-first platform.",
+      "Deploy Hermes AI Agent, 9router, and automation workflows in 30 seconds on direct Enterprise NVMe.",
     siteName: "PFNApp",
     type: "website",
   },
@@ -37,6 +38,7 @@ export default function HomePage() {
       <HomeNav />
       <main>
         <HeroSection />
+        <TemplatesSection />
         <ServicesSection />
         <FeaturesSection />
         <PricingSection />
