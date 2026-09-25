@@ -141,11 +141,18 @@ export const createTopupRoutes = () =>
           })
 
           if (paymentMethod === "VA" || paymentMethod === "QRIS") {
+            const gatewayConfig = gatewayId
+              ? await gatewayService.getDecryptedConfig(gatewayId)
+              : null
+            const isPopMode = gatewayConfig?.checkoutMode !== "REDIRECT"
+
             const duitkuMethod =
               paymentMethod === "QRIS"
                 ? "QR"
                 : paymentMethod === "VA"
-                  ? ""
+                  ? isPopMode
+                    ? ""
+                    : "VC"
                   : paymentMethod
 
             let duitkuResult

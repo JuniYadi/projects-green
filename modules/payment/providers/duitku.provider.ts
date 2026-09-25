@@ -160,13 +160,18 @@ export const duitkuProvider: PaymentProvider = {
         apiKey
       )
 
+      const legacyPaymentMethod =
+        request.paymentMethod === "VA" || !request.paymentMethod
+          ? "VC"
+          : request.paymentMethod
+
       const body: DuitkuInquiryRequest = {
         merchantCode,
         paymentAmount: request.amount,
         merchantOrderId: request.invoiceId,
         productDetails: request.productDetails,
         email: request.email,
-        paymentMethod: request.paymentMethod,
+        paymentMethod: legacyPaymentMethod,
         customerVaName: request.customerName,
         returnUrl: request.returnUrl,
         callbackUrl: request.callbackUrl,

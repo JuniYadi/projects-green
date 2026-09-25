@@ -258,6 +258,42 @@ describe("TopupRoute POST /topup", () => {
     )
   })
 
+  it("handles VA topup in REDIRECT mode with VC payment method", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({
+      id: "gw_duitku_redirect",
+    })
+    mockGetDecryptedConfig.mockResolvedValueOnce({ checkoutMode: "REDIRECT" })
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_va_redir",
+      invoiceNumber: "INV-VA-REDIR",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "VA",
+      dueDate: new Date("2026-09-01T00:00:00.000Z"),
+      type: "TOPUP",
+    })
+    mockDuitkuCreatePayment.mockResolvedValueOnce({
+      paymentUrl: "https://duitku.com/pay-redirect",
+      vaNumber: null,
+      reference: "duitku_ref_redir",
+      mode: "REDIRECT",
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    expect(mockDuitkuCreatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentMethod: "VC" })
+    )
+  })
+
   it("handles QRIS topup with Duitku payment gateway", async () => {
     mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
     mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
