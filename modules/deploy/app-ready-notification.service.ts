@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/queue/email"
 import { VaultClient } from "@/lib/vault/vault-client"
 import { buildVaultSecretPath } from "@/modules/secrets/vault-secrets.service"
 import { formatTenantNamespace } from "./prometheus-telemetry.service"
-import { resolveClusterIntegrationByClusterCode } from "./cluster-integration.service"
+import { resolveClusterIntegrationByClusterCode } from "@/modules/deploy/cluster-integration.service"
 import { appTemplateBlueprintSchema } from "./blueprint/app-template-blueprint.schema"
 
 const MAX_SAMPLE_AGE_SECONDS = 120

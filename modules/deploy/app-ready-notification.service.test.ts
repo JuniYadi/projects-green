@@ -31,6 +31,9 @@ mock.module("@/lib/queue/email", () => ({ sendEmail }))
 mock.module("@/lib/vault/vault-client", () => ({
   VaultClient: class {
     readKV = readKV
+    writeKV = mock(async () => ({ version: 1 }))
+    deleteKV = mock(async () => {})
+    getKVMetadata = mock(async () => ({ currentVersion: 1 }))
   },
   VaultSecretNotFoundError: class extends Error {},
 }))
@@ -39,7 +42,16 @@ mock.module("@workos-inc/node", () => ({
     userManagement: { listOrganizationMemberships: listMemberships, getUser },
   }),
 }))
-mock.module("./cluster-integration.service", () => ({
+const RealClusterIntegrationService =
+  await import("@/modules/deploy/cluster-integration.service")
+mock.module("@/modules/deploy/cluster-integration.service", () => ({
+  ...RealClusterIntegrationService,
+  resolveDefaultAppHostingClusterId:
+    RealClusterIntegrationService.resolveDefaultAppHostingClusterId,
+  resolveClusterIntegration:
+    RealClusterIntegrationService.resolveClusterIntegration,
+  resolveAppHostingClusterForStack:
+    RealClusterIntegrationService.resolveAppHostingClusterForStack,
   resolveClusterIntegrationByClusterCode: resolveIntegration,
 }))
 
