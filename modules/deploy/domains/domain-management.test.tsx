@@ -21,8 +21,8 @@ describe("DomainManagement", () => {
       />
     )
 
-    expect(view.getByText("Custom domain quota")).toBeTruthy()
-    expect(view.getByText("1 of 2 custom domains in use")).toBeTruthy()
+    expect(view.getByText("Domain Quota")).toBeTruthy()
+    expect(view.getByText("1 of 2 domains used")).toBeTruthy()
   })
 
   it("shows active Cloudflare credentials for wildcard domains", async () => {
@@ -48,8 +48,8 @@ describe("DomainManagement", () => {
       />
     )
 
-    await user.click(view.getByRole("switch", { name: "Wildcard domain" }))
-    expect(view.getByText("Cloudflare API token")).toBeTruthy()
+    await user.click(view.getByRole("switch", { name: /Wildcard domain/i }))
+    expect(view.getByText(/Cloudflare API Token/i)).toBeTruthy()
     await user.click(view.getByRole("combobox"))
     expect(view.getAllByText("Production").length).toBeGreaterThan(0)
     expect(view.queryByText("Old token")).toBeNull()

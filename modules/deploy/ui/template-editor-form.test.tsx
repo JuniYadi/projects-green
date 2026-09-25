@@ -22,6 +22,11 @@ interface SavePayload {
       livenessProbe?: { path: string }
       readinessProbe?: { path: string }
       startupProbe?: { path: string }
+      runAsNonRoot?: boolean
+      runAsUser?: number | null
+      runAsGroup?: number | null
+      fsGroup?: number | null
+      readOnlyRootFilesystem?: boolean
     }
   }
 }
@@ -315,5 +320,121 @@ describe("TemplateEditorForm", () => {
     } finally {
       global.fetch = origFetch
     }
+  })
+
+  it("configures and saves root execution securityContext with runAsNonRoot: false and null UID/GID", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const { getByTestId, getByText, getByLabelText } = render(
+      <TemplateEditorForm isNew={true} onSave={onSave} />
+    )
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Docker Root App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "Requires root execution"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Toggle runAsNonRoot switch to false
+    const nonRootSwitch = getByLabelText(/Run as Non-Root/i)
+    await user.click(nonRootSwitch)
+
+    // Save template
+    await user.click(getByText("Create Template"))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.runAsNonRoot).toBe(false)
+    expect(payload?.blueprintJson?.runtime?.runAsUser).toBeNull()
+    expect(payload?.blueprintJson?.runtime?.runAsGroup).toBeNull()
+  })
+
+  it("allows auto-input and overwriting UID/GID in security context", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const { getByTestId, getByText, getByLabelText } = render(
+      <TemplateEditorForm isNew={true} onSave={onSave} />
+    )
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Custom UID App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "App with custom UID/GID"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Enter custom UID and GID (overwriting default empty values)
+    const uidInput = getByLabelText(/Run As User \(UID\)/i)
+    await user.type(uidInput, "1000")
+
+    const gidInput = getByLabelText(/Run As Group \(GID\)/i)
+    await user.type(gidInput, "2000")
+
+    // Save template
+    await user.click(getByText("Create Template"))
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.runAsNonRoot).toBe(true)
+    expect(payload?.blueprintJson?.runtime?.runAsUser).toBe(1000)
+    expect(payload?.blueprintJson?.runtime?.runAsGroup).toBe(2000)
+  })
+
+  it("switches activePreset to custom when readOnlyRootFilesystem or fsGroup is configured", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const {
+      getByTestId,
+      getByText,
+      getAllByText,
+      getByLabelText,
+      queryByText,
+    } = render(<TemplateEditorForm isNew={true} onSave={onSave} />)
+
+    const user = userEvent.setup()
+    await user.type(getByTestId("template-name-input"), "Sec Dev App")
+    await user.type(
+      getByTestId("template-desc-input"),
+      "App testing custom presets"
+    )
+
+    // Switch to Runtime tab
+    await user.click(getByText("Runtime & Services"))
+
+    // Initially with image_default_non_root (runAsNonRoot: true, empty UID/GID), badge indicates Auto
+    expect(getByText("Auto")).toBeTruthy()
+
+    // Toggle Read-Only Root Filesystem
+    const readOnlySwitch = getByLabelText(/Read-Only Root Filesystem/i)
+    await user.click(readOnlySwitch)
+
+    // Now preset indicator switches to Custom Configuration
+    expect(queryByText("Auto")).toBeNull()
+    expect(getAllByText("Custom Configuration").length).toBeGreaterThan(0)
+
+    // Enter fsGroup
+    const fsGroupInput = getByLabelText(/Storage FSGroup/i)
+    await user.type(fsGroupInput, "3000")
+    expect(getAllByText("Custom Configuration").length).toBeGreaterThan(0)
+
+    // Save and assert payload has both values
+    await user.click(getByText("Create Template"))
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
+    const payload = onSave.mock.calls[0]?.[0]
+    expect(payload?.blueprintJson?.runtime?.readOnlyRootFilesystem).toBe(true)
+    expect(payload?.blueprintJson?.runtime?.fsGroup).toBe(3000)
   })
 })

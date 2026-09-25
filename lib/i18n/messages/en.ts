@@ -601,6 +601,30 @@ export const enMessages: AppMessages = {
           portNamePlaceholder: "dashboard",
           runAsNonRoot: "Run as Non-Root",
           runAsNonRootDescription: "Enforces pod security standards",
+          securityContextTitle: "Security Context & Permissions",
+          securityContextDescription:
+            "Configure user, group, and container execution privileges",
+          securityPresetLabel: "Security Preset",
+          securityPresetHint:
+            "Select a preset to auto-fill security settings, or customize manually below.",
+          presetRootDefault:
+            "Root / Container Default (runAsNonRoot: false, UID/GID: unset)",
+          presetStrictNonRoot: "Strict Non-Root (UID 10001, GID 10001)",
+          presetStandardNonRoot: "Standard Non-Root (UID 1000, GID 1000)",
+          presetImageDefaultNonRoot:
+            "Non-Root without UID (Image Default User)",
+          presetCustom: "Custom Configuration",
+          runAsUserLabel: "Run As User (UID)",
+          runAsUserHint:
+            "UID for container process (leave empty for image default / null)",
+          runAsGroupLabel: "Run As Group (GID)",
+          runAsGroupHint:
+            "GID for container process (leave empty for image default / null)",
+          fsGroupLabel: "Storage FSGroup",
+          fsGroupHint:
+            "Volume ownership GID for mounted persistent storage (optional)",
+          readOnlyRootLabel: "Read-Only Root Filesystem",
+          readOnlyRootHint: "Mount container root filesystem as read-only",
         },
         resourcesStorage: {
           title: "Resources & Storage",

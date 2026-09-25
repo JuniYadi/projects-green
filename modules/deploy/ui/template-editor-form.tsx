@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -165,9 +165,81 @@ export function TemplateEditorForm({
     initialData?.blueprintJson?.runtime?.readinessProbe?.initialDelaySeconds ??
       10
   )
-  const [runAsNonRoot, setRunAsNonRoot] = useState(
+  const [runAsNonRoot, setRunAsNonRoot] = useState<boolean>(
     initialData?.blueprintJson?.runtime?.runAsNonRoot ?? true
   )
+  const [runAsUser, setRunAsUser] = useState<string>(
+    initialData?.blueprintJson?.runtime?.runAsUser != null
+      ? String(initialData.blueprintJson.runtime.runAsUser)
+      : ""
+  )
+  const [runAsGroup, setRunAsGroup] = useState<string>(
+    initialData?.blueprintJson?.runtime?.runAsGroup != null
+      ? String(initialData.blueprintJson.runtime.runAsGroup)
+      : ""
+  )
+  const [runtimeFsGroup, setRuntimeFsGroup] = useState<string>(
+    initialData?.blueprintJson?.runtime?.fsGroup != null
+      ? String(initialData.blueprintJson.runtime.fsGroup)
+      : ""
+  )
+  const [readOnlyRootFilesystem, setReadOnlyRootFilesystem] = useState<boolean>(
+    initialData?.blueprintJson?.runtime?.readOnlyRootFilesystem ?? false
+  )
+
+  const handlePresetChange = (preset: string) => {
+    if (preset === "root_default") {
+      setRunAsNonRoot(false)
+      setRunAsUser("")
+      setRunAsGroup("")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
+    } else if (preset === "strict_non_root") {
+      setRunAsNonRoot(true)
+      setRunAsUser("10001")
+      setRunAsGroup("10001")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
+    } else if (preset === "standard_non_root") {
+      setRunAsNonRoot(true)
+      setRunAsUser("1000")
+      setRunAsGroup("1000")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
+    } else if (preset === "image_default_non_root") {
+      setRunAsNonRoot(true)
+      setRunAsUser("")
+      setRunAsGroup("")
+      setRuntimeFsGroup("")
+      setReadOnlyRootFilesystem(false)
+    }
+  }
+
+  const activePreset = useMemo(() => {
+    const trimmedUser = runAsUser.trim()
+    const trimmedGroup = runAsGroup.trim()
+    const trimmedFsGroup = runtimeFsGroup.trim()
+
+    // Deviations with read-only root or custom fsGroup belong to custom configuration
+    if (readOnlyRootFilesystem || trimmedFsGroup) {
+      return "custom"
+    }
+
+    if (!runAsNonRoot && !trimmedUser && !trimmedGroup) return "root_default"
+    if (runAsNonRoot && trimmedUser === "10001" && trimmedGroup === "10001")
+      return "strict_non_root"
+    if (runAsNonRoot && trimmedUser === "1000" && trimmedGroup === "1000")
+      return "standard_non_root"
+    if (runAsNonRoot && !trimmedUser && !trimmedGroup)
+      return "image_default_non_root"
+    return "custom"
+  }, [
+    runAsNonRoot,
+    runAsUser,
+    runAsGroup,
+    runtimeFsGroup,
+    readOnlyRootFilesystem,
+  ])
   const [runtimeCommand, setRuntimeCommand] = useState(
     Array.isArray(initialData?.blueprintJson?.runtime?.command)
       ? initialData.blueprintJson.runtime.command.join(" ")
@@ -280,6 +352,18 @@ export function TemplateEditorForm({
             }
           : {}),
         runAsNonRoot,
+        runAsUser:
+          runAsUser.trim() !== "" && !isNaN(Number(runAsUser))
+            ? Number(runAsUser)
+            : null,
+        runAsGroup:
+          runAsGroup.trim() !== "" && !isNaN(Number(runAsGroup))
+            ? Number(runAsGroup)
+            : null,
+        ...(readOnlyRootFilesystem ? { readOnlyRootFilesystem: true } : {}),
+        ...(runtimeFsGroup.trim() !== "" && !isNaN(Number(runtimeFsGroup))
+          ? { fsGroup: Number(runtimeFsGroup) }
+          : {}),
         ...(parsedCommand.length > 0 ? { command: parsedCommand } : {}),
         ...(parsedArgs.length > 0 ? { args: parsedArgs } : {}),
         deploymentType,
@@ -603,6 +687,20 @@ export function TemplateEditorForm({
           setHealthCheckPath(bp.runtime.livenessProbe.path)
         if (bp.runtime.runAsNonRoot !== undefined)
           setRunAsNonRoot(bp.runtime.runAsNonRoot)
+        if (bp.runtime.runAsUser !== undefined)
+          setRunAsUser(
+            bp.runtime.runAsUser != null ? String(bp.runtime.runAsUser) : ""
+          )
+        if (bp.runtime.runAsGroup !== undefined)
+          setRunAsGroup(
+            bp.runtime.runAsGroup != null ? String(bp.runtime.runAsGroup) : ""
+          )
+        if (bp.runtime.fsGroup !== undefined)
+          setRuntimeFsGroup(
+            bp.runtime.fsGroup != null ? String(bp.runtime.fsGroup) : ""
+          )
+        if (bp.runtime.readOnlyRootFilesystem !== undefined)
+          setReadOnlyRootFilesystem(Boolean(bp.runtime.readOnlyRootFilesystem))
         if (bp.runtime.deploymentType)
           setDeploymentType(bp.runtime.deploymentType)
         if (bp.runtime.additionalPorts)
@@ -1451,19 +1549,170 @@ export function TemplateEditorForm({
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">
-                      {messages.runtime.runAsNonRoot}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {messages.runtime.runAsNonRootDescription}
+                <div className="space-y-4 rounded-lg border border-border bg-card p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="flex items-center gap-1.5 text-sm font-semibold">
+                        <ShieldCheck className="size-4 text-foreground" />
+                        {messages.runtime.securityContextTitle}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {messages.runtime.securityContextDescription}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5 rounded-md border border-border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between">
+                      <Label
+                        htmlFor="security-preset"
+                        className="text-xs font-medium"
+                      >
+                        {messages.runtime.securityPresetLabel}
+                      </Label>
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {activePreset === "custom"
+                          ? messages.runtime.presetCustom
+                          : "Auto"}
+                      </span>
+                    </div>
+                    <Select
+                      value={activePreset}
+                      onValueChange={handlePresetChange}
+                    >
+                      <SelectTrigger
+                        id="security-preset"
+                        className="h-8 bg-background text-xs"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="root_default">
+                          {messages.runtime.presetRootDefault}
+                        </SelectItem>
+                        <SelectItem value="strict_non_root">
+                          {messages.runtime.presetStrictNonRoot}
+                        </SelectItem>
+                        <SelectItem value="standard_non_root">
+                          {messages.runtime.presetStandardNonRoot}
+                        </SelectItem>
+                        <SelectItem value="image_default_non_root">
+                          {messages.runtime.presetImageDefaultNonRoot}
+                        </SelectItem>
+                        <SelectItem value="custom">
+                          {messages.runtime.presetCustom}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      {messages.runtime.securityPresetHint}
                     </p>
                   </div>
-                  <Switch
-                    checked={runAsNonRoot}
-                    onCheckedChange={setRunAsNonRoot}
-                  />
+
+                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="sec-runAsUser"
+                        className="text-xs font-medium"
+                      >
+                        {messages.runtime.runAsUserLabel}
+                      </Label>
+                      <Input
+                        id="sec-runAsUser"
+                        type="number"
+                        min={0}
+                        value={runAsUser}
+                        onChange={(e) => setRunAsUser(e.target.value)}
+                        placeholder="e.g. 10001"
+                        className="h-8 font-mono text-xs"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {messages.runtime.runAsUserHint}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="sec-runAsGroup"
+                        className="text-xs font-medium"
+                      >
+                        {messages.runtime.runAsGroupLabel}
+                      </Label>
+                      <Input
+                        id="sec-runAsGroup"
+                        type="number"
+                        min={0}
+                        value={runAsGroup}
+                        onChange={(e) => setRunAsGroup(e.target.value)}
+                        placeholder="e.g. 10001"
+                        className="h-8 font-mono text-xs"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {messages.runtime.runAsGroupHint}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label
+                        htmlFor="sec-fsGroup"
+                        className="text-xs font-medium"
+                      >
+                        {messages.runtime.fsGroupLabel}
+                      </Label>
+                      <Input
+                        id="sec-fsGroup"
+                        type="number"
+                        min={1}
+                        value={runtimeFsGroup}
+                        onChange={(e) => setRuntimeFsGroup(e.target.value)}
+                        placeholder="e.g. 1000"
+                        className="h-8 font-mono text-xs"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        {messages.runtime.fsGroupHint}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 border-t border-border/50 pt-2">
+                    <div className="flex items-center justify-between rounded-md border border-border p-2.5">
+                      <div className="space-y-0.5">
+                        <Label
+                          htmlFor="sec-runAsNonRoot"
+                          className="text-xs font-medium"
+                        >
+                          {messages.runtime.runAsNonRoot}
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          {messages.runtime.runAsNonRootDescription}
+                        </p>
+                      </div>
+                      <Switch
+                        id="sec-runAsNonRoot"
+                        checked={runAsNonRoot}
+                        onCheckedChange={setRunAsNonRoot}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border border-border p-2.5">
+                      <div className="space-y-0.5">
+                        <Label
+                          htmlFor="sec-readOnlyRoot"
+                          className="text-xs font-medium"
+                        >
+                          {messages.runtime.readOnlyRootLabel}
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          {messages.runtime.readOnlyRootHint}
+                        </p>
+                      </div>
+                      <Switch
+                        id="sec-readOnlyRoot"
+                        checked={readOnlyRootFilesystem}
+                        onCheckedChange={setReadOnlyRootFilesystem}
+                      />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
