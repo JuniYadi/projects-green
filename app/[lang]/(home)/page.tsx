@@ -1,16 +1,18 @@
 import type { Metadata } from "next"
+import { connection } from "next/server"
 import { HomeNav } from "./components/nav"
 import { HeroSection } from "./components/hero"
 import { TemplatesSection } from "./components/templates-section"
 import { ServicesSection } from "./components/services"
 import { CTASection, Footer } from "./components/footer"
+import { getHomeOffer } from "./home-offer"
 
 export const metadata: Metadata = {
   title: {
-    absolute: "PFNApp — Deploy Aplikasi Tanpa Menyiapkan Server",
+    absolute: "PFNApp — Jalankan Hermes Agent",
   },
   description:
-    "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server. Lihat template App Hosting PFNApp.",
+    "Jalankan Hermes Agent di PFNApp tanpa mengurus server. Pilih template dan lihat penawaran yang tersedia.",
   keywords: [
     "hermes agent hosting",
     "ai agent hosting",
@@ -21,20 +23,23 @@ export const metadata: Metadata = {
     "PFNApp",
   ],
   openGraph: {
-    title: "PFNApp — Deploy Aplikasi Tanpa Menyiapkan Server",
+    title: "PFNApp — Jalankan Hermes Agent",
     description:
-      "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server.",
+      "Jalankan Hermes Agent di PFNApp tanpa mengurus server. Pilih template dan lihat penawaran yang tersedia.",
     siteName: "PFNApp",
     type: "website",
   },
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  await connection()
+  const offer = await getHomeOffer()
+
   return (
     <div className="min-h-screen bg-background font-sans antialiased">
       <HomeNav />
       <main>
-        <HeroSection />
+        <HeroSection offer={offer} />
         <TemplatesSection />
         <ServicesSection />
         <CTASection />
