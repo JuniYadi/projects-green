@@ -235,6 +235,70 @@ describe("Billing InvoiceDetailPage", () => {
     expect(view.getAllByText("Payment Reference").length).toBe(2)
   })
 
+  it("renders PARTIALLY_PAID status badge, financial breakdown, and allocation history", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            type: "SERVICE",
+            status: "PARTIALLY_PAID",
+            totalAmountIdr: "100000.00",
+            totalPaid: 40000,
+            remainingDue: 60000,
+            allocations: [
+              {
+                id: "alloc-1",
+                amount: 40000,
+                currency: "IDR",
+                source: "BALANCE",
+                status: "COMPLETED",
+                referenceId: "tx-bal-1",
+                createdAt: "2026-09-25T10:00:00.000Z",
+                completedAt: "2026-09-25T10:00:00.000Z",
+              },
+            ],
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse({
+          ...accountPayload("IDR"),
+          balanceIdr: "30000.00",
+          formattedBalance: "Rp30.000",
+        })
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({ ok: true, accounts: [] })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() =>
+      expect(view.getAllByText("Partially Paid").length).toBeGreaterThan(0)
+    )
+
+    // Financial breakdown: Total Billed, Paid Amount, Remaining Due
+    expect(view.getAllByText(/Remaining Due/i).length).toBeGreaterThan(0)
+    expect(view.getAllByText(/Paid Amount/i).length).toBeGreaterThan(0)
+
+    // History table
+    expect(view.getByText("Payment Allocation History")).toBeInTheDocument()
+    expect(view.getByText("BALANCE")).toBeInTheDocument()
+    expect(view.getByText("tx-bal-1")).toBeInTheDocument()
+
+    // Partial balance payment input should appear because balance > 0 and remainingDue > 0
+    expect(
+      view.getByRole("button", { name: /Pay Partially with Balance/i })
+    ).toBeInTheDocument()
+  })
+
   it("renders USD totals, line amount, and visible Tax/Discount rows", async () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)

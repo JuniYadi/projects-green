@@ -2032,6 +2032,16 @@ export type AppMessages = {
         gatewayUnavailable: string
         noPaymentMethodSelected: string
         availableBalance: string
+        totalBilled: string
+        totalPaid: string
+        remainingDue: string
+        paymentHistory: string
+        noPaymentsRecorded: string
+        payWithPartialBalance: string
+        useBalanceAmount: string
+        useMaxBalance: string
+        payRemainingViaGateway: string
+        partialPaymentSuccess: string
         topUpRequired: string
         topUpDescription: string
         gapAmount: string
@@ -2180,6 +2190,7 @@ export type AppMessages = {
         statusIssued: string
         statusOpen: string
         statusPaid: string
+        statusPartiallyPaid: string
         statusOverdue: string
         statusCancelled: string
         statusVoid: string

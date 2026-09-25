@@ -1057,6 +1057,7 @@ enum BillingInvoiceStatus {
   CANCELLED
   VOID
   UNCOLLECTIBLE
+  PARTIALLY_PAID
 }
 
 enum BillingInvoiceLineType {
@@ -1281,6 +1282,7 @@ model BillingAccount {
   auditLogs     BillingAuditLog[]
   contacts      BillingContact[]
   orders        BillingOrder[]
+  invoiceAllocations BillingInvoicePaymentAllocation[]
 }
 
 model BillingContact {
@@ -1506,6 +1508,7 @@ model BillingInvoice {
   adjustments          BillingAdjustment[]
   paymentConfirmations PaymentConfirmation[]
   orders               BillingOrder[]
+  allocations          BillingInvoicePaymentAllocation[]
 
   @@unique([billingAccountId, periodStart, periodEnd])
   @@unique([billingAccountId, invoiceNumber])
@@ -1636,6 +1639,29 @@ model BillingAdjustment {
 
   @@index([billingAccountId, createdAt(sort: Desc)])
   @@index([invoiceId])
+}
+
+model BillingInvoicePaymentAllocation {
+  id               String    @id @default(cuid())
+  invoiceId        String
+  billingAccountId String
+  amount           Decimal   @db.Decimal(18, 6)
+  currency         String
+  source           String    // BALANCE, GATEWAY_DUITKU, MANUAL_BANK, PAYPAL
+  status           String    @default("PENDING") // PENDING, COMPLETED, FAILED, CANCELLED
+  referenceId      String?
+  idempotencyKey   String?   @unique
+  metadataJson     Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  completedAt      DateTime?
+
+  invoice        BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  billingAccount BillingAccount @relation(fields: [billingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId, status])
+  @@index([billingAccountId, createdAt])
+  @@map("InvoicePaymentAllocation")
 }
 
 model BillingRun {

@@ -80,6 +80,7 @@ export type InvoiceEmailService = {
 const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
   draft: "Draft",
   open: "Open",
+  partially_paid: "Partially Paid",
   paid: "Paid",
   canceled: "Canceled",
   uncollectible: "Uncollectible",

@@ -22,11 +22,16 @@ const mockBillingAccount = {
   ),
 }
 
+const mockBillingInvoicePaymentAllocation = {
+  create: mock(() => Promise.resolve({})),
+}
+
 mock.module("@/lib/prisma", () => ({
   prisma: {
     paymentAuditLog: mockPaymentAuditLog,
     billingInvoice: mockBillingInvoice,
     billingAccount: mockBillingAccount,
+    billingInvoicePaymentAllocation: mockBillingInvoicePaymentAllocation,
   },
 }))
 

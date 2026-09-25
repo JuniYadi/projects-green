@@ -9,6 +9,7 @@ import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
@@ -25,6 +26,8 @@ import {
   getAccount,
   getPaymentMethods,
   payWithBalance,
+  payPartialBalance,
+  initiateInvoiceGatewayPayment,
   topupAndPay,
 } from "@/lib/billing-client"
 import type {
@@ -86,6 +89,12 @@ export default function InvoiceDetailPage() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("")
   const [isLaunchingPop, setIsLaunchingPop] = useState(false)
+  const [partialAmount, setPartialAmount] = useState("")
+  const [isProcessingPartial, setIsProcessingPartial] = useState(false)
+  const [isInitiatingGateway, setIsInitiatingGateway] = useState(false)
+  const [partialSuccessMessage, setPartialSuccessMessage] = useState<
+    string | null
+  >(null)
 
   useEffect(() => {
     let cancelled = false
@@ -243,6 +252,73 @@ export default function InvoiceDetailPage() {
     }
   }
 
+  async function handlePayPartial() {
+    const num = Number(partialAmount)
+    if (isNaN(num) || num <= 0) return
+    setIsProcessingPartial(true)
+    setError(null)
+    setPartialSuccessMessage(null)
+    try {
+      const res = await payPartialBalance(invoiceId, num)
+      setPartialSuccessMessage(res.message)
+      setPartialAmount("")
+      const [invoiceResult, accountResult] = await Promise.all([
+        getInvoice(invoiceId),
+        getAccount(),
+      ])
+      setData(invoiceResult)
+      setAccount(accountResult)
+      if (res.invoiceStatus === "PAID") {
+        setPaymentSuccess(true)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : billing.paymentFailed)
+    } finally {
+      setIsProcessingPartial(false)
+    }
+  }
+
+  async function handlePayRemainingViaGateway() {
+    setIsInitiatingGateway(true)
+    setError(null)
+    try {
+      const res = await initiateInvoiceGatewayPayment(invoiceId)
+      if (res.mode === "POP" && res.reference) {
+        await launchDuitkuPop({
+          reference: res.reference,
+          clientScriptUrl: res.clientScriptUrl ?? undefined,
+          fallbackUrl: res.paymentUrl ?? undefined,
+          defaultLanguage: locale === "id" ? "id" : "en",
+          onSuccess: async () => {
+            setPaymentSuccess(true)
+            const [invoiceResult, accountResult] = await Promise.all([
+              getInvoice(invoiceId),
+              getAccount(),
+            ])
+            setData(invoiceResult)
+            setAccount(accountResult)
+          },
+          onPending: async () => {
+            const invoiceResult = await getInvoice(invoiceId)
+            setData(invoiceResult)
+          },
+          onClose: async () => {
+            const invoiceResult = await getInvoice(invoiceId)
+            setData(invoiceResult)
+          },
+        })
+      } else if (res.paymentUrl) {
+        window.open(res.paymentUrl, "_blank", "noopener,noreferrer")
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Unable to initiate payment."
+      )
+    } finally {
+      setIsInitiatingGateway(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <main className="flex flex-1 flex-col gap-6 p-6 pt-0">
@@ -295,12 +371,30 @@ export default function InvoiceDetailPage() {
 
   const invoice = data.invoice
   const isTopUp = invoice.type === "TOP_UP"
-  const isOpen = invoice.status === "OPEN"
+  const isOpen =
+    invoice.status === "OPEN" ||
+    invoice.status === "open" ||
+    invoice.status === "PARTIALLY_PAID" ||
+    invoice.status === "partially_paid"
   const issueDate = invoice.issuedAt ?? invoice.createdAt ?? null
   const dueDate = invoice.dueAt ?? invoice.dueDate ?? null
   const invoiceCurrency = invoice.currency || account?.currency || "USD"
   const formatInvoiceAmount = (amount: string | null | undefined) =>
     formatInvoiceCurrency(Number(amount ?? 0), invoiceCurrency)
+  const totalAmountNum = Number(invoice.totalAmountIdr ?? 0)
+  const allocations = invoice.allocations ?? []
+  const totalPaidNum =
+    invoice.totalPaid !== undefined
+      ? invoice.totalPaid
+      : allocations
+          .filter((a) => a.status === "COMPLETED")
+          .reduce((sum, a) => sum + Number(a.amount), 0)
+  const remainingDueNum =
+    invoice.remainingDue !== undefined
+      ? invoice.remainingDue
+      : Math.max(0, totalAmountNum - totalPaidNum)
+  const availableBalanceNum = Number(account?.balanceIdr ?? 0)
+  const maxUsableBalance = Math.min(availableBalanceNum, remainingDueNum)
   const subtotalAmount = invoice.subtotalAmountIdr ?? invoice.totalAmountIdr
   const taxAmount = invoice.taxAmountIdr ?? "0"
   const discountAmount = invoice.discountAmountIdr ?? "0"
@@ -684,10 +778,97 @@ export default function InvoiceDetailPage() {
                       {formatInvoiceAmount(invoice.totalAmountIdr)}
                     </span>
                   </div>
+                  {totalPaidNum > 0 && (
+                    <>
+                      <div className="flex justify-between pt-1 text-muted-foreground">
+                        <span>
+                          {billing.invoices.totalPaid || "Sudah Dibayar"}
+                        </span>
+                        <span className="font-mono font-medium text-green-600 dark:text-green-400">
+                          {formatInvoiceCurrency(totalPaidNum, invoiceCurrency)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-base font-bold">
+                        <span>
+                          {billing.invoices.remainingDue || "Sisa Tagihan"}
+                        </span>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                          {formatInvoiceCurrency(
+                            remainingDueNum,
+                            invoiceCurrency
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Payment Allocation History */}
+          {allocations.length > 0 && (
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                  {billing.invoices.paymentHistory || "Riwayat Pembayaran"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b text-muted-foreground">
+                        <th className="pb-2 font-medium">Tanggal</th>
+                        <th className="pb-2 font-medium">Metode / Sumber</th>
+                        <th className="pb-2 font-medium">Referensi</th>
+                        <th className="pb-2 text-right font-medium">Jumlah</th>
+                        <th className="pb-2 text-right font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {allocations.map((alloc) => (
+                        <tr key={alloc.id}>
+                          <td className="py-2.5 text-muted-foreground">
+                            {formatDate(alloc.completedAt || alloc.createdAt)}
+                          </td>
+                          <td className="py-2.5 font-medium text-foreground">
+                            {alloc.source.replace("_", " ")}
+                          </td>
+                          <td className="py-2.5 font-mono text-muted-foreground">
+                            {alloc.referenceId || "—"}
+                          </td>
+                          <td className="py-2.5 text-right font-mono font-semibold text-foreground">
+                            {formatInvoiceCurrency(
+                              alloc.amount,
+                              alloc.currency || invoiceCurrency
+                            )}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                alloc.status === "COMPLETED"
+                                  ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                                  : alloc.status === "PENDING"
+                                    ? "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+                                    : "bg-red-500/10 text-red-600 dark:text-red-400"
+                              }`}
+                            >
+                              {alloc.status === "COMPLETED"
+                                ? "Berhasil"
+                                : alloc.status === "PENDING"
+                                  ? "Menunggu"
+                                  : alloc.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Dynamic Order & Provisioning Specifications */}
           {(() => {
@@ -925,52 +1106,166 @@ export default function InvoiceDetailPage() {
                     </p>
                   )
                 ) : (
-                  /* Standard Service Invoice: Balance options */
-                  <div className="space-y-3">
-                    {account && (
-                      <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+                  /* Standard Service Invoice: Split-tender & Balance options */
+                  <div className="space-y-4">
+                    {/* Financial summary: Total, Paid, Remaining */}
+                    <div className="space-y-2 rounded-lg border bg-muted/30 p-3 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          {billing.invoices.totalBilled || "Total Tagihan"}
+                        </span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {formatInvoiceAmount(invoice.totalAmountIdr)}
+                        </span>
+                      </div>
+                      {totalPaidNum > 0 && (
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">
-                            {billing.invoices.availableBalance}
+                            {billing.invoices.totalPaid || "Sudah Dibayar"}
                           </span>
-                          <span className="font-mono font-semibold text-foreground">
-                            {account.formattedBalance}
+                          <span className="font-mono font-medium text-green-600 dark:text-green-400">
+                            {formatInvoiceCurrency(
+                              totalPaidNum,
+                              invoiceCurrency
+                            )}
                           </span>
                         </div>
+                      )}
+                      <div className="flex justify-between border-t border-border/50 pt-1.5">
+                        <span className="font-semibold text-foreground">
+                          {billing.invoices.remainingDue || "Sisa Tagihan"}
+                        </span>
+                        <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                          {formatInvoiceCurrency(
+                            remainingDueNum,
+                            invoiceCurrency
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {account && (
+                      <div className="flex justify-between rounded-lg border bg-muted/40 p-3 text-xs">
+                        <span className="text-muted-foreground">
+                          {billing.invoices.availableBalance}
+                        </span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {account.formattedBalance}
+                        </span>
                       </div>
                     )}
+
                     {error && (
                       <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-600 dark:text-red-400">
                         {error}
                       </div>
                     )}
-                    {paymentSuccess ? (
+
+                    {partialSuccessMessage && (
+                      <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-3 text-xs text-green-600 dark:text-green-400">
+                        {partialSuccessMessage}
+                      </div>
+                    )}
+
+                    {paymentSuccess || remainingDueNum <= 0 ? (
                       <div className="flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-400">
                         <CheckCircleIcon className="h-4 w-4" />
                         <span>{billing.paymentSuccessLabel}</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-3">
+                        {/* Option 1: Pay Full with Balance (if balance >= remainingDue) */}
+                        {availableBalanceNum >= remainingDueNum ? (
+                          <Button
+                            onClick={handlePayWithBalance}
+                            disabled={isProcessing}
+                            className="w-full"
+                          >
+                            <WalletIcon className="mr-2 h-4 w-4" />
+                            {isProcessing
+                              ? billing.processing
+                              : billing.payWithBalance}
+                          </Button>
+                        ) : availableBalanceNum > 0 ? (
+                          /* Option 2: Split-tender - Partial Balance deduction */
+                          <div className="space-y-2 rounded-lg border bg-muted/20 p-3 text-xs">
+                            <span className="font-medium text-foreground">
+                              {billing.invoices.payWithPartialBalance ||
+                                "Bayar Sebagian dengan Saldo"}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={partialAmount}
+                                onChange={(e) =>
+                                  setPartialAmount(e.target.value)
+                                }
+                                className="h-8 font-mono text-xs"
+                                min="1"
+                                max={maxUsableBalance}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setPartialAmount(String(maxUsableBalance))
+                                }
+                                className="h-8 text-[11px] whitespace-nowrap"
+                              >
+                                {billing.invoices.useMaxBalance || "Maks"}
+                              </Button>
+                            </div>
+                            <Button
+                              onClick={handlePayPartial}
+                              disabled={
+                                isProcessingPartial ||
+                                !partialAmount ||
+                                Number(partialAmount) <= 0 ||
+                                Number(partialAmount) > maxUsableBalance
+                              }
+                              className="h-8 w-full text-xs font-medium"
+                            >
+                              <WalletIcon className="mr-2 h-3.5 w-3.5" />
+                              {isProcessingPartial
+                                ? billing.processing
+                                : billing.invoices.payWithPartialBalance ||
+                                  "Gunakan Saldo"}
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        {/* Option 3: Pay Remaining via Gateway (Duitku POP) */}
                         <Button
-                          onClick={handlePayWithBalance}
-                          disabled={isProcessing}
+                          onClick={handlePayRemainingViaGateway}
+                          disabled={isInitiatingGateway}
+                          variant={
+                            availableBalanceNum >= remainingDueNum
+                              ? "outline"
+                              : "default"
+                          }
                           className="w-full"
                         >
-                          <WalletIcon className="mr-2 h-4 w-4" />
-                          {isProcessing
+                          {isInitiatingGateway ? (
+                            <ArrowClockwiseIcon className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <CreditCardIcon className="mr-2 h-4 w-4" />
+                          )}
+                          {isInitiatingGateway
                             ? billing.processing
-                            : billing.payWithBalance}
+                            : `${billing.invoices.payRemainingViaGateway || "Bayar Sisa Tagihan"} (${formatInvoiceCurrency(remainingDueNum, invoiceCurrency)})`}
                         </Button>
+
+                        {/* Option 4: Top Up and Pay (Gap) */}
                         <Button
                           onClick={handleTopupAndPay}
                           disabled={isProcessing}
-                          variant="outline"
-                          className="w-full"
+                          variant="ghost"
+                          className="w-full text-xs text-muted-foreground"
                         >
-                          <PlusIcon className="mr-2 h-4 w-4" />
-                          {isProcessing
-                            ? billing.processing
-                            : billing.topUpPlusPay}
+                          <PlusIcon className="mr-2 h-3.5 w-3.5" />
+                          {billing.topUpPlusPay}
                         </Button>
                       </div>
                     )}

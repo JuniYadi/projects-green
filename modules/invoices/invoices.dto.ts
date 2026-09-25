@@ -1,5 +1,6 @@
 import type { InvoiceDetailRecord } from "@/modules/invoices/invoices.repository"
 import type {
+  InvoicePaymentAllocationDTO,
   PaymentConfirmationDTO,
   PaymentConfirmationStatus,
   PaymentInfoDTO,
@@ -78,6 +79,23 @@ const buildPaymentReference = (
     vaNumber,
     paymentUrl,
     gatewayReference,
+  }
+}
+
+export const toInvoicePaymentAllocationDTO = (
+  allocation: NonNullable<InvoiceDetailRecord["allocations"]>[number]
+): InvoicePaymentAllocationDTO => {
+  return {
+    id: allocation.id,
+    invoiceId: allocation.invoiceId,
+    billingAccountId: allocation.billingAccountId,
+    amount: toNumber(allocation.amount),
+    currency: allocation.currency,
+    source: allocation.source,
+    status: allocation.status,
+    referenceId: allocation.referenceId ?? null,
+    createdAt: allocation.createdAt.toISOString(),
+    completedAt: allocation.completedAt?.toISOString() ?? null,
   }
 }
 
