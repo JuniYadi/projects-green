@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     absolute: "PFNApp — Deploy Aplikasi Tanpa Menyiapkan Server",
   },
   description:
-    "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server. Pilih template dan lihat harga App Hosting PFNApp.",
+    "Jalankan Hermes, 9router, n8n, atau aplikasi dari repo Git tanpa menyiapkan server. Lihat template App Hosting PFNApp.",
   keywords: [
     "hermes agent hosting",
     "ai agent hosting",

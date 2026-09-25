@@ -21,10 +21,12 @@ describe("TemplatesSection", () => {
 
     expect(container.querySelector("#templates")).toBeInTheDocument()
 
-    // 3 Ready templates
     expect(getByText("Hermes Agent")).toBeInTheDocument()
     expect(getByText("9router")).toBeInTheDocument()
     expect(getByText("n8n Automation")).toBeInTheDocument()
+    expect(getByText("OpenClaw")).toBeInTheDocument()
+    expect(getByText("OmniRoute")).toBeInTheDocument()
+    expect(getByText("WordPress")).toBeInTheDocument()
 
     expect(
       getByText("Pilih aplikasi yang ingin dijalankan")
@@ -40,10 +42,20 @@ describe("TemplatesSection", () => {
       "/id/login?next=%2Fid%2Fconsole%2Fapp%2Fmarketplace%3Ftemplate%3Dhermes"
     )
 
-    // Request template email link
-    const requestLink = container.querySelector(
-      'a[href^="mailto:support@pfnapp.com"]'
+    expect(container.querySelectorAll('a[href*="template%3D"]')).toHaveLength(3)
+    expect(container.querySelector('a[href*="template%3Dopenclaw"]')).toBeNull()
+    expect(
+      container.querySelector('a[href*="template%3Domniroute"]')
+    ).toBeNull()
+    expect(
+      container.querySelector('a[href*="template%3Dwordpress"]')
+    ).toBeNull()
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
+    expect(
+      container.querySelector('a[href*="support-tickets%2Fnew"]')
+    ).toHaveAttribute(
+      "href",
+      "/id/login?next=%2Fid%2Fconsole%2Fsupport-tickets%2Fnew"
     )
-    expect(requestLink).not.toBeNull()
   })
 })

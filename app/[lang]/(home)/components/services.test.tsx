@@ -20,7 +20,6 @@ describe("ServicesSection", () => {
     const { container, getByText } = render(<ServicesSection />)
 
     expect(container.querySelector("#services")).toBeInTheDocument()
-    expect(container.querySelector("#hosting")).toBeInTheDocument()
     expect(container.querySelector("#whatsapp")).toBeInTheDocument()
     expect(container.querySelector("#vpn")).toBeInTheDocument()
     expect(container.querySelector("#storage")).toBeInTheDocument()
@@ -28,6 +27,9 @@ describe("ServicesSection", () => {
     expect(getByText("WhatsApp Official API")).toBeInTheDocument()
     expect(getByText("WireGuard VPN")).toBeInTheDocument()
     expect(getByText("More from PFNApp")).toBeInTheDocument()
+    expect(getByText("AI Agent")).toBeInTheDocument()
+    expect(container.querySelector("#storage a")).toBeNull()
+    expect(container.querySelector("#ai a")).toBeNull()
   })
 
   it("renders Indonesian copy and titles when active", () => {
@@ -35,7 +37,6 @@ describe("ServicesSection", () => {
     const { getByText } = render(<ServicesSection />)
 
     expect(getByText("Layanan lain di PFNApp")).toBeInTheDocument()
-    expect(getByText("Hosting Aplikasi")).toBeInTheDocument()
     expect(getByText("Penyimpanan S3")).toBeInTheDocument()
   })
 })

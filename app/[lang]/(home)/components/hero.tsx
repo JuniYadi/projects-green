@@ -45,11 +45,11 @@ export function HeroSection() {
     )
 
   return (
-    <section className="relative overflow-hidden bg-[#060b18] pt-32 pb-20 text-white md:pt-36 md:pb-28">
+    <section className="relative overflow-hidden bg-slate-50 pt-32 pb-20 text-slate-950 md:pt-36 md:pb-28 dark:bg-[#060b18] dark:text-white">
       <div className="pointer-events-none absolute top-0 right-0 h-[36rem] w-[36rem] rounded-full bg-emerald-500/8 blur-[120px]" />
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div>
-          <p className="mb-6 text-xs font-semibold tracking-[0.18em] text-emerald-400 uppercase">
+          <p className="mb-6 text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase dark:text-emerald-400">
             {isId ? "App Hosting PFNApp" : "PFNApp App Hosting"}
           </p>
           <h1 className="max-w-2xl text-[clamp(2.65rem,5vw,4.75rem)] leading-[1.08] font-semibold tracking-tight">
@@ -57,7 +57,7 @@ export function HeroSection() {
               ? "Jalankan aplikasi Anda tanpa menyiapkan server."
               : "Run your apps without setting up a server."}
           </h1>
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-white/65 md:text-lg">
+          <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg dark:text-white/65">
             {isId
               ? "Pilih Hermes atau n8n, atau hubungkan repo Anda. PFNApp menyiapkan deployment, penyimpanan, dan URL aplikasi."
               : "Choose Hermes or n8n, or connect your repository. PFNApp sets up your deployment, storage, and app URL."}
@@ -74,7 +74,7 @@ export function HeroSection() {
             </Link>
             <Link
               href={`/${locale}/login?next=%2F${locale}%2Fconsole%2Fapp%2Fdeploy`}
-              className="inline-flex items-center justify-center rounded-xl px-5 py-3.5 font-medium text-white/75 transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400"
+              className="inline-flex items-center justify-center rounded-xl px-5 py-3.5 font-medium text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 dark:text-white/75 dark:hover:text-white"
             >
               {isId ? "Deploy dari Git →" : "Deploy from Git →"}
             </Link>
@@ -83,7 +83,7 @@ export function HeroSection() {
 
         <div className="min-w-0">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <p className="text-xs font-medium tracking-wide text-white/55 uppercase">
+            <p className="text-xs font-medium tracking-wide text-slate-600 uppercase dark:text-white/55">
               {isId ? "Pilih aplikasi" : "Choose an app"}
             </p>
             <div className="flex items-center gap-2">
@@ -91,7 +91,7 @@ export function HeroSection() {
                 type="button"
                 onClick={selectPrevious}
                 aria-label={isId ? "Aplikasi sebelumnya" : "Previous app"}
-                className="rounded-full border border-white/15 p-2 text-white/70 hover:text-white focus-visible:outline-2 focus-visible:outline-emerald-400"
+                className="rounded-full border border-slate-300 p-2 text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:text-white/70 dark:hover:text-white"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -99,13 +99,13 @@ export function HeroSection() {
                 type="button"
                 onClick={selectNext}
                 aria-label={isId ? "Aplikasi berikutnya" : "Next app"}
-                className="rounded-full border border-white/15 p-2 text-white/70 hover:text-white focus-visible:outline-2 focus-visible:outline-emerald-400"
+                className="rounded-full border border-slate-300 p-2 text-slate-700 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:border-white/15 dark:text-white/70 dark:hover:text-white"
               >
                 <ArrowRight className="size-4" />
               </button>
             </div>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#101923] shadow-2xl shadow-black/30">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#101923] dark:shadow-2xl dark:shadow-black/30">
             <div
               className="flex motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out"
               style={{ transform: `translateX(-${activeIndex * 100}%)` }}
@@ -117,34 +117,34 @@ export function HeroSection() {
                   aria-hidden={index !== activeIndex}
                   inert={index !== activeIndex}
                 >
-                  <div className="flex items-center gap-4 border-b border-white/10 pb-6">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5">
+                  <div className="flex items-center gap-4 border-b border-slate-200 pb-6 dark:border-white/10">
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={app.icon} alt="" width={30} height={30} />
                     </div>
                     <div>
-                      <p className="text-xs text-white/50">
+                      <p className="text-xs text-slate-500 dark:text-white/50">
                         {isId ? "Template aplikasi" : "App template"}
                       </p>
                       <p className="mt-1 text-lg font-semibold">{app.name}</p>
                     </div>
                   </div>
                   <div className="space-y-5 py-7 text-sm sm:text-base">
-                    <p className="flex items-center gap-3 text-white/70">
+                    <p className="flex items-center gap-3 text-slate-700 dark:text-white/70">
                       <CheckCircle
                         className="size-5 shrink-0 text-emerald-400"
                         aria-hidden="true"
                       />
                       {isId ? "Pilih template" : "Choose a template"}
                     </p>
-                    <p className="flex items-center gap-3 text-white/70">
+                    <p className="flex items-center gap-3 text-slate-700 dark:text-white/70">
                       <CheckCircle
                         className="size-5 shrink-0 text-emerald-400"
                         aria-hidden="true"
                       />
                       {app.storage[locale]}
                     </p>
-                    <p className="flex items-center gap-3 text-white/70">
+                    <p className="flex items-center gap-3 text-slate-700 dark:text-white/70">
                       <CheckCircle
                         className="size-5 shrink-0 text-emerald-400"
                         aria-hidden="true"
@@ -152,18 +152,18 @@ export function HeroSection() {
                       {isId ? "URL aplikasi disiapkan" : "Your app gets a URL"}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#0b121a] px-4 py-3 text-sm">
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-white/10 dark:bg-[#0b121a]">
                     <span className="size-2 shrink-0 rounded-full bg-emerald-400" />
-                    <span className="truncate font-mono text-white/75">
+                    <span className="truncate font-mono text-slate-700 dark:text-white/75">
                       {app.url}
                     </span>
-                    <span className="ml-auto shrink-0 text-emerald-400">
+                    <span className="ml-auto shrink-0 text-emerald-700 dark:text-emerald-400">
                       {isId ? "Contoh" : "Preview"}
                     </span>
                   </div>
                   <Link
                     href={`/${locale}/login?next=${encodeURIComponent(`/${locale}/console/app/marketplace?template=${app.id}`)}`}
-                    className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-white hover:text-emerald-300 focus-visible:outline-2 focus-visible:outline-emerald-400"
+                    className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 hover:text-emerald-700 focus-visible:outline-2 focus-visible:outline-emerald-400 dark:text-white dark:hover:text-emerald-300"
                   >
                     Deploy {app.name}
                     <ArrowRight className="size-4" aria-hidden="true" />
@@ -184,7 +184,7 @@ export function HeroSection() {
                 aria-label={app.name}
                 aria-pressed={index === activeIndex}
                 onClick={() => setActiveIndex(index)}
-                className={`h-2 rounded-full transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${index === activeIndex ? "w-8 bg-emerald-400" : "w-2 bg-white/30 hover:bg-white/60"}`}
+                className={`h-2 rounded-full transition-all focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400 ${index === activeIndex ? "w-8 bg-emerald-600" : "w-2 bg-slate-300 hover:bg-slate-500 dark:bg-white/30 dark:hover:bg-white/60"}`}
               />
             ))}
           </div>

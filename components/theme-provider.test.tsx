@@ -54,6 +54,7 @@ describe("ThemeProvider", () => {
       disableTransitionOnChange: true,
       enableColorScheme: false,
     })
+    expect(props.scriptProps?.type).not.toBe("application/json")
   })
 
   it("toggles between light and dark when d is pressed", () => {

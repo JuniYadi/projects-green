@@ -13,14 +13,14 @@ export function CTASection() {
   const isId = locale === "id"
 
   return (
-    <section className="border-t border-white/10 bg-[#0c1420] py-20 text-white">
+    <section className="border-t border-slate-200 bg-slate-100 py-20 text-slate-950 dark:border-white/10 dark:bg-[#0c1420] dark:text-white">
       <div className="mx-auto max-w-7xl px-6">
         <h2 className="max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">
           {isId
             ? "Sudah tahu aplikasi yang ingin dijalankan?"
             : "Know what you want to run?"}
         </h2>
-        <p className="mt-4 max-w-xl text-white/60">
+        <p className="mt-4 max-w-xl text-slate-600 dark:text-white/60">
           {isId
             ? "Pilih template yang tersedia atau mulai dari repo Git Anda."
             : "Choose an available template or start with your Git repository."}
@@ -35,7 +35,7 @@ export function CTASection() {
           </Link>
           <Link
             href={`/${locale}/login?next=%2F${locale}%2Fconsole%2Fapp%2Fdeploy`}
-            className="font-medium text-white/75 hover:text-white"
+            className="font-medium text-slate-700 hover:text-slate-950 dark:text-white/75 dark:hover:text-white"
           >
             {isId ? "Deploy dari Git →" : "Deploy from Git →"}
           </Link>
@@ -58,7 +58,6 @@ export function Footer() {
         label: t.linkCommunication,
         href: `/${locale}/products/whatsapp-official`,
       },
-      { label: t.linkStorageS3, href: `/${locale}#storage` },
       { label: "VPN", href: `/${locale}#vpn` },
     ],
     [t.categoryDevelopers]: [
@@ -95,7 +94,9 @@ export function Footer() {
               <span className="font-semibold text-foreground">PFNApp</span>
             </Link>
             <p className="mb-5 max-w-[220px] text-sm leading-relaxed text-muted-foreground">
-              {t.brandDescription}
+              {locale === "id"
+                ? "Jalankan aplikasi dari template atau repo Git."
+                : "Run apps from templates or Git repositories."}
             </p>
           </div>
 
