@@ -9,7 +9,7 @@ mock.module("next/navigation", () => ({
 
 import { HeroSection } from "./hero"
 
-const promoOffer = { kind: "promo", code: "WELCOME-PFNAI" } as const
+const offer = { monthlyPriceIdr: null } as const
 
 describe("HeroSection", () => {
   beforeEach(() => {
@@ -18,13 +18,11 @@ describe("HeroSection", () => {
     mockUseParams.mockReturnValue({ lang: "en" })
   })
 
-  it("leads with the first-customer Hermes offer in English", () => {
-    const { getByRole, queryByText } = render(
-      <HeroSection offer={promoOffer} />
-    )
+  it("leads with Hermes without promising an unavailable promotion", () => {
+    const { getByRole, queryByText } = render(<HeroSection offer={offer} />)
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
-      "An AI assistant for the price of a cup of coffee? Really?"
+      "Run your AI assistant without managing a server."
     )
     expect(getByRole("link", { name: "Explore marketplace" })).toHaveAttribute(
       "href",
@@ -35,21 +33,21 @@ describe("HeroSection", () => {
     ).toHaveAttribute("href", "/en#templates")
     expect(
       getByRole("heading", { level: 1 }).nextElementSibling
-    ).toHaveTextContent("first 15 customers")
+    ).toHaveTextContent("See available plans in the console.")
     expect(
-      getByRole("heading", { level: 1 }).nextElementSibling
-    ).toHaveTextContent("including renewals")
+      queryByText(/first 15 customers|including renewals|Rp9,900/)
+    ).not.toBeInTheDocument()
     expect(queryByText("Cluster SG-01: Operational")).not.toBeInTheDocument()
   })
 
   it("shows localized deployment copy and destinations in Indonesian", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByRole, getByText, queryByRole } = render(
-      <HeroSection offer={promoOffer} />
+      <HeroSection offer={offer} />
     )
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
-      "AI Assistance seharga secangkir kopi? Emang bisa?"
+      "Jalankan AI assistant Anda tanpa mengurus server."
     )
     expect(
       getByText("Bantu pecah rencana launching jadi tugas kecil.")
@@ -70,17 +68,18 @@ describe("HeroSection", () => {
       "href",
       "/id#templates"
     )
-    const offer = getByText(/Mulai Rp9.900\/bulan untuk 15 pelanggan pertama/)
-    expect(offer).toHaveTextContent("harga tetap saat perpanjangan")
-    expect(offer).toHaveTextContent("ganti template tanpa langganan baru")
-    expect(offer).toHaveTextContent("OpenClaw sedang disiapkan")
-    expect(offer.textContent?.match(/Rp9\.900/g)).toHaveLength(1)
+    const description = getByText(/Lihat paket yang tersedia di konsol/)
+    expect(description).toHaveTextContent("ganti template tanpa langganan baru")
+    expect(description).toHaveTextContent("OpenClaw sedang disiapkan")
+    expect(description).not.toHaveTextContent(
+      /Rp9\.900|15 pelanggan|perpanjangan/
+    )
   })
 
   it("slides between available app previews without template deploy links", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByRole, getByText, getAllByText, queryByRole } = render(
-      <HeroSection offer={promoOffer} />
+      <HeroSection offer={offer} />
     )
 
     fireEvent.click(getByRole("button", { name: "Aplikasi berikutnya" }))
@@ -105,10 +104,10 @@ describe("HeroSection", () => {
     expect(getByText("Kirim konfirmasi")).toBeInTheDocument()
   })
 
-  it("shows normal price when the voucher cannot be claimed", () => {
+  it("shows live Starter pricing when available", () => {
     mockUseParams.mockReturnValue({ lang: "id" })
     const { getByRole, getByText, queryByText } = render(
-      <HeroSection offer={{ kind: "standard", monthlyPriceIdr: "29000" }} />
+      <HeroSection offer={{ monthlyPriceIdr: "29000" }} />
     )
 
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
@@ -127,13 +126,15 @@ describe("HeroSection", () => {
 
   it("does not invent a normal price when pricing is unavailable", () => {
     const { getByRole, queryByText } = render(
-      <HeroSection offer={{ kind: "standard", monthlyPriceIdr: null }} />
+      <HeroSection offer={{ monthlyPriceIdr: null }} />
     )
     expect(getByRole("heading", { level: 1 })).toHaveTextContent(
       "Run your AI assistant without managing a server."
     )
     expect(queryByText(/Starter plans from/)).not.toBeInTheDocument()
-    expect(queryByText(/Regular pricing applies/)).toBeInTheDocument()
+    expect(
+      queryByText(/See available plans in the console/)
+    ).toBeInTheDocument()
     expect(
       getByRole("link", { name: "Explore marketplace" })
     ).toBeInTheDocument()

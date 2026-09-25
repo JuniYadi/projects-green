@@ -229,15 +229,13 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
   const params = useParams<{ lang?: string }>()
   const locale = resolveLocaleOrDefault(params?.lang)
   const isId = locale === "id"
-  const promo = offer.kind === "promo"
-  const standardPrice =
-    offer.kind === "standard" && offer.monthlyPriceIdr
-      ? new Intl.NumberFormat("id-ID", {
-          style: "currency",
-          currency: "IDR",
-          maximumFractionDigits: 0,
-        }).format(Number(offer.monthlyPriceIdr))
-      : null
+  const standardPrice = offer.monthlyPriceIdr
+    ? new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        maximumFractionDigits: 0,
+      }).format(Number(offer.monthlyPriceIdr))
+    : null
   const { activeIndex, setActiveIndex, setPaused } = usePreviewCarousel(
     featuredApps.length
   )
@@ -255,31 +253,17 @@ export function HeroSection({ offer }: { offer: HomeOffer }) {
       <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20">
         <div>
           <p className="mb-6 text-xs font-semibold tracking-[0.18em] text-emerald-700 uppercase dark:text-emerald-400">
-            {promo
-              ? isId
-                ? "PROMO PELUNCURAN"
-                : "LAUNCH OFFER"
-              : isId
-                ? "HERMES AGENT DI PFNAPP"
-                : "HERMES AGENT ON PFNAPP"}
+            {isId ? "HERMES AGENT DI PFNAPP" : "HERMES AGENT ON PFNAPP"}
           </p>
           <h1 className="max-w-2xl text-[clamp(2.65rem,5vw,4.75rem)] leading-[1.08] font-semibold tracking-tight">
-            {promo
-              ? isId
-                ? "AI Assistance seharga secangkir kopi? Emang bisa?"
-                : "An AI assistant for the price of a cup of coffee? Really?"
-              : isId
-                ? "Jalankan AI assistant Anda tanpa mengurus server."
-                : "Run your AI assistant without managing a server."}
+            {isId
+              ? "Jalankan AI assistant Anda tanpa mengurus server."
+              : "Run your AI assistant without managing a server."}
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg dark:text-white/65">
-            {promo
-              ? isId
-                ? "Mulai Rp9.900/bulan untuk 15 pelanggan pertama; harga tetap saat perpanjangan. Jalankan Hermes sekarang, lalu ganti template tanpa langganan baru. OpenClaw sedang disiapkan."
-                : "Rp9,900/month for the first 15 customers, including renewals. Start with Hermes, then switch templates without a new subscription. OpenClaw is in preparation."
-              : isId
-                ? `${standardPrice ? `Paket Starter mulai ${standardPrice}/bulan. ` : "Harga reguler berlaku; lihat paket di konsol. "}Jalankan Hermes sekarang, lalu ganti template tanpa langganan baru. OpenClaw sedang disiapkan.`
-                : `${standardPrice ? `Starter plans from ${standardPrice}/month. ` : "Regular pricing applies; see plans in the console. "}Start with Hermes, then switch templates without a new subscription. OpenClaw is in preparation.`}
+            {isId
+              ? `${standardPrice ? `Paket Starter mulai ${standardPrice}/bulan. ` : "Lihat paket yang tersedia di konsol. "}Jalankan Hermes sekarang, lalu ganti template tanpa langganan baru. OpenClaw sedang disiapkan.`
+              : `${standardPrice ? `Starter plans from ${standardPrice}/month. ` : "See available plans in the console. "}Start with Hermes, then switch templates without a new subscription. OpenClaw is in preparation.`}
           </p>
           <div className="mt-9 flex flex-col gap-4 sm:flex-row sm:items-center">
             <Link

@@ -1,7 +1,6 @@
 import { describe, expect, it, mock } from "bun:test"
 import { fireEvent, render } from "@testing-library/react"
 const mockGetHomeOffer = mock(async () => ({
-  kind: "standard" as const,
   monthlyPriceIdr: "29000",
 }))
 mock.module("./home-offer", () => ({ getHomeOffer: mockGetHomeOffer }))
