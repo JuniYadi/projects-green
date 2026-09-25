@@ -6812,6 +6812,7 @@ export type AppMessages = {
     gatewayNameLabel: string
     gatewayNamePlaceholder: string
     providerTypeLabel: string
+    selectProviderPlaceholder: string
     supportedCurrenciesLabel: string
     currenciesHint: string
     cancelButton: string

@@ -66,20 +66,17 @@ export const createAdminGatewayRoutes = () =>
       const err = await requireGatewayAuth(set)
       if (err) return err
 
-      const { name, config, isDefault, supportedCurrencies } = body as {
+      const { name, type, config, isDefault, supportedCurrencies } = body as {
         name?: string
-        config?: {
-          merchantCode: string
-          apiKey: string
-          sandboxUrl: string
-          productionUrl: string
-        }
+        type?: string
+        config?: Record<string, string>
         isDefault?: boolean
         supportedCurrencies?: string[]
       }
 
       return gatewayService.update(params.id, {
         name,
+        type,
         config,
         isDefault,
         supportedCurrencies,

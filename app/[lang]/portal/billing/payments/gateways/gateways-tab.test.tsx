@@ -1,7 +1,9 @@
-import { describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it } from "bun:test"
 import { fireEvent, render, waitFor } from "@testing-library/react"
 
 import { GatewaysTab } from "./gateways-tab"
+
+const originalFetch = globalThis.fetch
 
 const MOCK_PROVIDERS_RESPONSE = [
   {
@@ -22,6 +24,20 @@ const MOCK_PROVIDERS_RESPONSE = [
         type: "password",
         placeholder: "Your Duitku API key",
         required: true,
+      },
+      {
+        key: "checkoutMode",
+        label: "Checkout Mode",
+        type: "select",
+        required: true,
+        defaultValue: "POP",
+        options: [
+          { label: "Duitku POP (In-Page Modal Popup)", value: "POP" },
+          {
+            label: "Window Redirection (Full-Page Redirect)",
+            value: "REDIRECT",
+          },
+        ],
       },
       {
         key: "sandboxUrl",
@@ -138,6 +154,10 @@ function mockFetch(gatewaysResponse: object = MOCK_GATEWAYS_RESPONSE_ONE): {
 }
 
 describe("GatewaysTab", () => {
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
   it("renders gateways in a table", async () => {
     mockFetch()
 
@@ -169,7 +189,7 @@ describe("GatewaysTab", () => {
 
     const view = render(<GatewaysTab />)
     fireEvent.click(await view.findByRole("button", { name: "Configure" }))
-    const nameInput = view.getByDisplayValue("Duitku")
+    const nameInput = view.getByLabelText(/gateway name/i)
     fireEvent.change(nameInput, {
       target: { value: "Duitku Updated" },
     })
@@ -186,6 +206,36 @@ describe("GatewaysTab", () => {
     ).toBe(true)
   })
 
+  it("resolves legacy GATEWAY type to Duitku provider and renders config fields in configure form", async () => {
+    mockFetch([
+      {
+        id: "gw-duitku",
+        name: "Duitku",
+        type: "GATEWAY", // legacy type from database
+        isActive: true,
+        isDefault: true,
+        supportedCurrencies: ["IDR"],
+        config: {
+          merchantCode: "DS12345",
+          sandboxUrl: "https://api-sandbox.duitku.com",
+        },
+      },
+    ])
+
+    const view = render(<GatewaysTab />)
+    fireEvent.click(await view.findByRole("button", { name: "Configure" }))
+
+    // All config fields should be rendered
+    expect(view.getByText("Merchant Code")).toBeInTheDocument()
+    expect(view.getByText("API Key")).toBeInTheDocument()
+    expect(view.getByText("Checkout Mode")).toBeInTheDocument()
+    expect(view.getByText("Sandbox URL")).toBeInTheDocument()
+    expect(view.getByText("Production URL")).toBeInTheDocument()
+
+    // Default value should be present
+    expect(view.getByDisplayValue("DS12345")).toBeInTheDocument()
+  })
+
   it("shows provider options from API in the create form", async () => {
     mockFetch(MOCK_GATEWAYS_RESPONSE_EMPTY)
 
@@ -200,6 +250,7 @@ describe("GatewaysTab", () => {
   })
 
   it("create gateway dispatches exactly one invalidate event", async () => {
+    mockFetch()
     const dispatched: Event[] = []
     const onInvalidate = (event: Event) => dispatched.push(event)
     window.addEventListener("billing-setup-status:invalidate", onInvalidate)
@@ -216,7 +267,7 @@ describe("GatewaysTab", () => {
     fireEvent.change(view.getByLabelText("Gateway name"), {
       target: { value: "Test Gateway" },
     })
-    fireEvent.click(view.getByRole("combobox"))
+    fireEvent.click(view.getAllByRole("combobox")[0])
     fireEvent.click(await view.findByRole("option", { name: "Duitku" }))
 
     // Submit form — eden.post() is called internally; mockFetch intercepts the
@@ -279,7 +330,7 @@ describe("GatewaysTab", () => {
     fireEvent.click(await view.findByRole("button", { name: "Configure" }))
 
     // Change name
-    const nameInput = view.getByDisplayValue("Duitku")
+    const nameInput = view.getByLabelText(/gateway name/i)
     fireEvent.change(nameInput, { target: { value: "Duitku Updated" } })
 
     // Save

@@ -7421,6 +7421,7 @@ export const enMessages: AppMessages = {
     gatewayNameLabel: "Gateway name",
     gatewayNamePlaceholder: "My Duitku Gateway",
     providerTypeLabel: "Provider type",
+    selectProviderPlaceholder: "Select a provider...",
     supportedCurrenciesLabel: "Supported currencies",
     currenciesHint:
       "Defaults to the provider's supported currencies. Uncheck to restrict.",

@@ -36,8 +36,32 @@ export class GatewayService {
   }
 
   async findByType(type: string): Promise<PaymentGatewayResponse | null> {
+    const isDuitku = type.toLowerCase() === "duitku"
+    const isGateway = type.toUpperCase() === "GATEWAY"
+
+    const whereClause: Prisma.PaymentGatewayWhereInput = isDuitku
+      ? {
+          isActive: true,
+          OR: [
+            { type: "duitku" },
+            {
+              type: "GATEWAY",
+              name: { contains: "Duitku", mode: "insensitive" },
+            },
+          ],
+        }
+      : isGateway
+        ? {
+            isActive: true,
+            type: "GATEWAY",
+          }
+        : {
+            isActive: true,
+            type,
+          }
+
     const gateway = await prisma.paymentGateway.findFirst({
-      where: { type, isActive: true },
+      where: whereClause,
       orderBy: { isDefault: "desc" },
     })
     if (!gateway) return null
@@ -54,10 +78,29 @@ export class GatewayService {
     currency: string,
     options: { type?: string } = {}
   ): Promise<PaymentGatewayResponse[]> {
+    const isDuitku = options.type?.toLowerCase() === "duitku"
+    const isGateway = options.type?.toUpperCase() === "GATEWAY"
+
+    const whereType: Prisma.PaymentGatewayWhereInput | undefined = options.type
+      ? isDuitku
+        ? {
+            OR: [
+              { type: "duitku" },
+              {
+                type: "GATEWAY",
+                name: { contains: "Duitku", mode: "insensitive" },
+              },
+            ],
+          }
+        : isGateway
+          ? { type: "GATEWAY" }
+          : { type: options.type }
+      : undefined
+
     const gateways = await prisma.paymentGateway.findMany({
       where: {
         isActive: true,
-        ...(options.type ? { type: options.type } : {}),
+        ...whereType,
       },
       orderBy: [
         { isDefault: "desc" },
@@ -119,7 +162,8 @@ export class GatewayService {
     id: string,
     input: {
       name?: string
-      config?: DuitkuConfig
+      type?: string
+      config?: Record<string, string>
       isDefault?: boolean
       supportedCurrencies?: string[]
     }
@@ -136,8 +180,21 @@ export class GatewayService {
 
     const data: Prisma.PaymentGatewayUpdateInput = {}
     if (input.name) data.name = input.name
-    if (input.config)
-      data.config = this.encryption.encryptField(JSON.stringify(input.config))
+    if (input.type) data.type = input.type
+    if (input.config) {
+      let currentConfig: Record<string, string> = {}
+      try {
+        currentConfig =
+          ((await this.getDecryptedConfig(id)) as unknown as Record<
+            string,
+            string
+          >) || {}
+      } catch {
+        currentConfig = {}
+      }
+      const mergedConfig = { ...currentConfig, ...input.config }
+      data.config = this.encryption.encryptField(JSON.stringify(mergedConfig))
+    }
     if (input.isDefault !== undefined) data.isDefault = input.isDefault
     if (input.supportedCurrencies !== undefined)
       data.supportedCurrencies = input.supportedCurrencies
@@ -166,6 +223,9 @@ export class GatewayService {
     const gateway = await prisma.paymentGateway.findUnique({ where: { id } })
     if (!gateway) return null
 
+    if (typeof gateway.config === "object" && gateway.config !== null) {
+      return gateway.config as unknown as DuitkuConfig
+    }
     const configStr = this.encryption.decryptField(gateway.config as string)
     return JSON.parse(configStr) as DuitkuConfig
   }
@@ -179,22 +239,38 @@ export class GatewayService {
     isActive: boolean
     isDefault: boolean
   }): PaymentGatewayResponse {
-    let config: DuitkuConfig | null = null
+    let rawConfig: Record<string, string> | null = null
     try {
-      const decrypted = this.encryption.decryptFieldOptional(
-        gateway.config as string
-      )
-      if (decrypted) {
-        const parsed = JSON.parse(decrypted)
-        config = {
-          merchantCode: parsed.merchantCode || "",
-          apiKey: parsed.apiKey || "",
-          sandboxUrl: parsed.sandboxUrl || "",
-          productionUrl: parsed.productionUrl || "",
+      if (typeof gateway.config === "object" && gateway.config !== null) {
+        rawConfig = gateway.config as Record<string, string>
+      } else if (typeof gateway.config === "string") {
+        const decrypted = this.encryption.decryptFieldOptional(gateway.config)
+        if (decrypted) {
+          rawConfig = JSON.parse(decrypted)
         }
       }
     } catch {
-      config = null
+      rawConfig = null
+    }
+
+    const config: Record<string, string> = {
+      ...(rawConfig || {
+        sandboxUrl: "",
+        productionUrl: "",
+      }),
+    }
+
+    // Security: Always redact sensitive secrets in API responses!
+    // Masked fields show as '***ENCRYPTED***' in the UI so passwords/secrets are never leaked over the wire.
+    if (
+      "apiKey" in config ||
+      gateway.type === "GATEWAY" ||
+      gateway.type === "duitku"
+    ) {
+      config.apiKey = "***ENCRYPTED***"
+    }
+    if ("clientSecret" in config || gateway.type === "paypal") {
+      config.clientSecret = "***ENCRYPTED***"
     }
 
     return {
@@ -204,12 +280,7 @@ export class GatewayService {
       supportedCurrencies: gateway.supportedCurrencies ?? [],
       isActive: gateway.isActive,
       isDefault: gateway.isDefault,
-      config: config || {
-        merchantCode: "***ENCRYPTED***",
-        apiKey: "***ENCRYPTED***",
-        sandboxUrl: "",
-        productionUrl: "",
-      },
+      config,
     }
   }
 }
