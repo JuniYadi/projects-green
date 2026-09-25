@@ -396,4 +396,84 @@ describe("TopupFormEnhanced", () => {
       expect(mockCheckoutProcess).toHaveBeenCalled()
     })
   })
+
+  it("presents unified instant payment option in POP mode and navigates cleanly on close", async () => {
+    let capturedCloseEvent: (() => void) | undefined
+    const mockCheckoutProcess = mock(
+      (_ref: string, options: { closeEvent?: () => void }) => {
+        capturedCloseEvent = options.closeEvent
+      }
+    )
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis.window as any).checkout = {
+      process: mockCheckoutProcess,
+    }
+
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "IDR",
+            checkoutMode: "POP",
+            config: {
+              symbol: "Rp",
+              ratePerBase: 18000,
+              baseCode: "USD",
+              presets: [180000, 450000],
+              minTopup: 50000,
+              maxTopup: 200000000,
+            },
+            methods: { MANUAL_BANK: true, VA: true, QRIS: true },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({ ok: true, data: [] })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({
+            ok: true,
+            invoice: { id: "inv_pop_unified" },
+            mode: "POP",
+            reference: "DUI-POP-REF-UNIFIED",
+            paymentUrl: "https://duitku.test/pay/inv_pop_unified",
+            clientScriptUrl: "https://app-sandbox.duitku.com/lib/js/duitku.js",
+          })
+        }
+        return jsonResponse({ ok: false }, 500)
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<TopupFormEnhanced />)
+
+    await waitFor(() =>
+      expect(
+        view.getByText("Instant Payment (QRIS & Virtual Account)")
+      ).toBeInTheDocument()
+    )
+
+    // In POP mode, standalone QRIS should not be split into a separate radio button
+    expect(view.queryByDisplayValue("QRIS")).not.toBeInTheDocument()
+
+    fireEvent.click(view.getByDisplayValue("VA"))
+    fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
+
+    await waitFor(() => {
+      expect(mockCheckoutProcess).toHaveBeenCalledWith(
+        "DUI-POP-REF-UNIFIED",
+        expect.anything()
+      )
+    })
+
+    // Simulate popup close by user
+    capturedCloseEvent?.()
+
+    expect(pushMock).toHaveBeenCalledWith(
+      expect.not.stringContaining("?payment=pending")
+    )
+    expect(pushMock).toHaveBeenCalledWith(
+      "/en/console/billing/invoices/inv_pop_unified"
+    )
+  })
 })

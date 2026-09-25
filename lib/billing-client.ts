@@ -89,6 +89,10 @@ export type InvoiceListItem = {
   type?: string | null
   paymentMethod?: string | null
   paymentUrl?: string | null
+  paymentReference?: string | null
+  checkoutMode?: "POP" | "REDIRECT" | string | null
+  clientScriptUrl?: string | null
+  vaNumber?: string | null
   issuedAt: string | null
   dueAt: string | null
   createdAt?: string | null

@@ -2246,6 +2246,8 @@ export const enMessages: AppMessages = {
         gatewayDescription:
           "Complete your payment through the payment gateway. Your balance will be updated automatically once the payment is confirmed.",
         continueToGateway: "Continue to Payment Gateway",
+        continuePayment: "Continue Payment",
+        paymentReference: "Payment Reference",
         gatewayUnavailable:
           "The payment gateway link is not available for this invoice. Please create a new top-up or contact support.",
         noPaymentMethodSelected: "No payment method selected yet.",
@@ -2377,6 +2379,9 @@ export const enMessages: AppMessages = {
         manualBankTransfer: "Manual Bank Transfer",
         virtualAccount: "Virtual Account",
         qris: "QRIS",
+        instantPayment: "Instant Payment (QRIS & Virtual Account)",
+        instantPaymentDesc:
+          "Pay automatically via QRIS, Virtual Account, or E-Wallets in pop-up.",
         paypal: "PayPal",
         processing: "Processing...",
         submit: "Create Invoice",

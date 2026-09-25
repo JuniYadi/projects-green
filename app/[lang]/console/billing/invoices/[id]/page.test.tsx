@@ -196,6 +196,45 @@ describe("Billing InvoiceDetailPage", () => {
     )
   })
 
+  it("renders continue payment button and payment reference for Duitku POP", async () => {
+    globalThis.fetch = mock(async (input: RequestInfo | URL) => {
+      const url = String(input)
+
+      if (url.includes("/api/billing/invoices/")) {
+        return jsonResponse(
+          invoicePayload({
+            paymentMethod: "QRIS",
+            paymentReference: "duitku_ref_pop_123",
+            checkoutMode: "POP",
+            paymentUrl: "https://pay.example.test/inv-1",
+          })
+        )
+      }
+
+      if (url.includes("/api/billing/account")) {
+        return jsonResponse(accountPayload("IDR"))
+      }
+
+      if (url.includes("/api/payments/bank-accounts")) {
+        return jsonResponse({ ok: true, accounts: [] })
+      }
+
+      return jsonResponse({ ok: false, message: "Unhandled" }, 500)
+    }) as unknown as typeof fetch
+
+    const view = render(<InvoiceDetailPage />)
+
+    await waitFor(() =>
+      expect(
+        view.getByRole("button", { name: /continue payment/i })
+      ).toBeInTheDocument()
+    )
+
+    expect(view.getAllByText("duitku_ref_pop_123").length).toBeGreaterThan(0)
+    // Should display Payment Reference instead of Billing Period for topup invoice
+    expect(view.getAllByText("Payment Reference").length).toBe(2)
+  })
+
   it("renders USD totals, line amount, and visible Tax/Discount rows", async () => {
     globalThis.fetch = mock(async (input: RequestInfo | URL) => {
       const url = String(input)

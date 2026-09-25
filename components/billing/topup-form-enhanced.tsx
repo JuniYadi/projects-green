@@ -78,23 +78,14 @@ export function TopupFormEnhanced({
 }: TopupFormEnhancedProps) {
   const locale = resolveLocaleOrDefault(lang)
   const t = messages ?? getMessages(locale).console.billing.topUpForm
-  const paymentMessages: Record<
-    PaymentMethod,
-    { label: string; description: string }
-  > = {
-    MANUAL_BANK: {
-      label: t.manualBankTransfer,
-      description: t.manualTransferAvailable,
-    },
-    VA: { label: t.virtualAccount, description: t.paymentMethod },
-    QRIS: { label: t.qris, description: t.paymentMethod },
-    PAYPAL: { label: t.paypal, description: t.paymentMethod },
-  }
   const router = useRouter()
   const [formState, setFormState] = useState<FormState>("idle")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [isLoadingAccounts, setIsLoadingAccounts] = useState(true)
+  const [checkoutMode, setCheckoutMode] = useState<"POP" | "REDIRECT">(
+    "REDIRECT"
+  )
 
   const [amount, setAmount] = useState<number>(0)
   const [paymentMethod, setPaymentMethod] =
@@ -103,6 +94,30 @@ export function TopupFormEnhanced({
   const [availableMethods, setAvailableMethods] = useState<
     Record<PaymentMethod, boolean>
   >({ MANUAL_BANK: true, VA: false, QRIS: false, PAYPAL: false })
+
+  const isPopGateway =
+    checkoutMode === "POP" && availableMethods.VA && availableMethods.QRIS
+
+  const paymentMessages: Record<
+    PaymentMethod,
+    { label: string; description: string }
+  > = {
+    MANUAL_BANK: {
+      label: t.manualBankTransfer,
+      description: t.manualTransferAvailable,
+    },
+    VA: {
+      label: isPopGateway
+        ? t.instantPayment || "Pembayaran Instan (QRIS & Virtual Account)"
+        : t.virtualAccount,
+      description: isPopGateway
+        ? t.instantPaymentDesc ||
+          "Bayar otomatis melalui QRIS, Virtual Account, atau E-Wallet dalam pop-up."
+        : t.paymentMethod,
+    },
+    QRIS: { label: t.qris, description: t.paymentMethod },
+    PAYPAL: { label: t.paypal, description: t.paymentMethod },
+  }
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({
     symbol: currency === "USD" ? "$" : "Rp",
     ratePerBase: currency === "USD" ? 1 : 18000,
@@ -131,6 +146,13 @@ export function TopupFormEnhanced({
           $query: { currency },
         })
         if (data?.ok && !cancelled) {
+          const rawData = data as unknown as {
+            checkoutMode?: "POP" | "REDIRECT"
+          }
+          if (rawData.checkoutMode) {
+            setCheckoutMode(rawData.checkoutMode)
+          }
+
           if (data.methods) {
             const nextMethods: Record<PaymentMethod, boolean> = {
               MANUAL_BANK: Boolean(data.methods.MANUAL_BANK),
@@ -318,10 +340,10 @@ export function TopupFormEnhanced({
             onClose: () => {
               if (result.invoice?.id) {
                 router.push(
-                  `${localizePathname({
+                  localizePathname({
                     pathname: `/console/billing/invoices/${result.invoice.id}`,
                     locale,
-                  })}?payment=pending`
+                  })
                 )
               }
             },
@@ -335,10 +357,10 @@ export function TopupFormEnhanced({
           setFormState("success")
           if (result?.invoice?.id) {
             router.push(
-              `${localizePathname({
+              localizePathname({
                 pathname: `/console/billing/invoices/${result.invoice.id}`,
                 locale,
-              })}?payment=pending`
+              })
             )
           }
         }
@@ -350,9 +372,15 @@ export function TopupFormEnhanced({
   }
 
   // Only show payment methods that are actually enabled/configured.
-  const PAYMENT_METHODS = ALL_PAYMENT_METHODS.filter(
-    (method) => availableMethods[method.value]
-  )
+  const PAYMENT_METHODS = ALL_PAYMENT_METHODS.filter((method) => {
+    if (!availableMethods[method.value]) return false
+    // When Duitku POP is active and both VA and QRIS are supported, hide the standalone QRIS option
+    // so users only see the unified automatic POP gateway (value: "VA")
+    if (isPopGateway && method.value === "QRIS") {
+      return false
+    }
+    return true
+  })
   const hasPaymentMethods = PAYMENT_METHODS.length > 0
 
   return (

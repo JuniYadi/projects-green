@@ -100,8 +100,12 @@ export const createTopupRoutes = () =>
             }
           }
 
-          if (paymentMethod === "VA" || paymentMethod === "QRIS") {
-            // VA/QRIS run through a payment gateway. Only offer a gateway that
+          if (
+            paymentMethod === "VA" ||
+            paymentMethod === "QRIS" ||
+            paymentMethod === "GATEWAY"
+          ) {
+            // VA/QRIS/GATEWAY run through a payment gateway. Only offer a gateway that
             // declares support for the account currency (covers BOTH and
             // ONLY-ONE). This replaces the old hardcoded "Duitku = IDR only"
             // branch with the gateway's own supportedCurrencies list.
@@ -140,7 +144,11 @@ export const createTopupRoutes = () =>
             gatewayId,
           })
 
-          if (paymentMethod === "VA" || paymentMethod === "QRIS") {
+          if (
+            paymentMethod === "VA" ||
+            paymentMethod === "QRIS" ||
+            paymentMethod === "GATEWAY"
+          ) {
             let duitkuResult
             try {
               const gatewayConfig = gatewayId
@@ -151,7 +159,7 @@ export const createTopupRoutes = () =>
               const duitkuMethod =
                 paymentMethod === "QRIS"
                   ? "QR"
-                  : paymentMethod === "VA"
+                  : paymentMethod === "VA" || paymentMethod === "GATEWAY"
                     ? isPopMode
                       ? ""
                       : "VC"
@@ -314,6 +322,7 @@ export const createTopupRoutes = () =>
             t.Literal("QRIS"),
             t.Literal("MANUAL_BANK"),
             t.Literal("PAYPAL"),
+            t.Literal("GATEWAY"),
           ]),
         }),
       }
@@ -401,6 +410,11 @@ export const createTopupRoutes = () =>
       const gatewayEnabled = Boolean(gateway)
       const paypalEnabled = Boolean(paypalGateway)
 
+      const gatewayConfig = gateway
+        ? await gatewayService.getDecryptedConfig(gateway.id)
+        : null
+      const isPopMode = gatewayConfig?.checkoutMode !== "REDIRECT"
+
       // Derive quick-pick presets from base-currency anchors converted into the
       // account currency, so amounts stay meaningful regardless of currency.
       const rate =
@@ -417,6 +431,7 @@ export const createTopupRoutes = () =>
       return {
         ok: true,
         currency,
+        checkoutMode: isPopMode ? ("POP" as const) : ("REDIRECT" as const),
         config: {
           symbol: currencyRow?.symbol ?? (currency === "IDR" ? "Rp" : "$"),
           ratePerBase: rate,
@@ -429,6 +444,7 @@ export const createTopupRoutes = () =>
           MANUAL_BANK: manualEnabled,
           VA: gatewayEnabled,
           QRIS: gatewayEnabled,
+          GATEWAY: gatewayEnabled,
           PAYPAL: paypalEnabled,
         },
       }
