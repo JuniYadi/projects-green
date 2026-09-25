@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { eden } from "@/lib/eden"
+import { launchDuitkuPop } from "@/lib/payment/duitku-pop"
 import { getMessages } from "@/lib/i18n/messages"
 import { localizePathname, resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { Button } from "@/components/ui/button"
@@ -251,6 +252,9 @@ export function TopupFormEnhanced({
           message?: string
           invoice?: { id: string }
           paymentUrl?: string
+          reference?: string
+          mode?: "POP" | "REDIRECT"
+          clientScriptUrl?: string
         } | null
       }
 
@@ -283,7 +287,46 @@ export function TopupFormEnhanced({
         paymentMethod === "QRIS" ||
         paymentMethod === "PAYPAL"
       ) {
-        if (result.paymentUrl) {
+        if (result.mode === "POP" && result.reference) {
+          setFormState("idle")
+          await launchDuitkuPop({
+            reference: result.reference,
+            clientScriptUrl: result.clientScriptUrl,
+            fallbackUrl: result.paymentUrl,
+            defaultLanguage: locale === "id" ? "id" : "en",
+            onSuccess: () => {
+              setFormState("success")
+              if (result.invoice?.id) {
+                router.push(
+                  `${localizePathname({
+                    pathname: `/console/billing/invoices/${result.invoice.id}`,
+                    locale,
+                  })}?payment=success`
+                )
+              }
+            },
+            onPending: () => {
+              if (result.invoice?.id) {
+                router.push(
+                  `${localizePathname({
+                    pathname: `/console/billing/invoices/${result.invoice.id}`,
+                    locale,
+                  })}?payment=pending`
+                )
+              }
+            },
+            onClose: () => {
+              if (result.invoice?.id) {
+                router.push(
+                  `${localizePathname({
+                    pathname: `/console/billing/invoices/${result.invoice.id}`,
+                    locale,
+                  })}?payment=pending`
+                )
+              }
+            },
+          })
+        } else if (result.paymentUrl) {
           setFormState("submitting")
           setTimeout(() => {
             window.location.href = result.paymentUrl ?? ""

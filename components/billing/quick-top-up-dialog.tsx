@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import QRCode from "qrcode"
 import Link from "next/link"
 import { eden } from "@/lib/eden"
+import { launchDuitkuPop } from "@/lib/payment/duitku-pop"
 import { getInvoice } from "@/lib/billing-client"
 import { getMessages } from "@/lib/i18n/messages"
 import { resolveLocaleOrDefault, localizePathname } from "@/lib/i18n/pathname"
@@ -132,6 +133,11 @@ export function QuickTopUpDialog({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null)
   const [vaNumber, setVaNumber] = useState<string | null>(null)
+  const [popReference, setPopReference] = useState<string | null>(null)
+  const [clientScriptUrl, setClientScriptUrl] = useState<string | null>(null)
+  const [checkoutMode, setCheckoutMode] = useState<"POP" | "REDIRECT" | null>(
+    null
+  )
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
 
   const [currencyConfig, setCurrencyConfig] = useState<CurrencyConfig>({
@@ -154,6 +160,9 @@ export function QuickTopUpDialog({
       setPaymentUrl(null)
       setQrCodeDataUrl(null)
       setVaNumber(null)
+      setPopReference(null)
+      setClientScriptUrl(null)
+      setCheckoutMode(null)
       setCustomAmount("")
       setIsLoadingMethods(true)
       if (suggestedAmount && suggestedAmount > 0) {
@@ -322,6 +331,24 @@ export function QuickTopUpDialog({
 
       if (result.vaNumber) {
         setVaNumber(result.vaNumber)
+      }
+
+      if (result.mode) {
+        setCheckoutMode(result.mode)
+      }
+      if (result.reference) {
+        setPopReference(result.reference)
+      }
+      if (result.clientScriptUrl) {
+        setClientScriptUrl(result.clientScriptUrl)
+      }
+
+      if (result.mode === "POP" && result.reference) {
+        void launchDuitkuPop({
+          reference: result.reference,
+          clientScriptUrl: result.clientScriptUrl,
+          fallbackUrl: result.paymentUrl,
+        })
       }
 
       setStep("payment")
@@ -620,6 +647,23 @@ export function QuickTopUpDialog({
                 <p className="text-xs text-muted-foreground">
                   {t.scanQrDescription}
                 </p>
+                {checkoutMode === "POP" && popReference && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-1 h-8 gap-1.5 text-xs"
+                    onClick={() => {
+                      void launchDuitkuPop({
+                        reference: popReference,
+                        clientScriptUrl: clientScriptUrl || undefined,
+                        fallbackUrl: paymentUrl || undefined,
+                      })
+                    }}
+                  >
+                    <span>Duitku POP Modal</span>
+                    <ArrowsOutSimple className="size-3.5" />
+                  </Button>
+                )}
                 {paymentUrl && (
                   <Button
                     variant="outline"
@@ -673,6 +717,23 @@ export function QuickTopUpDialog({
                   )}
                 </div>
 
+                {checkoutMode === "POP" && popReference && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      void launchDuitkuPop({
+                        reference: popReference,
+                        clientScriptUrl: clientScriptUrl || undefined,
+                        fallbackUrl: paymentUrl || undefined,
+                      })
+                    }}
+                  >
+                    <span>Duitku POP Modal</span>
+                    <ArrowsOutSimple className="ml-1.5 size-3.5" />
+                  </Button>
+                )}
                 {paymentUrl && (
                   <Button
                     variant="outline"

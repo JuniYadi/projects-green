@@ -19,18 +19,29 @@ export interface ConfigFieldDef {
   options?: { label: string; value: string }[]
 }
 
+export type CheckoutMode = "POP" | "REDIRECT"
+
 /**
  * Result returned by a provider after initiating a payment.
  */
 export interface PaymentResult {
+  /** Mode of checkout: "POP" for in-page modal, "REDIRECT" for full-page redirect */
+  mode?: CheckoutMode
   /** Where to redirect the user (for redirect-based gateways like PayPal). */
   redirectUrl?: string
   /** Payment URL for embedded/QRIS payment pages. */
   paymentUrl?: string
+  /** Client SDK script URL for POP modal (e.g. Duitku JS) */
+  clientScriptUrl?: string
   /** Virtual account number (for VA-based gateways like Duitku). */
   vaNumber?: string
   /** Provider reference / transaction ID. */
   reference: string
+  /** Status code from provider if returned */
+  statusCode?: string
+  /** Status message from provider if returned */
+  statusMessage?: string
+  metadata?: Record<string, unknown>
 }
 
 /**
@@ -49,6 +60,21 @@ export interface PaymentRequest {
   callbackUrl: string
   /** Return URL the user is sent to after payment. */
   returnUrl: string
+  /** Requested checkout mode override (POP or REDIRECT) */
+  checkoutMode?: CheckoutMode
+}
+
+/**
+ * Standardized webhook parsing result.
+ */
+export interface WebhookResult {
+  isValid: boolean
+  merchantOrderId: string
+  amount?: string
+  reference?: string
+  resultCode?: string
+  status: "PAID" | "PENDING" | "FAILED"
+  rawPayload?: Record<string, unknown>
 }
 
 /**
@@ -83,4 +109,12 @@ export interface PaymentProvider {
     payload: Record<string, unknown>,
     config: Record<string, string>
   ): Promise<boolean>
+
+  /**
+   * Process and normalize an incoming webhook payload into a standard WebhookResult.
+   */
+  handleWebhook?(
+    payload: Record<string, unknown>,
+    config: Record<string, string>
+  ): Promise<WebhookResult>
 }

@@ -340,4 +340,60 @@ describe("TopupFormEnhanced", () => {
       })
     }
   })
+
+  it("launches Duitku POP modal when gateway returns mode POP", async () => {
+    const mockCheckoutProcess = mock(() => {})
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(globalThis.window as any).checkout = {
+      process: mockCheckoutProcess,
+    }
+
+    globalThis.fetch = mock(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input)
+        if (url.includes("/api/payments/topup/methods")) {
+          return jsonResponse({
+            ok: true,
+            currency: "IDR",
+            config: {
+              symbol: "Rp",
+              ratePerBase: 18000,
+              baseCode: "USD",
+              presets: [180000, 450000, 900000, 1800000, 4500000],
+              minTopup: 50000,
+              maxTopup: 200000000,
+            },
+            methods: { MANUAL_BANK: true, VA: true, QRIS: true },
+          })
+        }
+        if (url.includes("/api/payments/topup/bank-accounts")) {
+          return jsonResponse({ ok: true, data: [] })
+        }
+        if (url.includes("/api/payments/topup") && init?.method === "POST") {
+          return jsonResponse({
+            ok: true,
+            invoice: { id: "inv_pop_1" },
+            mode: "POP",
+            reference: "DUI-POP-REF-1",
+            paymentUrl: "https://duitku.test/pay/inv_pop_1",
+            clientScriptUrl: "https://app-sandbox.duitku.com/lib/js/duitku.js",
+          })
+        }
+        return jsonResponse({ ok: false }, 500)
+      }
+    ) as unknown as typeof fetch
+
+    const view = render(<TopupFormEnhanced />)
+
+    await waitFor(() =>
+      expect(view.getByText("Virtual Account")).toBeInTheDocument()
+    )
+
+    fireEvent.click(view.getByDisplayValue("VA"))
+    fireEvent.click(view.getByRole("button", { name: /create invoice/i }))
+
+    await waitFor(() => {
+      expect(mockCheckoutProcess).toHaveBeenCalled()
+    })
+  })
 })
