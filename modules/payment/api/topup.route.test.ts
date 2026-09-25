@@ -357,6 +357,35 @@ describe("TopupRoute POST /topup", () => {
     })
   })
 
+  it("rolls back invoice if Duitku gateway config retrieval fails", async () => {
+    mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "IDR" })
+    mockFindByTypeForCurrency.mockResolvedValueOnce({ id: "gw_duitku" })
+    mockGetDecryptedConfig.mockRejectedValueOnce(
+      new Error("Database decryption error")
+    )
+    mockCreateTopupInvoice.mockResolvedValueOnce({
+      id: "inv_cfg_err",
+      invoiceNumber: "INV-CFG-ERR",
+      totalAmount: new Decimal(50000),
+      status: "UNPAID",
+      paymentMethod: "VA",
+    })
+    mockBillingInvoiceDelete.mockResolvedValueOnce({ id: "inv_cfg_err" })
+
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "VA" }),
+      })
+    )
+
+    expect(res.status).toBe(500)
+    expect(mockBillingInvoiceDelete).toHaveBeenCalledWith({
+      where: { id: "inv_cfg_err" },
+    })
+  })
+
   it("returns 400 when PAYPAL gateway is not available", async () => {
     mockBillingAccountFindUnique.mockResolvedValueOnce({ currency: "USD" })
     mockFindByTypeForCurrency.mockResolvedValue(null)

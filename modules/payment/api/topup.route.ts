@@ -140,24 +140,23 @@ export const createTopupRoutes = () =>
             gatewayId,
           })
 
-          if (paymentMethod === "VA" || paymentMethod === "QRIS") {
-            const gatewayConfig = gatewayId
-              ? await gatewayService.getDecryptedConfig(gatewayId)
-              : null
-            const isPopMode = gatewayConfig?.checkoutMode !== "REDIRECT"
+          try {
+            if (paymentMethod === "VA" || paymentMethod === "QRIS") {
+              const gatewayConfig = gatewayId
+                ? await gatewayService.getDecryptedConfig(gatewayId)
+                : null
+              const isPopMode = gatewayConfig?.checkoutMode !== "REDIRECT"
 
-            const duitkuMethod =
-              paymentMethod === "QRIS"
-                ? "QR"
-                : paymentMethod === "VA"
-                  ? isPopMode
-                    ? ""
-                    : "VC"
-                  : paymentMethod
+              const duitkuMethod =
+                paymentMethod === "QRIS"
+                  ? "QR"
+                  : paymentMethod === "VA"
+                    ? isPopMode
+                      ? ""
+                      : "VC"
+                    : paymentMethod
 
-            let duitkuResult
-            try {
-              duitkuResult = await duitkuService.createPayment({
+              const duitkuResult = await duitkuService.createPayment({
                 invoiceId: invoice.id,
                 amount,
                 email: `${auth.organizationId}@payment.local`,
@@ -166,69 +165,54 @@ export const createTopupRoutes = () =>
                   `Top Up Balance - ${invoice.invoiceNumber}`.trim(),
                 paymentMethod: duitkuMethod,
               })
-            } catch (duitkuError) {
-              // Roll back the topup invoice so failed attempts do not leave orphaned open invoices
-              await prisma.billingInvoice
-                .delete({ where: { id: invoice.id } })
-                .catch(() => {})
-              throw duitkuError
-            }
 
-            await prisma.$transaction([
-              prisma.billingInvoice.update({
-                where: { id: invoice.id },
-                data: {
-                  metadata: {
-                    paymentUrl: duitkuResult.paymentUrl,
-                    vaNumber: duitkuResult.vaNumber,
-                    duitkuReference: duitkuResult.reference,
-                    mode: duitkuResult.mode,
-                    clientScriptUrl: duitkuResult.clientScriptUrl,
+              await prisma.$transaction([
+                prisma.billingInvoice.update({
+                  where: { id: invoice.id },
+                  data: {
+                    metadata: {
+                      paymentUrl: duitkuResult.paymentUrl,
+                      vaNumber: duitkuResult.vaNumber,
+                      duitkuReference: duitkuResult.reference,
+                      mode: duitkuResult.mode,
+                      clientScriptUrl: duitkuResult.clientScriptUrl,
+                    },
                   },
+                }),
+              ])
+
+              return {
+                ok: true as const,
+                invoice: {
+                  id: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber,
+                  amount: invoice.totalAmount?.toNumber() || amount,
+                  status: invoice.status,
+                  paymentMethod: invoice.paymentMethod,
+                  gateway: "duitku",
+                  dueDate: invoice.dueDate?.toISOString(),
+                  type: invoice.type,
                 },
-              }),
-            ])
-
-            return {
-              ok: true as const,
-              invoice: {
-                id: invoice.id,
-                invoiceNumber: invoice.invoiceNumber,
-                amount: invoice.totalAmount?.toNumber() || amount,
-                status: invoice.status,
-                paymentMethod: invoice.paymentMethod,
-                gateway: "duitku",
-                dueDate: invoice.dueDate?.toISOString(),
-                type: invoice.type,
-              },
-              paymentUrl: duitkuResult.paymentUrl,
-              vaNumber: duitkuResult.vaNumber,
-              reference: duitkuResult.reference,
-              mode: duitkuResult.mode,
-              clientScriptUrl: duitkuResult.clientScriptUrl,
-            }
-          }
-
-          if (paymentMethod === "PAYPAL") {
-            if (!gatewayId) {
-              await prisma.billingInvoice
-                .delete({ where: { id: invoice.id } })
-                .catch(() => {})
-              throw new Error("PayPal gateway not configured")
+                paymentUrl: duitkuResult.paymentUrl,
+                vaNumber: duitkuResult.vaNumber,
+                reference: duitkuResult.reference,
+                mode: duitkuResult.mode,
+                clientScriptUrl: duitkuResult.clientScriptUrl,
+              }
             }
 
-            const config = await gatewayService.getDecryptedConfig(gatewayId)
-            if (!config) {
-              await prisma.billingInvoice
-                .delete({ where: { id: invoice.id } })
-                .catch(() => {})
-              throw new Error("PayPal gateway not configured")
-            }
+            if (paymentMethod === "PAYPAL") {
+              if (!gatewayId) {
+                throw new Error("PayPal gateway not configured")
+              }
 
-            let paypalResult
-            try {
+              const config = await gatewayService.getDecryptedConfig(gatewayId)
+              if (!config) {
+                throw new Error("PayPal gateway not configured")
+              }
+
               const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ""
-              paypalResult = await paypalProvider.createPayment(
+              const paypalResult = await paypalProvider.createPayment(
                 {
                   invoiceId: invoice.id,
                   amount,
@@ -243,36 +227,37 @@ export const createTopupRoutes = () =>
                 },
                 config as unknown as Record<string, string>
               )
-            } catch (paypalError) {
-              await prisma.billingInvoice
-                .delete({ where: { id: invoice.id } })
-                .catch(() => {})
-              throw paypalError
-            }
 
-            await prisma.billingInvoice.update({
-              where: { id: invoice.id },
-              data: {
-                metadata: {
-                  paypalReference: paypalResult.reference,
+              await prisma.billingInvoice.update({
+                where: { id: invoice.id },
+                data: {
+                  metadata: {
+                    paypalReference: paypalResult.reference,
+                  },
                 },
-              },
-            })
+              })
 
-            return {
-              ok: true as const,
-              invoice: {
-                id: invoice.id,
-                invoiceNumber: invoice.invoiceNumber,
-                amount: invoice.totalAmount?.toNumber() || amount,
-                status: invoice.status,
-                paymentMethod: invoice.paymentMethod,
-                gateway: "paypal",
-                dueDate: invoice.dueDate?.toISOString(),
-                type: invoice.type,
-              },
-              paymentUrl: paypalResult.redirectUrl,
+              return {
+                ok: true as const,
+                invoice: {
+                  id: invoice.id,
+                  invoiceNumber: invoice.invoiceNumber,
+                  amount: invoice.totalAmount?.toNumber() || amount,
+                  status: invoice.status,
+                  paymentMethod: invoice.paymentMethod,
+                  gateway: "paypal",
+                  dueDate: invoice.dueDate?.toISOString(),
+                  type: invoice.type,
+                },
+                paymentUrl: paypalResult.redirectUrl,
+              }
             }
+          } catch (gatewayError) {
+            // Roll back the topup invoice so failed config retrieval or payment creation deletes the orphaned invoice
+            await prisma.billingInvoice
+              .delete({ where: { id: invoice.id } })
+              .catch(() => {})
+            throw gatewayError
           }
 
           return {
