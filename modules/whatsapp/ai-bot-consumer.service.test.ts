@@ -654,12 +654,9 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({ message: "Mohon coba lagi nanti." })
     )
-    const sent = mockMessageService.sendMessage.mock.calls.map(
-      (c) => (c[0] as { message: string }).message
-    )
-    expect(
-      sent.some((m) => m.includes("[BUTTON:") || m.includes("[URL:"))
-    ).toBe(false)
+    const sent = JSON.stringify(mockMessageService.sendMessage.mock.calls)
+    expect(sent).not.toContain("[BUTTON:")
+    expect(sent).not.toContain("[URL:")
   })
 
   it("dispatches interactive payload when action tags are detected", async () => {
