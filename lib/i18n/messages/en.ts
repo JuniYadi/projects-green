@@ -6702,6 +6702,10 @@ export const enMessages: AppMessages = {
         deleteTitle: "Permanently delete this agent?",
         deleteDescription:
           "Related knowledge, sessions, actions, and bindings may also be deleted. This action cannot be undone.",
+        forceDeleteTitle: "Agent is still connected",
+        forceDeleteDescription:
+          "This agent is connected to {count} channel(s). Deleting it will disconnect them. This action cannot be undone.",
+        forceDeleteButton: "Disconnect & delete",
         detailError: "Agent settings could not be loaded.",
       },
       dialog: {
