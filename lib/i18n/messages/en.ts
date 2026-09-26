@@ -6732,8 +6732,7 @@ export const enMessages: AppMessages = {
         saveException: "An error occurred while saving the assistant.",
         editSaveSuccess: "Assistant profile updated successfully.",
         editSaveError: "Failed to update the assistant profile.",
-        editSaveException:
-          "An error occurred while updating the assistant.",
+        editSaveException: "An error occurred while updating the assistant.",
       },
       tabs: {
         aiAssistant: "AI Assistance (Auto-Generate)",
@@ -6792,7 +6791,7 @@ export const enMessages: AppMessages = {
         previewTitle: "Interactive Reply Preview",
         previewSubtitle: "How button messages appear on WhatsApp",
         mockMessage:
-          "Hi! Thank you for contacting us. " + "Please choose a service:",
+          "Hi! Thank you for contacting us. Please choose a service:",
         buttonAskProduct: "💬 Ask Product",
         buttonCheckOrder: "📦 Check Order",
         buttonVisitWebsite: "🌐 Visit Website",
@@ -6838,8 +6837,7 @@ export const enMessages: AppMessages = {
         disconnectingButton: "Processing...",
         connectSuccess: "WhatsApp ({phone}) connected successfully!",
         connectError: "Failed to connect the WhatsApp number.",
-        connectException:
-          "An error occurred while connecting the number.",
+        connectException: "An error occurred while connecting the number.",
         disconnectSuccess: "WhatsApp ({phone}) disconnected successfully.",
         disconnectError: "Failed to disconnect the number.",
         disconnectException:
