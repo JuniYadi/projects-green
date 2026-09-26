@@ -47,6 +47,10 @@ const mockDebitServiceBalance = mock()
 const mockResolveInvoiceEmailRecipients = mock(async () => [
   { email: "billing@example.com" },
 ])
+const mockResolveInvoiceBilledTo = mock(async () => ({
+  organizationName: "Acme Org",
+  billedToEmail: "billed-to@example.com",
+}))
 
 const mockTriggerDeploy = mock(async () => ({
   deploymentId: "mock-dep-1",
@@ -57,6 +61,7 @@ mock.module("@/modules/deploy/deploy-pipeline.service", () => ({
 }))
 mock.module("../email-recipients", () => ({
   resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
+  resolveInvoiceBilledTo: mockResolveInvoiceBilledTo,
 }))
 mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 mock.module("../pricing/pricing.service", () => ({
@@ -509,7 +514,8 @@ describe("BillingOrderService", () => {
         currency: "IDR",
       }),
       "billing@example.com",
-      "org-1"
+      "org-1",
+      { organizationName: "Acme Org", billedToEmail: "billed-to@example.com" }
     )
   })
 
