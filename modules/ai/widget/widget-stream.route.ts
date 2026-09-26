@@ -3,7 +3,10 @@ import { streamText } from "ai"
 import { z } from "zod"
 import { logStageFailure } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
-import { getAiBotTimeoutMs } from "@/modules/ai/ai-bot-timeout"
+import {
+  getAiBotLockTtlSeconds,
+  getAiBotTimeoutMs,
+} from "@/modules/ai/ai-bot-timeout"
 import { checkInboundAgentGuardrails } from "@/modules/ai/agents/ai-agent-inbound-guard"
 import { inspectAgentPromptSafety } from "@/modules/ai/agents/ai-agent-guardrails"
 import { recordSessionStrike } from "@/modules/docs/docs.guard"
@@ -135,7 +138,10 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
       }
 
       // 4. Concurrency lock
-      const lockToken = await acquireSessionLock(session.sessionId, 15)
+      const lockToken = await acquireSessionLock(
+        session.sessionId,
+        getAiBotLockTtlSeconds()
+      )
       if (!lockToken) {
         set.status = 429
         return {
