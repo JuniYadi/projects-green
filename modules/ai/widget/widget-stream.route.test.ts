@@ -741,4 +741,101 @@ describe("widget-stream.route", () => {
     const json = (await res.json()) as { error: string }
     expect(json.error).toBe("CONCURRENT_REQUEST")
   })
+
+  describe("failure isolation (PR #934 review)", () => {
+    const agent = {
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      fallbackMessage: "Maaf, coba lagi nanti.",
+    }
+    const post = () =>
+      app.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Halo",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+
+    beforeEach(() => {
+      mockFindUniqueAgent.mockResolvedValue(agent)
+      mockGetOrCreateSession.mockResolvedValue({
+        id: "sess-db-1",
+        sessionId: "widget_agent-1_vis-1",
+      })
+    })
+
+    it("a failed assistant persist after [DONE] sends no second reply", async () => {
+      mockRecordMessage.mockImplementation(async (args: { role: string }) => {
+        if (args.role === "assistant") throw new Error("db down")
+        return { id: "msg-1" }
+      })
+
+      const text = await (await post()).text()
+
+      expect(text).toContain('data: {"chunk":"Halo "}')
+      expect(text).toContain('data: {"chunk":"dunia!"}')
+      expect(text.match(/data: \[DONE\]/g)).toHaveLength(1)
+      expect(text).not.toContain(agent.fallbackMessage)
+      expect(mockLogStageFailure).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "PERSIST_REPLY" })
+      )
+      expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+        "widget_agent-1_vis-1",
+        "lock-token-123"
+      )
+    })
+
+    it("a provider resolution failure streams the fallback and releases the lock", async () => {
+      mockResolveAiProviderConfig.mockRejectedValue(new Error("no provider"))
+      const streamFn = mock()
+      const failApp = new Elysia().use(
+        createPublicAiWidgetRoutes({ streamTextFn: streamFn as never })
+      )
+
+      const res = await failApp.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Halo",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const text = await res.text()
+      expect(text).toContain(`data: {"chunk":"${agent.fallbackMessage}"}`)
+      expect(text).toContain("data: [DONE]")
+      expect(streamFn).not.toHaveBeenCalled()
+      expect(mockLogStageFailure).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "PROVIDER_RESOLUTION" })
+      )
+      expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+        "widget_agent-1_vis-1",
+        "lock-token-123"
+      )
+    })
+
+    it("a context load failure streams the fallback and releases the lock", async () => {
+      mockGetSlidingWindowMessages.mockRejectedValue(new Error("db down"))
+
+      const res = await post()
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).toContain(agent.fallbackMessage)
+      expect(mockLogStageFailure).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "CONTEXT_LOAD" })
+      )
+      expect(mockReleaseSessionLock).toHaveBeenCalled()
+    })
+  })
 })
