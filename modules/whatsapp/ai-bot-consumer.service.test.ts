@@ -336,7 +336,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
-  it("returns SESSION_LOCKED when lock cannot be acquired", async () => {
+  it("throws for a BullMQ retry when the session lock is held", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -350,17 +350,17 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
 
     mockRedis.set.mockResolvedValueOnce(null)
 
-    const res = await processWhatsappAiBotInbound({
-      organizationId: "org_1",
-      deviceId: "dev_1",
-      contactPhone: "+62812345678",
-      inboundMessageText: "Halo admin toko",
-      conversationId: "conv_1",
-      inboundMessageId: "msg_1",
-    })
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Halo admin toko",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_1",
+      })
+    ).rejects.toThrow("session locked")
 
-    expect(res.handled).toBe(false)
-    expect(res.reason).toBe("SESSION_LOCKED")
     expect(mockRedis.set).toHaveBeenCalled()
     expect(mockRedis.eval).not.toHaveBeenCalled()
   })
