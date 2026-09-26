@@ -90,6 +90,7 @@ const { default: AdminDeploymentsPage, formatDeploymentDuration } =
 beforeEach(() => {
   mockGetDeployments.mockClear()
   mockPush.mockClear()
+  mockSearchParams.delete("status")
 })
 
 afterEach(() => {
@@ -140,6 +141,20 @@ describe("AdminDeploymentsPage", () => {
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("status=DEPLOYING")
     )
+  })
+
+  it("loads failed and building deployments from the daily operations CTA", async () => {
+    mockSearchParams.set("status", "FAILED,BUILDING")
+    const { getByRole } = render(<AdminDeploymentsPage />)
+
+    await waitFor(() => {
+      expect(mockGetDeployments).toHaveBeenCalledWith({
+        $query: { status: "FAILED,BUILDING" },
+      })
+    })
+    expect(
+      getByRole("button", { name: "Failed / Building" })
+    ).toBeInTheDocument()
   })
 
   it("formats active, terminal, zero, and long deployment durations", () => {

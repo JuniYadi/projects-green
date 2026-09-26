@@ -2,8 +2,8 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 
 const mockPrisma = {
   applicationDeployment: {
-    count: mock(async () => 1),
-    findMany: mock(async () => [
+    count: mock(async (_args: Record<string, unknown>) => 1),
+    findMany: mock(async (_args: Record<string, unknown>) => [
       {
         id: "dep_999",
         stackId: "stack_1",
@@ -135,6 +135,20 @@ describe("listAdminDeployments", () => {
       expect.objectContaining({
         where: {},
       })
+    )
+  })
+
+  it("matches the daily operations failed and building deployment queue", async () => {
+    await listAdminDeployments({ status: "FAILED,BUILDING" })
+    const where = {
+      status: { in: ["FAILED", "BUILDING"] },
+      stack: { status: { in: ["FAILED", "BUILDING"] } },
+    }
+    expect(mockPrisma.applicationDeployment.count).toHaveBeenCalledWith({
+      where,
+    })
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where })
     )
   })
 

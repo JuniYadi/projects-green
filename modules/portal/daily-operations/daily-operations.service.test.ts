@@ -45,11 +45,16 @@ describe("DailyOperationsService", () => {
     ])
     expect(result.paymentsAwaitingConfirmation.count).toBe(2)
     expect(result.failedDeployments.count).toBe(1)
-    expect(result.failedDeployments.key).toBe("failed-deployments")
+    expect(result.failedDeployments.key).toBe("failed-or-building-deployments")
     expect(result.failedDeployments.href).toBe(
-      "/portal/app/deployments?status=FAILED"
+      "/portal/app/deployments?status=FAILED,BUILDING"
     )
-    expect(count.mock.calls[1][0]).toEqual({ where: { status: "FAILED" } })
+    expect(count.mock.calls[1][0]).toEqual({
+      where: {
+        status: { in: ["FAILED", "BUILDING"] },
+        stack: { status: { in: ["FAILED", "BUILDING"] } },
+      },
+    })
     expect(result.overdueInvoices.count).toBe(4)
     expect(result.newOrders.count).toBe(5)
     expect(result.newInvoices.count).toBe(6)
@@ -84,7 +89,7 @@ describe("DailyOperationsService", () => {
       "Tidak ada order baru dalam 24 jam terakhir"
     )
     expect(result.failedDeployments.href).toBe(
-      "/portal/app/deployments?status=FAILED"
+      "/portal/app/deployments?status=FAILED,BUILDING"
     )
   })
 })
