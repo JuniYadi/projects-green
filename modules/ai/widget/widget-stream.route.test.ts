@@ -476,7 +476,11 @@ describe("widget-stream.route", () => {
     expect(json.error).toBe("DAILY_LIMIT_REACHED")
     expect(json.message).toBe("Batas chat harian Anda telah habis.")
     expect(mockCountInboundMessages).toHaveBeenCalledWith({
-      where: { sessionId: "widget_agent-1_vis-1", role: "user" },
+      where: {
+        sessionId: "widget_agent-1_vis-1",
+        role: "user",
+        createdAt: { gte: expect.any(Date) },
+      },
     })
     expect(mockReleaseSessionLock).toHaveBeenCalledWith(
       "widget_agent-1_vis-1",
