@@ -10802,6 +10802,11 @@ export const enMessages: AppMessages = {
         "This {surface} page does not exist or is no longer available.",
       goBack: "Go back",
       returnTo: "Return to",
+      home: "Home",
+      docs: "Documentation",
+      statusBadge: "404 Not Found",
+      subDescription:
+        "The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.",
     },
     memberBillingTable: {
       activeSuffix: "active",
@@ -10834,6 +10839,12 @@ export const enMessages: AppMessages = {
     errorBoundary: {
       message: "Something went wrong. Please try again.",
       retry: "Try again",
+      title: "Something went wrong",
+      description:
+        "An unexpected error occurred while processing your request.",
+      goHome: "Return to home",
+      statusBadge: "500 Application Error",
+      digestLabel: "Error reference:",
     },
     breadcrumb: {
       ariaLabel: "Breadcrumb",

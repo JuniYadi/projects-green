@@ -10901,6 +10901,11 @@ export const idMessages: AppMessages = {
       description: "Halaman {surface} ini tidak ada atau sudah tidak tersedia.",
       goBack: "Kembali",
       returnTo: "Kembali ke",
+      home: "Beranda",
+      docs: "Dokumentasi",
+      statusBadge: "404 Tidak Ditemukan",
+      subDescription:
+        "Halaman yang Anda tuju mungkin telah dipindahkan, dihapus, atau tautan yang Anda masukkan keliru.",
     },
     memberBillingTable: {
       activeSuffix: "aktif",
@@ -10933,6 +10938,12 @@ export const idMessages: AppMessages = {
     errorBoundary: {
       message: "Terjadi kesalahan. Silakan coba lagi.",
       retry: "Coba lagi",
+      title: "Terjadi kesalahan",
+      description:
+        "Terjadi kendala yang tidak terduga saat memproses permintaan Anda.",
+      goHome: "Kembali ke beranda",
+      statusBadge: "500 Terjadi Kesalahan",
+      digestLabel: "Kode referensi error:",
     },
     breadcrumb: {
       ariaLabel: "Breadcrumb",

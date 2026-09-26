@@ -75,7 +75,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <AuthKitProvider>
+        <AuthKitProvider onSessionExpired={false}>
           <QueryProvider>
             <ThemeProvider>
               <TooltipProvider>
