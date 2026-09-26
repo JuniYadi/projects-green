@@ -74,6 +74,18 @@ describe("ai-agent-guardrails", () => {
   })
 
   describe("inspectAgentPromptSafety", () => {
+    it("respects enableProfanityFilter: false", () => {
+      expect(
+        inspectAgentPromptSafety("Halo bot goblok", {
+          customBlockedWords: ["goblok"],
+          enableProfanityFilter: false,
+        }).ok
+      ).toBe(true)
+      expect(inspectAgentPromptSafety("Halo bot goblok").reason).toBe(
+        "PROFANITY"
+      )
+    })
+
     it("allows valid normal prompt within character limits", () => {
       const result = inspectAgentPromptSafety(
         "Halo, apakah sepatu lari ukuran 42 warna hitam masih ready stock?"
