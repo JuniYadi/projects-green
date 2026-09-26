@@ -207,7 +207,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      const stack = await prisma.applicationStack.findUnique({
+      let stack = await prisma.applicationStack.findUnique({
         where: {
           organizationId_slug: {
             organizationId: auth.organizationId,
@@ -216,6 +216,29 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         },
         select: { id: true },
       })
+
+      if (!stack) {
+        const matchingByName = await prisma.applicationStack.findMany({
+          where: {
+            organizationId: auth.organizationId,
+            name: params.slug,
+          },
+          select: { id: true },
+          take: 2,
+        })
+
+        if (matchingByName.length > 1) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AMBIGUOUS_APPLICATION_NAME",
+            message:
+              "Multiple applications share this name. Use the exact application slug instead.",
+          }
+        }
+
+        stack = matchingByName[0] ?? null
+      }
 
       if (!stack) {
         set.status = 404
@@ -283,7 +306,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      const stack = await prisma.applicationStack.findUnique({
+      let stack = await prisma.applicationStack.findUnique({
         where: {
           organizationId_slug: {
             organizationId: auth.organizationId,
@@ -309,6 +332,46 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           },
         },
       })
+
+      if (!stack) {
+        const matchingByName = await prisma.applicationStack.findMany({
+          where: {
+            organizationId: auth.organizationId,
+            name: params.slug,
+          },
+          take: 2,
+          include: {
+            template: true,
+            cluster: {
+              include: {
+                region: true,
+              },
+            },
+            deployments: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              include: {
+                events: {
+                  orderBy: { createdAt: "asc" },
+                  select: { type: true, createdAt: true },
+                },
+              },
+            },
+          },
+        })
+
+        if (matchingByName.length > 1) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AMBIGUOUS_APPLICATION_NAME",
+            message:
+              "Multiple applications share this name. Use the exact application slug instead.",
+          }
+        }
+
+        stack = matchingByName[0] ?? null
+      }
 
       if (!stack) {
         set.status = 404

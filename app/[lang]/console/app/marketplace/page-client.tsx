@@ -74,8 +74,17 @@ export default function ConsoleMarketplacePage() {
 
             toast.success(`Deployment for ${submission.appName} started!`)
             setIsDrawerOpen(false)
+            const targetSlug =
+              payload &&
+              "data" in payload &&
+              payload.data &&
+              typeof payload.data === "object" &&
+              "stackSlug" in payload.data &&
+              typeof payload.data.stackSlug === "string"
+                ? payload.data.stackSlug
+                : submission.appName
             router.push(
-              `/${lang}/console/app/platform/${encodeURIComponent(submission.appName)}?tab=deployments`
+              `/${lang}/console/app/platform/${encodeURIComponent(targetSlug)}?tab=deployments`
             )
           } catch (error) {
             toast.error(

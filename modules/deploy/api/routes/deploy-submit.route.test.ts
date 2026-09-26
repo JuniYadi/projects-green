@@ -22,6 +22,15 @@ const ensureManagedDomainForStack = mock(async () => ({
 
 mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
   ensureManagedDomainForStack,
+  addAllowlistEntry: mock(async () => null),
+  createDomainForStack: mock(async () => null),
+  deleteAllowlistEntry: mock(async () => null),
+  deleteDomainForStack: mock(async () => null),
+  getAllowlist: mock(async () => null),
+  listDomainsForStack: mock(async () => []),
+  updateAllowlist: mock(async () => null),
+  uploadDomainCertificate: mock(async () => null),
+  verifyDomain: mock(async () => null),
 }))
 
 // Managed stock is mocked so the route test does not require Vault or a
@@ -307,6 +316,174 @@ describe("deploySubmitRoutes /submit", () => {
 
     expect(res.status).toBe(200)
     expect(claimManagedStock).not.toHaveBeenCalled()
+  })
+
+  it("resolves unique stackSlug with app- prefix for numeric name and increments on collision", async () => {
+    ;(mockPrisma.applicationStack.findUnique as any).mockImplementation(
+      async ({
+        where,
+      }: {
+        where?: { organizationId_slug?: { slug?: string }; id?: string }
+      }) => {
+        if (where?.organizationId_slug) {
+          if (where.organizationId_slug.slug === "app-9router-test") {
+            return { id: "existing-1", slug: "app-9router-test" }
+          }
+          return null
+        }
+        return {
+          ...stackRecord,
+          clusterId: null,
+          envVarsJson: [],
+        }
+      }
+    )
+
+    ;(mockPrisma.applicationStack.create as any).mockImplementation(
+      async ({ data }: { data?: Record<string, unknown> }) => ({
+        ...stackRecord,
+        clusterId: null,
+        envVarsJson: [],
+        ...data,
+      })
+    )
+
+    ;(mockPrisma.applicationStack.update as any).mockImplementation(
+      async ({ data }: { data?: Record<string, unknown> }) => ({
+        ...stackRecord,
+        clusterId: null,
+        envVarsJson: [],
+        ...data,
+      })
+    )
+
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "9router",
+      name: "9router-test",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("app-9router-test-2")
+  })
+
+  it("resolves new unique stackSlug for GitHub deploy when no existing stack for connection", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    const res = await submit(validBody)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("console-next-app")
+  })
+
+  it("reuses existing stack slug on repeat MANAGED_TEMPLATE submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-managed",
+      slug: "app-9router-test",
+      name: "9router-test",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-managed",
+      slug: "app-9router-test",
+      name: "9router-test",
+    } as never)
+
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "9router",
+      name: "9router-test",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("app-9router-test")
+  })
+
+  it("reuses existing stack slug on repeat TEMPLATE submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-template",
+      slug: "wordpress",
+      name: "WordPress",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-template",
+      slug: "wordpress",
+      name: "WordPress",
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "wordpress",
+      name: "WordPress",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 500,
+      memory: 512,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("wordpress")
+  })
+
+  it("reuses existing stack slug on repeat PUBLIC submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-public",
+      slug: "my-public-app",
+      name: "my-public-app",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-public",
+      slug: "my-public-app",
+      name: "my-public-app",
+    } as never)
+
+    const res = await submit({
+      sourceType: "PUBLIC",
+      publicSourceUrl: "https://github.com/acme/my-public-app",
+      name: "my-public-app",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 100,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("my-public-app")
   })
 
   it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {
