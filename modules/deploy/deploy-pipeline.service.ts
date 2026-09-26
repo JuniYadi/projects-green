@@ -309,7 +309,17 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     const metadataJson = {
       ...existingJson,
       ...buildMetadata,
-    } as Prisma.InputJsonValue
+    }
+
+    if (input.runAsUser === null) {
+      delete metadataJson.runAsUser
+    }
+    if (input.runAsGroup === null) {
+      delete metadataJson.runAsGroup
+    }
+    if (input.readOnlyRootFilesystem === null) {
+      delete metadataJson.readOnlyRootFilesystem
+    }
 
     const data = {
       organizationId: input.organizationId,
@@ -338,8 +348,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       subdomain: input.subdomain ?? null,
       envVarsJson,
       metadataJson:
-        Object.keys(buildMetadata).length > 0
-          ? metadataJson
+        Object.keys(buildMetadata).length > 0 ||
+        input.runAsUser === null ||
+        input.runAsGroup === null ||
+        input.readOnlyRootFilesystem === null
+          ? (metadataJson as Prisma.InputJsonValue)
           : (existingJson as Prisma.InputJsonValue),
     }
 
