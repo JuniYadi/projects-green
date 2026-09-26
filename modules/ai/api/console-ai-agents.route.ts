@@ -16,6 +16,12 @@ const listInclude = {
       isActive: true,
     },
   },
+  _count: {
+    select: {
+      knowledgeDocuments: true,
+      actionIntents: true,
+    },
+  },
 } as const
 
 export function createConsoleAiAgentsRoutes() {
