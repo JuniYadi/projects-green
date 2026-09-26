@@ -194,7 +194,7 @@ export default function AiAgentsPage() {
       if (data.ok && data.workflow) {
         setGenerationError("")
         setWorkflowSummary(
-          data.summary || "Alur berhasil dirancang otomatis oleh AI."
+          data.summary || messages.aiAssistant.defaultSummary
         )
         const steps: GeneratedStep[] = data.workflow.nodes.map(
           (n: {
@@ -210,7 +210,7 @@ export default function AiAgentsPage() {
               (n.config.question as string) ||
               (n.config.text as string) ||
               (n.config.bodyText as string) ||
-              "Langkah alur",
+              messages.aiAssistant.defaultStepDetail,
             captureVariable: n.config.captureVariable as string | undefined,
           })
         )
@@ -231,9 +231,9 @@ export default function AiAgentsPage() {
             },
           ])
         }
-        toast.success("Alur berhasil dirancang otomatis!")
+        toast.success(messages.aiAssistant.generateSuccess)
       } else {
-        const errMsg = data.error || "Gagal merancang alur dengan AI."
+        const errMsg = data.error || messages.aiAssistant.generateError
         setGenerationError(errMsg)
         toast.error(errMsg)
       }
@@ -242,7 +242,7 @@ export default function AiAgentsPage() {
       const errMsg =
         err instanceof Error
           ? err.message
-          : "Terjadi kesalahan saat merancang alur."
+          : messages.aiAssistant.generateException
       setGenerationError(errMsg)
       toast.error(errMsg)
     } finally {
@@ -292,7 +292,10 @@ export default function AiAgentsPage() {
     } else {
       nextChat.push({
         role: "bot" as const,
-        text: `Terima kasih! Pesan Anda "${userMsg}" telah diproses asisten bot.`,
+        text: messages.aiAssistant.simulateFallbackReply.replace(
+          "{message}",
+          userMsg
+        ),
       })
     }
 
@@ -302,7 +305,7 @@ export default function AiAgentsPage() {
 
   const handleSave = async (openCanvasAfter = false) => {
     if (!name.trim()) {
-      toast.error("Nama asisten wajib diisi.")
+      toast.error(messages.dialog.nameRequired)
       return
     }
 
@@ -336,12 +339,12 @@ export default function AiAgentsPage() {
               JSON.stringify(draftPayload)
             )
           }
-          toast.success("Asisten disimpan! Membuka di AI Canvas...")
+          toast.success(messages.dialog.saveCanvasSuccess)
           router.push(`/${lang}/console/ai/agents/new/canvas`)
           return
         }
 
-        toast.success("Asisten AI berhasil disimpan.")
+        toast.success(messages.dialog.saveSuccess)
         setName("")
         setDescription("")
         setSystemPrompt("")
@@ -351,11 +354,11 @@ export default function AiAgentsPage() {
         setSimVariables({})
         setGeneratedWorkflowRaw(null)
       } else {
-        toast.error("Gagal menyimpan profil asisten.")
+        toast.error(messages.dialog.saveError)
       }
     } catch (err) {
       console.error("[ai-agents] save error:", err)
-      toast.error("Terjadi kesalahan saat menyimpan asisten.")
+      toast.error(messages.dialog.saveException)
     } finally {
       setSaving(false)
     }
@@ -381,7 +384,7 @@ export default function AiAgentsPage() {
   const handleSaveEdit = async () => {
     if (!editingAgent) return
     if (!editName.trim()) {
-      toast.error("Nama asisten wajib diisi.")
+      toast.error(messages.dialog.nameRequired)
       return
     }
 
@@ -397,16 +400,16 @@ export default function AiAgentsPage() {
       })
 
       if (res.data && res.data.ok) {
-        toast.success("Profil asisten berhasil diperbarui.")
+        toast.success(messages.dialog.editSaveSuccess)
         await loadAgents()
         setEditModalOpen(false)
         setEditingAgent(null)
       } else {
-        toast.error("Gagal memperbarui profil asisten.")
+        toast.error(messages.dialog.editSaveError)
       }
     } catch (err) {
       console.error("[ai-agents] edit error:", err)
-      toast.error("Terjadi kesalahan saat memperbarui asisten.")
+      toast.error(messages.dialog.editSaveException)
     } finally {
       setSavingEdit(false)
     }
@@ -438,7 +441,7 @@ export default function AiAgentsPage() {
       }
     } catch (err) {
       console.warn("[ai-agents] load devices error:", err)
-      toast.error("Gagal memuat perangkat WhatsApp.")
+      toast.error(messages.bindingModal.loadDevicesError)
     } finally {
       setLoadingDevices(false)
     }
@@ -456,7 +459,12 @@ export default function AiAgentsPage() {
         targetName: device.name || device.phoneNumber,
       })
       if (res.data && res.data.ok) {
-        toast.success(`WhatsApp (${device.phoneNumber}) berhasil dihubungkan!`)
+        toast.success(
+          messages.bindingModal.connectSuccess.replace(
+            "{phone}",
+            device.phoneNumber
+          )
+        )
         const updated = await eden.api.console.ai.agents.get()
         if (
           updated.data &&
@@ -471,11 +479,11 @@ export default function AiAgentsPage() {
           if (curr) setSelectedAgentForBinding(curr)
         }
       } else {
-        toast.error("Gagal menghubungkan nomor WhatsApp.")
+        toast.error(messages.bindingModal.connectError)
       }
     } catch (err) {
       console.error("[ai-agents] bind device error:", err)
-      toast.error("Terjadi kesalahan saat menghubungkan nomor.")
+      toast.error(messages.bindingModal.connectException)
     } finally {
       setBindingActionLoadingId(null)
     }
@@ -490,7 +498,12 @@ export default function AiAgentsPage() {
           bindingId
         ].delete()
       if (res.data && res.data.ok) {
-        toast.success(`Hubungan WhatsApp (${phoneNumber}) berhasil diputus.`)
+        toast.success(
+          messages.bindingModal.disconnectSuccess.replace(
+            "{phone}",
+            phoneNumber
+          )
+        )
         const updated = await eden.api.console.ai.agents.get()
         if (
           updated.data &&
@@ -505,11 +518,11 @@ export default function AiAgentsPage() {
           if (curr) setSelectedAgentForBinding(curr)
         }
       } else {
-        toast.error("Gagal memutuskan hubungan nomor.")
+        toast.error(messages.bindingModal.disconnectError)
       }
     } catch (err) {
       console.error("[ai-agents] unbind error:", err)
-      toast.error("Terjadi kesalahan saat memutuskan hubungan.")
+      toast.error(messages.bindingModal.disconnectException)
     } finally {
       setBindingActionLoadingId(null)
     }
@@ -663,10 +676,10 @@ export default function AiAgentsPage() {
                               className="h-7 text-xs"
                               onClick={() => {
                                 setAssistantPrompt(
-                                  "Bikinin bot untuk cek nomor resi & status pengiriman paket"
+                                  messages.aiAssistant.presetTrackingPrompt
                                 )
                                 void handleGenerateWorkflow(
-                                  "Bikinin bot untuk cek nomor resi & status pengiriman paket"
+                                  messages.aiAssistant.presetTrackingPrompt
                                 )
                               }}
                             >
@@ -679,10 +692,10 @@ export default function AiAgentsPage() {
                               className="h-7 text-xs"
                               onClick={() => {
                                 setAssistantPrompt(
-                                  "Formulir pendaftaran dan tanya kebutuhan prospek baru"
+                                  messages.aiAssistant.presetRegistrationPrompt
                                 )
                                 void handleGenerateWorkflow(
-                                  "Formulir pendaftaran dan tanya kebutuhan prospek baru"
+                                  messages.aiAssistant.presetRegistrationPrompt
                                 )
                               }}
                             >
@@ -695,10 +708,10 @@ export default function AiAgentsPage() {
                               className="h-7 text-xs"
                               onClick={() => {
                                 setAssistantPrompt(
-                                  "Menu tombol selamat datang dan info kontak CS"
+                                  messages.aiAssistant.presetGreetingPrompt
                                 )
                                 void handleGenerateWorkflow(
-                                  "Menu tombol selamat datang dan info kontak CS"
+                                  messages.aiAssistant.presetGreetingPrompt
                                 )
                               }}
                             >
@@ -724,7 +737,9 @@ export default function AiAgentsPage() {
                           >
                             <Lightning size={16} weight="fill" />
                             <span>
-                              {generating ? "Merancang..." : "Rancang Alur"}
+                              {generating
+                                ? messages.aiAssistant.generatingButton
+                                : messages.aiAssistant.generateButton}
                             </span>
                           </Button>
                         </div>
@@ -1119,7 +1134,9 @@ export default function AiAgentsPage() {
                               }
                               className="h-7 border-destructive/30 text-xs text-destructive hover:bg-destructive/10"
                             >
-                              {isLoading ? "Memproses..." : "Putuskan"}
+                              {isLoading
+                                ? messages.bindingModal.disconnectingButton
+                                : messages.bindingModal.disconnectButton}
                             </Button>
                           ) : (
                             <Button
@@ -1129,7 +1146,9 @@ export default function AiAgentsPage() {
                               onClick={() => handleBindDevice(dev)}
                               className="h-7 bg-emerald-600 text-xs text-white hover:bg-emerald-700"
                             >
-                              {isLoading ? "Menghubungkan..." : "Hubungkan"}
+                              {isLoading
+                                ? messages.bindingModal.connectingButton
+                                : messages.bindingModal.connectButton}
                             </Button>
                           )}
                         </div>
