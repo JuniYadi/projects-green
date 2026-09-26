@@ -258,8 +258,9 @@ export async function processWhatsappAiBotInbound(
     if (contentGuard.reason === "MAX_CHAR_EXCEEDED") {
       return { handled: false, reason: contentGuard.reason }
     }
-    // Runs before the lock/claim, so it uses the same done-marker directly:
-    // a later retry of this wamid must not send the fallback twice.
+    // Runs before the session lock, so it takes the same two-state claim
+    // itself: concurrent or retried attempts for this wamid must not send
+    // the fallback twice.
     const blockedDoneKey = getReplyDoneKey(inboundMessageId)
     if (await hasClaimMarker(blockedDoneKey)) {
       return {
@@ -267,6 +268,15 @@ export async function processWhatsappAiBotInbound(
         reason: "DUPLICATE_REPLY_CLAIMED",
         agentProfileId: agent.id,
       }
+    }
+    const blockedProcessingKey = getReplyProcessingKey(inboundMessageId)
+    if (
+      !(await acquireProcessingClaim(
+        blockedProcessingKey,
+        REPLY_PROCESSING_TTL_BUFFER_SECONDS
+      ))
+    ) {
+      throw new Error(`REPLY_IN_PROGRESS: ${inboundMessageId}`)
     }
     const delivered = await sendBestEffortFallback({
       organizationId,
@@ -277,8 +287,8 @@ export async function processWhatsappAiBotInbound(
       agentProfileId: agent.id,
       stage: contentGuard.reason,
     })
-    // No claim is held yet, so a throw simply lets BullMQ retry.
     if (!delivered) {
+      await releaseProcessingClaim(blockedProcessingKey)
       throw new FallbackNotDeliveredError(contentGuard.reason)
     }
     await markClaimDone(blockedDoneKey, REPLY_DONE_TTL_SECONDS)
