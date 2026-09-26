@@ -366,4 +366,36 @@ describe("deploy-pipeline.service", () => {
     expect(callArgs?.secrets.APP_KEY).toBeDefined()
     expect(callArgs?.secrets.APP_KEY.startsWith("base64:")).toBe(true)
   })
+
+  it("createOrUpdateStack embeds custom securityContext overrides when provided", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "root-app",
+      slug: "root-app",
+      branchName: "main",
+      rootDirectory: "/",
+      dockerfileDetected: false,
+      envVars: [],
+      sourceType: "TEMPLATE",
+      runAsNonRoot: false,
+      runAsUser: 0,
+      runAsGroup: 0,
+      readOnlyRootFilesystem: true,
+    })
+
+    const createCall = (
+      mockPrisma.applicationStack.create.mock.calls as unknown as Array<
+        [{ data: { slug?: string; metadataJson: Record<string, unknown> } }]
+      >
+    ).find((c) => c[0]?.data?.slug === "root-app")?.[0]
+
+    expect(createCall?.data.metadataJson).toMatchObject({
+      runAsNonRoot: false,
+      runAsUser: 0,
+      runAsGroup: 0,
+      readOnlyRootFilesystem: true,
+    })
+  })
 })

@@ -78,9 +78,86 @@ describe("template-sync.service", () => {
       )
     })
 
-    it("lists installations and identifies aligned vs outdated controller workloads", async () => {
+    it("identifies stacks with missing or mismatched imageRepository as outdated", async () => {
       mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
         id: "tmpl-9router",
+        slug: "9router",
+        name: "9router Gateway",
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: {
+            image: "ghcr.io/pfnapp/9router:0.5.86",
+            defaultPort: 20128,
+            deploymentType: "statefulset",
+            readOnlyRootFilesystem: false,
+          },
+        },
+      })
+
+      mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+        {
+          id: "stack-missing-image",
+          name: "9router-missing-img",
+          slug: "9router-missing-img",
+          organizationId: "org-1",
+          status: "READY",
+          metadataJson: {
+            deploymentType: "statefulset",
+            readOnlyRootFilesystem: false,
+          },
+          lastDeployedAt: null,
+          lastDeployStatus: null,
+          createdAt: new Date("2026-09-01"),
+          updatedAt: new Date("2026-09-01"),
+          deployments: [],
+        },
+        {
+          id: "stack-mismatched-readonly",
+          name: "9router-readonly-diff",
+          slug: "9router-readonly-diff",
+          organizationId: "org-1",
+          status: "READY",
+          metadataJson: {
+            deploymentType: "statefulset",
+            imageRepository: "ghcr.io/pfnapp/9router:0.5.86",
+            readOnlyRootFilesystem: true,
+          },
+          lastDeployedAt: null,
+          lastDeployStatus: null,
+          createdAt: new Date("2026-09-01"),
+          updatedAt: new Date("2026-09-01"),
+          deployments: [],
+        },
+        {
+          id: "stack-fully-aligned",
+          name: "9router-perfect",
+          slug: "9router-perfect",
+          organizationId: "org-1",
+          status: "READY",
+          metadataJson: {
+            deploymentType: "statefulset",
+            imageRepository: "ghcr.io/pfnapp/9router:0.5.86",
+            readOnlyRootFilesystem: false,
+          },
+          lastDeployedAt: null,
+          lastDeployStatus: null,
+          createdAt: new Date("2026-09-01"),
+          updatedAt: new Date("2026-09-01"),
+          deployments: [],
+        },
+      ])
+
+      const result = await listTemplateInstallations("tmpl-9router")
+      expect(result.totalInstallations).toBe(3)
+      expect(result.alignedInstallations).toBe(1)
+      expect(result.outdatedInstallations).toBe(2)
+      expect(result.installations[0].isAligned).toBe(false)
+      expect(result.installations[1].isAligned).toBe(false)
+      expect(result.installations[2].isAligned).toBe(true)
+    })
+
+    it("lists installations and identifies aligned vs outdated controller workloads", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
         slug: "9router",
         name: "9router Gateway",
         blueprintJson: {
@@ -126,6 +203,7 @@ describe("template-sync.service", () => {
           status: "READY",
           metadataJson: {
             deploymentType: "statefulset",
+            imageRepository: "registry.pfnapp.com/ninerouter:latest",
           },
           lastDeployedAt: new Date("2026-09-02"),
           lastDeployStatus: "READY",
@@ -312,6 +390,7 @@ describe("template-sync.service", () => {
             runAsNonRoot: false,
             runAsUser: null,
             runAsGroup: null,
+            readOnlyRootFilesystem: true,
           },
         },
       })
@@ -325,6 +404,7 @@ describe("template-sync.service", () => {
           runAsNonRoot: true,
           runAsUser: 10001,
           runAsGroup: 10001,
+          readOnlyRootFilesystem: false,
           deploymentType: "statefulset",
         },
         envVarsJson: [],
@@ -347,6 +427,52 @@ describe("template-sync.service", () => {
       expect(updateCall.data.metadataJson.runAsNonRoot).toBe(false)
       expect(updateCall.data.metadataJson.runAsUser).toBeUndefined()
       expect(updateCall.data.metadataJson.runAsGroup).toBeUndefined()
+      expect(updateCall.data.metadataJson.readOnlyRootFilesystem).toBe(true)
+    })
+
+    it("resets numeric runAsUser and runAsGroup when template blueprint specifies them", async () => {
+      mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
+        id: "tmpl-custom",
+        slug: "custom",
+        blueprintJson: {
+          version: "1.0.0",
+          runtime: {
+            image: "custom/app:1.0",
+            runAsNonRoot: true,
+            runAsUser: 2000,
+            runAsGroup: 2000,
+            readOnlyRootFilesystem: null,
+          },
+        },
+      })
+
+      mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+        id: "stack-2",
+        slug: "custom-app",
+        organizationId: "org-1",
+        metadataJson: {
+          imageRepository: "custom/app:0.9",
+          readOnlyRootFilesystem: true,
+        },
+        envVarsJson: [],
+      })
+
+      mockPrisma.applicationStack.update.mockResolvedValueOnce({
+        id: "stack-2",
+      })
+
+      const result = await syncStackFromParentTemplate({
+        templateId: "tmpl-custom",
+        stackId: "stack-2",
+      })
+
+      expect(result.ok).toBe(true)
+      const updateCall = mockPrisma.applicationStack.update.mock.calls[0][0]
+      expect(updateCall.data.metadataJson.runAsUser).toBe(2000)
+      expect(updateCall.data.metadataJson.runAsGroup).toBe(2000)
+      expect(
+        updateCall.data.metadataJson.readOnlyRootFilesystem
+      ).toBeUndefined()
     })
 
     it("writes newly introduced template secret env vars to Vault via VaultSecretsService", async () => {

@@ -116,8 +116,7 @@ export async function listTemplateInstallations(
     const currentImage =
       typeof meta.imageRepository === "string" ? meta.imageRepository : ""
     const targetImage = bp?.runtime?.image ?? ""
-    const isImageAligned =
-      !currentImage || !targetImage || currentImage === targetImage
+    const isImageAligned = targetImage ? currentImage === targetImage : true
     const isRunAsNonRootAligned =
       bp?.runtime?.runAsNonRoot === undefined ||
       (meta.runAsNonRoot ?? true) === bp.runtime.runAsNonRoot
@@ -127,6 +126,10 @@ export async function listTemplateInstallations(
     const isRunAsGroupAligned =
       bp?.runtime?.runAsGroup === undefined ||
       (meta.runAsGroup ?? null) === (bp.runtime.runAsGroup ?? null)
+    const isReadOnlyRootFilesystemAligned =
+      bp?.runtime?.readOnlyRootFilesystem === undefined ||
+      (meta.readOnlyRootFilesystem ?? null) ===
+        (bp.runtime.readOnlyRootFilesystem ?? null)
     const isAligned =
       currentDeploymentType === targetDeploymentType &&
       installedVersion === latestVersion &&
@@ -135,7 +138,8 @@ export async function listTemplateInstallations(
       isImageAligned &&
       isRunAsNonRootAligned &&
       isRunAsUserAligned &&
-      isRunAsGroupAligned
+      isRunAsGroupAligned &&
+      isReadOnlyRootFilesystemAligned
     const latestDeployment = stack.deployments[0] ?? null
     return {
       id: stack.id,
