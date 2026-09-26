@@ -686,6 +686,8 @@ describe("processInboundMessage", () => {
     mockPrisma.whatsappContact.upsert.mockClear()
     mockProcessWhatsappWorkflowInbound.mockClear()
     mockProcessWhatsappAiBotInbound.mockClear()
+    mockPrisma.whatsappDailyCount.upsert.mockClear()
+    mockPrisma.whatsappMonthlyCount.upsert.mockClear()
 
     mockPrisma.whatsappMessage.findFirst.mockResolvedValue(null)
     mockProcessWhatsappWorkflowInbound.mockResolvedValue({ handled: false })
@@ -718,6 +720,9 @@ describe("processInboundMessage", () => {
     )
 
     expect(mockPrisma.whatsappMessage.create).not.toHaveBeenCalled()
+    // a retry must not double-count the inbox counters
+    expect(mockPrisma.whatsappDailyCount.upsert).not.toHaveBeenCalled()
+    expect(mockPrisma.whatsappMonthlyCount.upsert).not.toHaveBeenCalled()
     expect(mockProcessWhatsappAiBotInbound).toHaveBeenCalledWith(
       expect.objectContaining({ inboundMessageId: "wamid.dup.1" })
     )
