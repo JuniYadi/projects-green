@@ -1,5 +1,14 @@
-import { afterEach, describe, expect, it } from "bun:test"
+import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react"
+
+let confirmationLink: string | null = null
+mock.module("next/navigation", () => ({
+  useParams: () => ({ lang: "en" }),
+  useSearchParams: () =>
+    new URLSearchParams(
+      confirmationLink ? `confirmation=${confirmationLink}` : ""
+    ),
+}))
 
 import { ConfirmationsTab } from "./confirmations-tab"
 
@@ -23,6 +32,20 @@ const confirmationPayload = [
 describe("ConfirmationsTab", () => {
   afterEach(() => {
     cleanup()
+    confirmationLink = null
+  })
+
+  it("opens the matching confirmation from an email link", async () => {
+    confirmationLink = "pc-1"
+    globalThis.fetch = Object.assign(
+      async () =>
+        new Response(JSON.stringify(confirmationPayload), { status: 200 }),
+      { preconnect: () => {} }
+    ) as typeof fetch
+
+    const view = render(<ConfirmationsTab />)
+    expect(await view.findByRole("dialog")).toBeInTheDocument()
+    expect(view.getByText("PT Projects Green")).toBeInTheDocument()
   })
 
   it("renders confirmations in a filterable table and opens a review modal", async () => {

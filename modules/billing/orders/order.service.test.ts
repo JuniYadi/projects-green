@@ -42,6 +42,29 @@ const mockPrisma = {
   },
 }
 const mockResolveRecurringPrice = mock()
+const mockPlatformEmails = mock(async () => [] as string[])
+const mockNoticeSend = mock(async () => null)
+const mockRender = mock(async () => "<html>notice</html>")
+mock.module("react-email", () => ({
+  render: mockRender,
+  Body: "body",
+  Button: "a",
+  Container: "div",
+  Head: "head",
+  Heading: "h1",
+  Hr: "hr",
+  Html: "html",
+  Preview: "div",
+  Section: "section",
+  Text: "p",
+}))
+mock.module("@/lib/platform-admin-emails", () => ({
+  getPlatformAdminEmails: mockPlatformEmails,
+}))
+mock.module("@/lib/queue/email", () => ({ sendEmail: mockNoticeSend }))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mock(async () => ({ name: "Acme" })),
+}))
 const mockDebitServiceBalance = mock()
 
 const mockResolveInvoiceEmailRecipients = mock(async () => [
@@ -179,6 +202,10 @@ const appHostingAdapter = {
 }
 
 beforeEach(() => {
+  mockPlatformEmails.mockClear()
+  mockPlatformEmails.mockResolvedValue([])
+  mockNoticeSend.mockClear()
+  mockNoticeSend.mockResolvedValue(null)
   mockResolveRecurringPrice.mockReset()
   for (const model of Object.values(mockPrisma)) {
     if (typeof model === "function") model.mockReset()
@@ -243,6 +270,32 @@ beforeEach(() => {
 })
 
 describe("BillingOrderService", () => {
+  it("alerts platform admins for a new order, not for an idempotent retry", async () => {
+    mockPlatformEmails.mockResolvedValue(["platform@example.com"])
+    const service = new BillingOrderService(
+      mockPrisma as unknown as PrismaClient,
+      undefined,
+      new BillingFulfillmentRegistry([adapter])
+    )
+    const input = {
+      organizationId: "org-1",
+      pricingId: "pricing-1",
+      idempotencyKey: "order-key-1",
+      now: periodStart,
+    }
+    await service.createOrder(input)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(mockNoticeSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "platform@example.com",
+        subject: "New order",
+      })
+    )
+    mockPrisma.billingOrder.findUnique.mockResolvedValue(orderFixture())
+    await service.createOrder(input)
+    expect(mockNoticeSend).toHaveBeenCalledTimes(1)
+  })
+
   it("creates one immutable pending order line snapshot", async () => {
     const service = new BillingOrderService(
       mockPrisma as unknown as PrismaClient,

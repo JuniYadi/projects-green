@@ -19,6 +19,26 @@ const mockCachedUser = mock(async (_id: string) => ({
   email: "admin@example.com",
   name: "Admin",
 }))
+const mockSuperAdminEmails = mock(async () => [] as string[])
+const mockNoticeSend = mock(async () => null)
+const mockRender = mock(async () => "<html>notice</html>")
+mock.module("react-email", () => ({
+  render: mockRender,
+  Body: "body",
+  Button: "a",
+  Container: "div",
+  Head: "head",
+  Heading: "h1",
+  Hr: "hr",
+  Html: "html",
+  Preview: "div",
+  Section: "section",
+  Text: "p",
+}))
+mock.module("@/lib/platform-admin-emails", () => ({
+  getPlatformAdminEmails: mockSuperAdminEmails,
+}))
+mock.module("@/lib/queue/email", () => ({ sendEmail: mockNoticeSend }))
 mock.module("@/lib/workos-directory", () => ({
   getCachedOrganization: mockCachedOrg,
   getCachedUser: mockCachedUser,
@@ -152,6 +172,9 @@ describe("PaymentService", () => {
   let service: InstanceType<typeof PaymentService>
 
   function resetMocks() {
+    mockSuperAdminEmails.mockClear()
+    mockSuperAdminEmails.mockResolvedValue([])
+    mockNoticeSend.mockClear()
     mockPrisma.billingInvoice.create.mockReset()
     mockPrisma.billingOrder.findMany.mockReset()
     mockPrisma.billingOrder.update.mockReset()
@@ -579,6 +602,29 @@ describe("PaymentService", () => {
       expect(
         mockEmailService.sendTopupReceivedAdminNotice
       ).not.toHaveBeenCalled()
+    })
+
+    it("notifies platform super admins on paid top-ups separately", async () => {
+      mockSuperAdminEmails.mockResolvedValueOnce(["platform@example.com"])
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(mockNoticeSend).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "platform@example.com",
+          subject: "Top-up received",
+        })
+      )
     })
 
     it("notifies org admin after payment without sending them an invoice", async () => {
