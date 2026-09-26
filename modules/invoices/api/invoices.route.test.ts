@@ -45,6 +45,7 @@ const invoiceDetail: InvoiceDetail = {
   periodEnd: "2026-05-31T23:59:59.000Z",
   paidAt: null,
   type: null,
+  organizationId: "org_1",
   paymentMethod: null,
   lineItems: [
     {
@@ -56,6 +57,11 @@ const invoiceDetail: InvoiceDetail = {
       currency: "USD",
     },
   ],
+}
+
+const defaultBilledTo = {
+  organizationName: "Acme Inc",
+  billedToEmail: "billing@example.com",
 }
 
 const createService = (): InvoiceService => {
@@ -94,6 +100,7 @@ const createMockEmailService = (
   sendInvoiceOverdue: mock(async () => {}),
   sendInvoiceCancelled: mock(async () => {}),
   sendPaymentConfirmationSubmitted: mock(async () => {}),
+  sendTopupReceivedAdminNotice: mock(async () => {}),
   ...overrides,
 })
 
@@ -116,6 +123,14 @@ const createApp = (input: {
   resolveInvoiceRecipients?: (
     organizationId: string
   ) => Promise<Array<{ email: string }>>
+  resolveInvoiceBilledTo?: (
+    organizationId: string,
+    fallbackEmail?: string | null
+  ) => Promise<{ organizationName?: string; billedToEmail?: string }>
+  sendTopupInvoicePaidEmail?: (
+    invoiceId: string,
+    organizationId: string
+  ) => Promise<void>
 }) => {
   const service = input.service ?? createService()
 
@@ -140,6 +155,9 @@ const createApp = (input: {
       resolveInvoiceRecipients:
         input.resolveInvoiceRecipients ??
         (async () => [{ email: "billing@example.com" }]),
+      resolveInvoiceBilledTo:
+        input.resolveInvoiceBilledTo ?? (async () => defaultBilledTo),
+      sendTopupInvoicePaidEmail: input.sendTopupInvoicePaidEmail,
     })
   )
 }
@@ -543,7 +561,8 @@ describe("invoices routes", () => {
       expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledWith(
         invoiceDetail,
         "test@example.com",
-        "org_1"
+        "org_1",
+        defaultBilledTo
       )
     })
 
@@ -565,7 +584,12 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
-      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalled()
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
+        invoiceDetail,
+        "test@example.com",
+        "org_1",
+        defaultBilledTo
+      )
     })
 
     it("sends payment reminder notification", async () => {
@@ -586,7 +610,12 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
-      expect(mockEmailService.sendPaymentReminder).toHaveBeenCalled()
+      expect(mockEmailService.sendPaymentReminder).toHaveBeenCalledWith(
+        invoiceDetail,
+        "test@example.com",
+        "org_1",
+        defaultBilledTo
+      )
     })
 
     it("sends invoice overdue notification", async () => {
@@ -607,7 +636,12 @@ describe("invoices routes", () => {
 
       expect(response.status).toBe(200)
       expect(payload.ok).toBe(true)
-      expect(mockEmailService.sendInvoiceOverdue).toHaveBeenCalled()
+      expect(mockEmailService.sendInvoiceOverdue).toHaveBeenCalledWith(
+        invoiceDetail,
+        "test@example.com",
+        "org_1",
+        defaultBilledTo
+      )
     })
 
     it("sends invoice cancelled notification with reason", async () => {
@@ -635,7 +669,8 @@ describe("invoices routes", () => {
         invoiceDetail,
         "test@example.com",
         "Customer requested",
-        "org_1"
+        "org_1",
+        defaultBilledTo
       )
     })
 
@@ -1107,12 +1142,16 @@ describe("invoices routes", () => {
     expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
       "billing1@example.com",
-      "org_1"
+      undefined,
+      "org_1",
+      defaultBilledTo
     )
     expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
       "billing2@example.com",
-      "org_1"
+      undefined,
+      "org_1",
+      defaultBilledTo
     )
   })
 
@@ -1149,7 +1188,112 @@ describe("invoices routes", () => {
     expect(mockSendInvoicePaid).toHaveBeenCalledWith(
       expect.objectContaining({ id: "inv_1" }),
       "owner@example.com",
-      "org_1"
+      "org_1",
+      defaultBilledTo
     )
+  })
+
+  it("mark-paid routes TOP_UP invoices through PaymentService's sendInvoicePaidEmail", async () => {
+    const mockSendTopupInvoicePaidEmail = mock(async () => {})
+    const mockSendInvoicePaid = mock(async () => {})
+
+    const service = createService()
+    service.markInvoiceAsPaid = mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+      type: "TOP_UP",
+      organizationId: "org_1",
+    }))
+
+    const app = createApp({
+      service,
+      sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+      emailService: createMockEmailService({
+        sendInvoicePaid: mockSendInvoicePaid,
+      }),
+      platformRole: "super_admin",
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/mark-paid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledWith("inv_1", "org_1")
+    expect(mockSendInvoicePaid).not.toHaveBeenCalled()
+  })
+
+  it("mark-paid routes legacy TOPUP invoices through PaymentService's sendInvoicePaidEmail", async () => {
+    const mockSendTopupInvoicePaidEmail = mock(async () => {})
+    const mockSendInvoicePaid = mock(async () => {})
+
+    const service = createService()
+    service.markInvoiceAsPaid = mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+      type: "TOPUP",
+      organizationId: "org_1",
+    }))
+
+    const app = createApp({
+      service,
+      sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+      emailService: createMockEmailService({
+        sendInvoicePaid: mockSendInvoicePaid,
+      }),
+      platformRole: "super_admin",
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/mark-paid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledWith("inv_1", "org_1")
+    expect(mockSendInvoicePaid).not.toHaveBeenCalled()
+  })
+
+  it("mark-paid falls back to legacy recipients when a TOP_UP invoice has no organizationId", async () => {
+    const mockSendTopupInvoicePaidEmail = mock(async () => {})
+    const mockSendInvoicePaid = mock(async () => {})
+
+    const service = createService()
+    service.markInvoiceAsPaid = mock(async () => ({
+      ...invoiceDetail,
+      status: "paid" as const,
+      type: "TOP_UP",
+      organizationId: null,
+      billingAccountId: "ba_1",
+    }))
+
+    const app = createApp({
+      service,
+      resolveInvoiceRecipients: async () => [{ email: "owner@example.com" }],
+      sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+      emailService: createMockEmailService({
+        sendInvoicePaid: mockSendInvoicePaid,
+      }),
+      platformRole: "super_admin",
+    })
+
+    const response = await app.handle(
+      new Request("http://localhost/invoices/inv_1/mark-paid", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mockSendTopupInvoicePaidEmail).not.toHaveBeenCalled()
+    expect(mockSendInvoicePaid).toHaveBeenCalledTimes(1)
   })
 })
