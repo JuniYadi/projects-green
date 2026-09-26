@@ -6715,6 +6715,7 @@ export const idMessages: AppMessages = {
       dashboard: {
         noDescription: "Tanpa deskripsi",
         noChannel: "Belum ada channel",
+        activeOn: "Aktif di {target}",
         updated: "Diperbarui",
         searchPlaceholder: "Cari agent",
         filters: {
