@@ -10,12 +10,14 @@ import {
   BILLING_PAYMENT_REMINDER_JOB,
   BILLING_RENEWAL_LADDER_JOB,
   BILLING_VOUCHER_EXPIRATION_JOB,
+  BILLING_TOPUP_ADMIN_NOTICE_SWEEP_JOB,
   BILLING_DAILY_RESET_QUEUE,
   BILLING_MONTHLY_RESET_QUEUE,
   BILLING_INVOICE_STATUS_QUEUE,
   BILLING_PAYMENT_REMINDER_QUEUE,
   BILLING_RENEWAL_LADDER_QUEUE,
   BILLING_VOUCHER_EXPIRATION_QUEUE,
+  BILLING_TOPUP_ADMIN_NOTICE_SWEEP_QUEUE,
   type BillingCronJobData,
 } from "@/lib/queue/billing-cron"
 import { getRedisConnection } from "@/lib/queue/queue-config"
@@ -26,6 +28,7 @@ import { RenewalCoordinatorService } from "@/modules/billing/renewal/renewal-coo
 import { createVpnRenewalCallbacks } from "@/modules/vpn/billing/vpn-renewal-callbacks"
 import { invoiceEmailService } from "@/modules/invoices/email.service"
 import { VoucherService } from "@/modules/vouchers/vouchers.service"
+import { sweepStrandedTopupAdminNotices } from "@/modules/invoices/topup-admin-notice-sweep"
 const redisConnection = getRedisConnection()
 
 /**
@@ -160,6 +163,32 @@ async function processVoucherExpiration(): Promise<number> {
   const voucherService = new VoucherService(prisma)
   const expiredCount = await voucherService.sweepExpiredVouchers()
   return expiredCount
+}
+
+/**
+ * Topup admin notice sweep: re-enqueue TOPUP_RECEIVED_ADMIN_NOTICE emails
+ * whose original enqueue crashed or whose job was otherwise lost.
+ */
+async function processTopupAdminNoticeSweep(): Promise<{
+  found: number
+  reenqueued: number
+  failed: number
+  abandoned: number
+}> {
+  const result = await sweepStrandedTopupAdminNotices()
+
+  logger.info(
+    {
+      event: "billing_cron.topup_admin_notice_sweep_completed",
+      found: result.found,
+      reenqueued: result.reenqueued,
+      failed: result.failed,
+      abandoned: result.abandoned,
+    },
+    `[billing-cron] topup admin notice sweep: found=${result.found} reenqueued=${result.reenqueued} failed=${result.failed} abandoned=${result.abandoned}`
+  )
+
+  return result
 }
 
 const worker = new Worker<BillingCronJobData>(
@@ -315,6 +344,20 @@ const voucherExpirationWorker = new Worker<BillingCronJobData>(
         },
         `[billing-cron] voucher expiration: marked ${expired} vouchers as expired`
       )
+    }
+  },
+  {
+    connection: redisConnection,
+    concurrency: 1,
+  }
+)
+
+// Topup admin notice sweep worker
+const topupAdminNoticeSweepWorker = new Worker<BillingCronJobData>(
+  BILLING_TOPUP_ADMIN_NOTICE_SWEEP_QUEUE,
+  async (job: Job<BillingCronJobData>) => {
+    if (job.name === BILLING_TOPUP_ADMIN_NOTICE_SWEEP_JOB) {
+      await processTopupAdminNoticeSweep()
     }
   },
   {
@@ -561,6 +604,56 @@ renewalLadderWorker.on("failed", (job, error) => {
   )
 })
 
+topupAdminNoticeSweepWorker.on("active", (job) => {
+  logger.info(
+    {
+      event: "billing_cron.job_active",
+      queue: "topup_admin_notice_sweep",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] processing ${job.name} id=${job.id}`
+  )
+})
+
+topupAdminNoticeSweepWorker.on("completed", (job) => {
+  logger.info(
+    {
+      event: "billing_cron.job_completed",
+      queue: "topup_admin_notice_sweep",
+      jobName: job.name,
+      jobId: job.id,
+    },
+    `[billing-cron] completed ${job.name} id=${job.id}`
+  )
+})
+
+topupAdminNoticeSweepWorker.on("failed", (job, error) => {
+  if (!job) {
+    logger.error(
+      {
+        err: error,
+        event: "billing_cron.job_failed",
+        queue: "topup_admin_notice_sweep",
+      },
+      "[billing-cron] topup admin notice sweep worker failed job missing payload"
+    )
+    return
+  }
+
+  logger.error(
+    {
+      err: error,
+      event: "billing_cron.job_failed",
+      queue: "topup_admin_notice_sweep",
+      jobName: job.name,
+      jobId: job.id,
+      attemptsMade: job.attemptsMade,
+    },
+    `[billing-cron] topup admin notice sweep worker failed ${job.name} id=${job.id} attempts=${job.attemptsMade}`
+  )
+})
+
 // Register repeatable jobs on startup
 export async function registerRepeatableJobs() {
   const { Queue } = await import("bullmq")
@@ -653,12 +746,27 @@ export async function registerRepeatableJobs() {
     }
   )
 
+  // Topup admin notice sweep: every 10 minutes, recover stranded sends
+  const topupAdminNoticeSweepQueue = new Queue(
+    BILLING_TOPUP_ADMIN_NOTICE_SWEEP_QUEUE,
+    { connection: redisConnection }
+  )
+  await topupAdminNoticeSweepQueue.add(
+    BILLING_TOPUP_ADMIN_NOTICE_SWEEP_JOB,
+    {},
+    {
+      repeat: { pattern: "*/10 * * * *" },
+      jobId: "billing-topup-admin-notice-sweep",
+    }
+  )
+
   await dailyQueue.close()
   await monthlyQueue.close()
   await statusQueue.close()
   await reminderQueue.close()
   await renewalLadderQueue.close()
   await voucherExpirationQueue.close()
+  await topupAdminNoticeSweepQueue.close()
 
   logger.info(
     { event: "billing_cron.repeatable_jobs_registered" },
@@ -686,6 +794,7 @@ const shutdown = async (signal: string) => {
     await reminderWorker.close()
     await renewalLadderWorker.close()
     await voucherExpirationWorker.close()
+    await topupAdminNoticeSweepWorker.close()
     await prisma.$disconnect()
     process.exit(0)
   } catch (error) {
@@ -717,9 +826,10 @@ if (import.meta.main) {
           BILLING_INVOICE_STATUS_QUEUE,
           BILLING_PAYMENT_REMINDER_QUEUE,
           BILLING_RENEWAL_LADDER_QUEUE,
+          BILLING_TOPUP_ADMIN_NOTICE_SWEEP_QUEUE,
         ],
       },
-      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE},${BILLING_RENEWAL_LADDER_QUEUE}`
+      `[billing-cron] ready queues=${BILLING_DAILY_RESET_QUEUE},${BILLING_MONTHLY_RESET_QUEUE},${BILLING_INVOICE_STATUS_QUEUE},${BILLING_PAYMENT_REMINDER_QUEUE},${BILLING_RENEWAL_LADDER_QUEUE},${BILLING_TOPUP_ADMIN_NOTICE_SWEEP_QUEUE}`
     )
   })
 }
