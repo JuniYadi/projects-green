@@ -87,6 +87,8 @@ export const VISION_FALLBACK_TEXT =
 export const GENERIC_AI_FALLBACK_MESSAGE =
   "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
 
+const DAY_MS = 86_400_000
+
 // Two-state reply claim (AC-01/AC-03). The "done" marker (24h TTL) means an
 // outcome was already delivered for this wamid, so a BullMQ retry must
 // return DUPLICATE_REPLY_CLAIMED instead of sending again. The "processing"
@@ -118,9 +120,9 @@ async function sendBestEffortFallback(params: {
   agentProfileId: string
   sessionId?: string
   stage: string
-}): Promise<void> {
+}): Promise<boolean> {
   if (!params.fallbackMessage) {
-    return
+    return true // nothing configured to deliver
   }
   try {
     await messageService.sendMessage({
@@ -130,6 +132,7 @@ async function sendBestEffortFallback(params: {
       deviceId: params.deviceId,
       replyToMessageId: params.replyToMessageId,
     })
+    return true
   } catch (fallbackError) {
     logStageFailure({
       agentProfileId: params.agentProfileId,
@@ -138,6 +141,18 @@ async function sendBestEffortFallback(params: {
       stage: `${params.stage}_FALLBACK`,
       error: fallbackError,
     })
+    return false
+  }
+}
+
+/**
+ * Thrown when no outcome reached the customer, so the processing claim is
+ * released and BullMQ's retry of the same wamid tries again (AC-01).
+ */
+class FallbackNotDeliveredError extends Error {
+  constructor(stage: string) {
+    super(`AI bot fallback not delivered (stage=${stage})`)
+    this.name = "FallbackNotDeliveredError"
   }
 }
 
@@ -368,13 +383,16 @@ export async function processWhatsappAiBotInbound(
       }
     }
 
-    // Daily limit, checked against the count *before* this message so a
-    // blocked message never needs an increment/rollback dance.
-    // session.totalMessages counts customer messages only: the increment
-    // below is its single writer on this path. Messages here are logged via
-    // prisma.aiChatMessage.create, never recordMessage (which would also
-    // increment it); the only recordMessage caller, recordSafetyViolation,
-    // returns above before this guard.
+    // Daily limit (AC-07): customer messages in the last 24h, counted
+    // before this message is logged so a blocked message needs no rollback.
+    // ponytail: rolling 24h, not a calendar day in the tenant's timezone.
+    const inboundMessageCount = await prisma.aiChatMessage.count({
+      where: {
+        sessionId: session.sessionId,
+        role: "user",
+        createdAt: { gte: new Date(Date.now() - DAY_MS) },
+      },
+    })
     const dailyGuard = checkInboundAgentGuardrails({
       text: cleanText,
       maxCharLength: agent.maxCharLength,
@@ -382,10 +400,10 @@ export async function processWhatsappAiBotInbound(
       customBlockedWords: agent.customBlockedWords,
       fallbackMessage: agent.fallbackMessage,
       dailyUserLimit: binding.customDailyUserLimit ?? agent.dailyUserLimit,
-      currentMessageCount: session.totalMessages,
+      currentMessageCount: inboundMessageCount,
     })
     if (!dailyGuard.ok) {
-      await sendBestEffortFallback({
+      const delivered = await sendBestEffortFallback({
         organizationId,
         phoneNumber: contactPhone,
         deviceId,
@@ -395,6 +413,9 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: dailyGuard.reason,
       })
+      if (!delivered) {
+        throw new FallbackNotDeliveredError(dailyGuard.reason)
+      }
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
@@ -403,7 +424,7 @@ export async function processWhatsappAiBotInbound(
       }
     }
 
-    // Guard passed — count this message towards the daily limit.
+    // Lifetime stat only; the daily guard above counts message rows.
     await prisma.aiChatSession.update({
       where: { id: session.id },
       data: { totalMessages: { increment: 1 } },
@@ -427,7 +448,7 @@ export async function processWhatsappAiBotInbound(
         stage: "PROVIDER_RESOLUTION",
         error,
       })
-      await sendBestEffortFallback({
+      const delivered = await sendBestEffortFallback({
         organizationId,
         phoneNumber: contactPhone,
         deviceId,
@@ -437,6 +458,9 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: "PROVIDER_RESOLUTION",
       })
+      if (!delivered) {
+        throw new FallbackNotDeliveredError("PROVIDER_RESOLUTION")
+      }
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
@@ -474,7 +498,7 @@ export async function processWhatsappAiBotInbound(
 
       await prisma.aiChatMessage.create({
         data: {
-          sessionId: session.id,
+          sessionId: session.sessionId,
           role: "assistant",
           content: VISION_FALLBACK_TEXT,
           promptTokens: 0,
@@ -491,7 +515,7 @@ export async function processWhatsappAiBotInbound(
     }
 
     // Load multi-turn history using sliding window (last 10 turns)
-    const history = await getSlidingWindowMessages(session.id, 10)
+    const history = await getSlidingWindowMessages(session.sessionId, 10)
 
     // Construct inbound message content (multimodal or text)
     type MessageContent =
@@ -525,7 +549,7 @@ export async function processWhatsappAiBotInbound(
     // Log user message
     await prisma.aiChatMessage.create({
       data: {
-        sessionId: session.id,
+        sessionId: session.sessionId,
         role: "user",
         content:
           typeof userMessageContent === "string"
@@ -640,7 +664,7 @@ export async function processWhatsappAiBotInbound(
     const tools = await buildAgentTools({
       organizationId,
       agentProfileId: agent.id,
-      sessionId: session.id,
+      sessionId: session.sessionId,
     })
 
     try {
@@ -700,7 +724,7 @@ export async function processWhatsappAiBotInbound(
           stage: "SEND",
           error: sendError,
         })
-        await sendBestEffortFallback({
+        const delivered = await sendBestEffortFallback({
           organizationId,
           phoneNumber: contactPhone,
           deviceId,
@@ -710,6 +734,9 @@ export async function processWhatsappAiBotInbound(
           sessionId,
           stage: "SEND",
         })
+        if (!delivered) {
+          throw new FallbackNotDeliveredError("SEND")
+        }
         await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
         return {
           handled: true,
@@ -740,7 +767,7 @@ export async function processWhatsappAiBotInbound(
           { promptTokens?: number; completionTokens?: number } | undefined
         await prisma.aiChatMessage.create({
           data: {
-            sessionId: session.id,
+            sessionId: session.sessionId,
             role: "assistant",
             content: outboundText,
             promptTokens: usage?.promptTokens || 0,
@@ -764,6 +791,11 @@ export async function processWhatsappAiBotInbound(
         tokensUsed: aiResult.usage?.totalTokens || 0,
       }
     } catch (error) {
+      // SEND stage already handled its own fallback; let it reach the
+      // outer catch for a retry instead of sending a GENERATION one too.
+      if (error instanceof FallbackNotDeliveredError) {
+        throw error
+      }
       const timedOut = isAiBotTimeoutError(error)
       logStageFailure({
         agentProfileId: agent.id,
@@ -772,7 +804,7 @@ export async function processWhatsappAiBotInbound(
         stage: "GENERATION",
         error,
       })
-      await sendBestEffortFallback({
+      const delivered = await sendBestEffortFallback({
         organizationId,
         phoneNumber: contactPhone,
         deviceId,
@@ -782,6 +814,9 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: "GENERATION",
       })
+      if (!delivered) {
+        throw new FallbackNotDeliveredError("GENERATION")
+      }
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
