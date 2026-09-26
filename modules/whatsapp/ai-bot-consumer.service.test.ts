@@ -1006,6 +1006,53 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
+  it("does not send a fallback when bookkeeping fails after the reply was sent", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+        fallbackMessage: "Mohon coba lagi nanti.",
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      sessionId: "wa_conv_1",
+      totalMessages: 0,
+    } as never)
+
+    // 1st create = user message, 2nd = assistant log after the send
+    mockPrisma.aiChatMessage.create
+      .mockImplementationOnce(async () => ({}))
+      .mockImplementationOnce(async () => {
+        throw new Error("db down")
+      })
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_persist_fail_1",
+    })
+
+    expect(res.handled).toBe(true)
+    expect(res.reason).toBeUndefined()
+    expect(mockMessageService.sendMessage).toHaveBeenCalledTimes(1)
+    expect(mockMessageService.sendMessage).not.toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Mohon coba lagi nanti." })
+    )
+    expect(mockLogStageFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "PERSIST_REPLY" })
+    )
+  })
+
   it("does not throw when both the reply send and the fallback send fail", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
