@@ -32,7 +32,7 @@ export const InvoiceOverdueEmail = ({
   taxAmount,
   discountAmount,
   lineItems,
-  recipientEmail,
+  billedToEmail,
   organizationName,
   locale = "en",
 }: InvoiceOverdueEmailProps) => {
@@ -68,7 +68,7 @@ export const InvoiceOverdueEmail = ({
             dueAt={dueAt}
             periodStart={periodStart}
             periodEnd={periodEnd}
-            recipientEmail={recipientEmail}
+            billedToEmail={billedToEmail}
             organizationName={organizationName}
             locale={locale}
           />
@@ -95,9 +95,7 @@ export const InvoiceOverdueEmail = ({
 
           <Hr style={styles.divider} />
 
-          <Text style={styles.footer}>
-            {messages.createdFooter}
-          </Text>
+          <Text style={styles.footer}>{messages.createdFooter}</Text>
         </Container>
       </Body>
     </Html>

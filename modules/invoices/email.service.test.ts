@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
 
 // Mock console.error to suppress error logging in tests
 const mockConsoleError = mock(() => {})
@@ -8,6 +9,7 @@ const mockCreateEmailLog = mock(async () => "email-log-123")
 
 mock.module("@/lib/email-log", () => ({
   createEmailLog: mockCreateEmailLog,
+  redactEmailHtml: (html: string) => html,
 }))
 
 const mockSendEmail = mock(async () => {})
@@ -51,6 +53,17 @@ mock.module("./emails/invoice-overdue", () => ({
 mock.module("./emails/invoice-cancelled", () => ({
   InvoiceCancelledEmail: () => "<div>Invoice Cancelled</div>",
 }))
+mock.module("./emails/topup-received-admin-notice", () => ({
+  TopupReceivedAdminNotice: () => "<div>Top-up received</div>",
+}))
+
+const mockEmailLogCreate = mock(async () => ({ id: "notice-log-1" }))
+const mockEmailLogDelete = mock(async () => ({}))
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    emailLog: { create: mockEmailLogCreate, delete: mockEmailLogDelete },
+  },
+}))
 
 const mockInvoice = {
   id: "inv-123",
@@ -70,6 +83,11 @@ describe("invoiceEmailService", () => {
     mockCreateEmailLog.mockClear()
     mockSendEmail.mockClear()
     mockRender.mockClear()
+    mockEmailLogCreate.mockClear()
+    mockEmailLogDelete.mockClear()
+    mockSendEmail.mockImplementation(async () => {})
+    mockRender.mockImplementation(async () => "<html>Test Email</html>")
+    mockEmailLogCreate.mockImplementation(async () => ({ id: "notice-log-1" }))
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
     process.env.EMAIL_FROM = "Billing <billing@test.com>"
@@ -359,18 +377,76 @@ describe("invoiceEmailService", () => {
 
       const data = module.getInvoiceEmailData(
         detailInvoice,
-        "admin@org.com",
+        "payer@org.com",
         "Acme Corp"
       )
 
       expect(data.subtotalAmount).toBe("$140.00")
       expect(data.taxAmount).toBe("$10.00")
-      expect(data.recipientEmail).toBe("admin@org.com")
+      expect(data.billedToEmail).toBe("payer@org.com")
       expect(data.organizationName).toBe("Acme Corp")
       expect(data.lineItems).toBeDefined()
       expect(data.lineItems?.[0].description).toBe("VPN Plan")
       expect(data.paymentMethod).toBe("Bank Transfer")
       expect(data.paidAt).toBe("May 10, 2026")
     })
+  })
+
+  it("claims an admin notice once per invoice and sends using that log", async () => {
+    const data = {
+      invoiceId: "inv-123",
+      organizationId: "org-123",
+      organizationName: "Acme",
+      actorEmail: "payer@org.com",
+      amount: 50000,
+      currency: "IDR",
+      paymentMethod: "VA",
+      paidAt: new Date("2026-09-26T00:00:00.000Z"),
+    }
+    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
+    expect(mockEmailLogCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        eventKey: "topup-admin:inv-123",
+        recipientEmail: "admin@org.com",
+        type: "TOPUP_RECEIVED_ADMIN_NOTICE",
+      }),
+    })
+    expect(mockSendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "admin@org.com",
+        emailLogId: "notice-log-1",
+      })
+    )
+
+    mockEmailLogCreate.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+        code: "P2002",
+        clientVersion: "7.10.0",
+      })
+    )
+    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
+    expect(mockSendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases a notice claim if queueing fails so it can be retried", async () => {
+    const data = {
+      invoiceId: "inv-123",
+      organizationId: "org-123",
+      organizationName: "Acme",
+      actorEmail: "payer@org.com",
+      amount: 50000,
+      currency: "IDR",
+      paymentMethod: "VA",
+      paidAt: new Date("2026-09-26T00:00:00.000Z"),
+    }
+    mockSendEmail.mockRejectedValueOnce(new Error("Queue unavailable"))
+    await expect(
+      emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
+    ).rejects.toThrow("Queue unavailable")
+    expect(mockEmailLogDelete).toHaveBeenCalledWith({
+      where: { id: "notice-log-1" },
+    })
+    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
+    expect(mockSendEmail).toHaveBeenCalledTimes(2)
   })
 })

@@ -2,12 +2,34 @@ import type { BillingTransactionService } from "@/modules/billing/billing-transa
 import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 import { describe, it, expect, beforeEach, mock } from "bun:test"
 
+const mockMemberships = mock(
+  async () =>
+    [] as Array<{
+      userId: string
+      role: { slug: string }
+    }>
+)
+const mockCachedOrg = mock(async (_id: string) => ({
+  id: "org-123",
+  name: "Acme",
+  slug: "org-123",
+}))
+const mockCachedUser = mock(async (_id: string) => ({
+  id: "owner-1",
+  email: "admin@example.com",
+  name: "Admin",
+}))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mockCachedOrg,
+  getCachedUser: mockCachedUser,
+}))
+
 mock.module("@workos-inc/node", () => ({
   createWorkOS: () => ({
     userManagement: {
       listOrganizationMemberships: mock(async () => ({
         data: [],
-        autoPagination: async () => [],
+        autoPagination: mockMemberships,
       })),
       getUser: mock(async (id: string) => ({ id, email: `${id}@example.com` })),
     },
@@ -110,6 +132,7 @@ const mockEmailService = {
   sendInvoicePaid: mock(() => Promise.resolve()),
   sendInvoiceOverdue: mock(() => Promise.resolve()),
   sendInvoiceCancelled: mock(() => Promise.resolve()),
+  sendTopupReceivedAdminNotice: mock(() => Promise.resolve()),
 }
 
 const { PaymentService } = await import("./payment.service")
@@ -124,6 +147,7 @@ describe("PaymentService", () => {
     mockFulfillOrder.mockReset()
     mockPrisma.billingInvoice.update.mockReset()
     mockPrisma.billingInvoice.findFirst.mockReset()
+    mockPrisma.billingInvoice.findUnique.mockReset()
     mockPrisma.billingInvoice.findMany.mockReset()
     mockPrisma.billingAccount.findUnique.mockReset()
     mockPrisma.billingAccount.create.mockReset()
@@ -146,7 +170,15 @@ describe("PaymentService", () => {
       })
     )
     mockPrisma.billingInvoice.update.mockImplementation(() =>
-      Promise.resolve({})
+      Promise.resolve({
+        id: "inv-123",
+        invoiceNumber: "TOP-ABC123",
+        totalAmount: { toNumber: () => 50000 },
+        currency: "IDR",
+        status: "PAID",
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      })
     )
     mockPrisma.billingInvoice.findFirst.mockImplementation(() =>
       Promise.resolve(null)
@@ -154,6 +186,29 @@ describe("PaymentService", () => {
     mockPrisma.billingInvoice.findMany.mockImplementation(() =>
       Promise.resolve([])
     )
+    mockPrisma.billingInvoice.findUnique.mockImplementation(() =>
+      Promise.resolve({
+        type: "TOP_UP",
+        createdByEmail: "payer@example.com",
+        paymentMethod: "VA",
+        paidAt: new Date("2026-09-26T00:00:00.000Z"),
+      })
+    )
+    mockMemberships.mockClear()
+    mockMemberships.mockImplementation(async () => [])
+    mockCachedOrg.mockClear()
+    mockCachedOrg.mockImplementation(async () => ({
+      id: "org-123",
+      name: "Acme",
+      slug: "org-123",
+    }))
+    mockCachedUser.mockClear()
+    mockCachedUser.mockImplementation(async () => ({
+      id: "owner-1",
+      email: "admin@example.com",
+      name: "Admin",
+    }))
+    for (const fn of Object.values(mockEmailService)) fn.mockClear()
     mockPrisma.billingOrder.findMany.mockImplementation(() =>
       Promise.resolve([])
     )
@@ -224,6 +279,21 @@ describe("PaymentService", () => {
       expect(invoice.id).toBe("inv-123")
       expect(invoice.invoiceNumber).toMatch(/^TOP-/)
       expect(mockPrisma.billingInvoice.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("stores the actor separately from gateway metadata", async () => {
+      await service.createTopupInvoice({
+        organizationId: "org-123",
+        amount: 5000,
+        actorUserId: "user-1",
+        actorEmail: "payer@example.com",
+      })
+      expect(mockPrisma.billingInvoice.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          createdByUserId: "user-1",
+          createdByEmail: "payer@example.com",
+        }),
+      })
     })
 
     it("should throw error for amount below minimum", async () => {
@@ -335,7 +405,7 @@ describe("PaymentService", () => {
 
       expect(mockPrisma.billingInvoice.update).toHaveBeenCalledWith({
         where: { id: "inv-123" },
-        data: { status: "PAID" },
+        data: { status: "PAID", paidAt: expect.any(Date) },
       })
     })
     it("marks a linked product order charged and fulfills it once", async () => {
@@ -483,7 +553,182 @@ describe("PaymentService", () => {
           invoiceNumber: "TOP-ABC123",
           status: "paid",
         }),
-        "billing@example.com"
+        "billing@example.com",
+        "org-123",
+        { billedToEmail: "billing@example.com", organizationName: "Acme" }
+      )
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
+        expect.anything(),
+        "payer@example.com",
+        "org-123",
+        { billedToEmail: "billing@example.com", organizationName: "Acme" }
+      )
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).not.toHaveBeenCalled()
+    })
+
+    it("notifies org admin after payment without sending them an invoice", async () => {
+      mockMemberships.mockImplementation(async () => [
+        {
+          userId: "owner-1",
+          role: { slug: "user_owner" },
+        },
+      ])
+      mockPrisma.billingAccount.findUnique.mockResolvedValueOnce({
+        id: "ba-123",
+        contacts: [{ email: "billing@example.com" }],
+      } as never)
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      expect(
+        mockEmailService.sendInvoicePaid.mock.calls.map((call) => call[1])
+      ).toEqual(["billing@example.com", "payer@example.com"])
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorEmail: "payer@example.com",
+          organizationName: "Acme",
+          amount: 50000,
+          paymentMethod: "VA",
+        }),
+        "admin@example.com"
+      )
+    })
+
+    it("does not notify the actor twice when they are the org admin", async () => {
+      mockMemberships.mockImplementation(async () => [
+        {
+          userId: "owner-1",
+          role: { slug: "user_admin" },
+        },
+      ])
+      mockCachedUser.mockImplementation(async () => ({
+        id: "owner-1",
+        email: "payer@example.com",
+        name: "Admin",
+      }))
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).not.toHaveBeenCalled()
+    })
+
+    it("keeps a contact admin on the invoice and sends their notice too", async () => {
+      mockMemberships.mockImplementation(async () => [
+        {
+          userId: "owner-1",
+          role: { slug: "user_owner" },
+        },
+      ])
+      mockPrisma.billingAccount.findUnique.mockResolvedValueOnce({
+        id: "ba-123",
+        contacts: [{ email: "ADMIN@example.com" }],
+      } as never)
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      expect(
+        mockEmailService.sendInvoicePaid.mock.calls.map((call) => call[1])
+      ).toEqual(["ADMIN@example.com", "payer@example.com"])
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).toHaveBeenCalledTimes(1)
+    })
+
+    it("does not send a top-up notice for other paid invoice types", async () => {
+      mockPrisma.billingInvoice.findUnique.mockResolvedValueOnce({
+        type: "SERVICE",
+        createdByEmail: null,
+      } as never)
+      mockMemberships.mockImplementation(async () => [
+        {
+          userId: "owner-1",
+          role: { slug: "user_owner" },
+        },
+      ])
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "INV-123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
+        expect.anything(),
+        "admin@example.com",
+        "org-123",
+        expect.anything()
+      )
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).not.toHaveBeenCalled()
+    })
+
+    it("uses admin only as invoice fallback when there is no contact or actor", async () => {
+      mockPrisma.billingInvoice.findUnique.mockResolvedValueOnce({
+        type: "TOP_UP",
+        createdByEmail: null,
+      } as never)
+      mockMemberships.mockImplementation(async () => [
+        {
+          userId: "owner-1",
+          role: { slug: "user_owner" },
+        },
+      ])
+      await service.sendInvoicePaidEmail(
+        {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          totalAmount: { toNumber: () => 50000 },
+          currency: "IDR",
+          status: "PAID",
+          periodStart: new Date(),
+          periodEnd: new Date(),
+        },
+        "org-123"
+      )
+      expect(mockEmailService.sendInvoicePaid).toHaveBeenCalledWith(
+        expect.anything(),
+        "admin@example.com",
+        "org-123",
+        { billedToEmail: undefined, organizationName: "Acme" }
       )
     })
 
@@ -515,5 +760,39 @@ describe("PaymentService", () => {
         )
       ).resolves.toBeUndefined()
     })
+  })
+
+  it("sends newly created top-up invoice to the actor, not the org admin", async () => {
+    mockMemberships.mockImplementation(async () => [
+      {
+        userId: "owner-1",
+        role: { slug: "user_owner" },
+      },
+    ])
+    mockPrisma.billingAccount.findUnique.mockResolvedValueOnce({
+      id: "ba-123",
+      contacts: [{ email: "billing@example.com" }],
+    } as never)
+    await service["sendTopupInvoiceEmail"](
+      {
+        id: "inv-123",
+        invoiceNumber: "TOP-ABC123",
+        totalAmount: { toNumber: () => 50000 },
+        currency: "IDR",
+        status: "OPEN",
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      },
+      "org-123"
+    )
+    expect(
+      mockEmailService.sendInvoiceCreated.mock.calls.map((call) => call[1])
+    ).toEqual(["billing@example.com", "payer@example.com"])
+    expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledWith(
+      expect.anything(),
+      "payer@example.com",
+      "org-123",
+      { organizationName: "Acme", billedToEmail: "billing@example.com" }
+    )
   })
 })

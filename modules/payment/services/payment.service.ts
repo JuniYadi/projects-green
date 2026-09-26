@@ -3,6 +3,7 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
+import { getCachedOrganization, getCachedUser } from "@/lib/workos-directory"
 import { PAYMENT_CONSTANTS } from "../constants"
 import type { InvoiceTypeValue } from "../types/payment.types"
 import {
@@ -47,6 +48,8 @@ export class PaymentService {
   async createTopupInvoice(input: {
     organizationId: string
     amount: number
+    actorUserId?: string
+    actorEmail?: string
     paymentMethod?: string
     gatewayId?: string
   }) {
@@ -96,6 +99,8 @@ export class PaymentService {
         billingAccountId: account.id,
         invoiceNumber,
         type: "TOP_UP" as InvoiceTypeValue,
+        createdByUserId: input.actorUserId,
+        createdByEmail: input.actorEmail,
         paymentMethod,
         gatewayId,
         dueDate,
@@ -162,7 +167,7 @@ export class PaymentService {
   async markInvoiceAsPaid(invoiceId: string) {
     const invoice = await prisma.billingInvoice.update({
       where: { id: invoiceId },
-      data: { status: "PAID" },
+      data: { status: "PAID", paidAt: new Date() },
     })
     await settleProductOrdersForInvoice(invoiceId)
     return invoice
@@ -250,14 +255,14 @@ export class PaymentService {
       },
     })
 
-    await prisma.billingInvoice.update({
+    const paidInvoice = await prisma.billingInvoice.update({
       where: { id: invoiceId },
       data: { status: "PAID", paidAt: new Date() },
     })
     await settleProductOrdersForInvoice(invoiceId)
 
     // Fire-and-forget: send invoice paid email
-    this.sendInvoicePaidEmail(invoice, organizationId).catch((err) =>
+    this.sendInvoicePaidEmail(paidInvoice, organizationId).catch((err) =>
       console.error(
         `[PaymentService] Failed to send paid email for ${invoice.invoiceNumber}:`,
         err
@@ -266,12 +271,13 @@ export class PaymentService {
   }
 
   /**
-   * Resolve invoice email recipients for an organization.
-   * Uses the same logic as InvoiceStatusManager: billing contacts + org admin.
+   * Resolve top-up invoice recipients. Admin is a fallback, not an
+   * unconditional invoice recipient.
    */
   private async resolveInvoiceRecipients(
-    organizationId: string
-  ): Promise<Array<{ email: string }>> {
+    organizationId: string,
+    actorEmail?: string | null
+  ): Promise<{ recipients: Array<{ email: string }>; billedToEmail?: string }> {
     const recipients: Array<{ email: string }> = []
 
     const account = await prisma.billingAccount.findUnique({
@@ -285,11 +291,35 @@ export class PaymentService {
 
     if (account?.contacts) {
       for (const contact of account.contacts) {
-        recipients.push({ email: contact.email })
+        if (
+          !recipients.some(
+            (r) => r.email.toLowerCase() === contact.email.toLowerCase()
+          )
+        ) {
+          recipients.push({ email: contact.email })
+        }
       }
     }
 
-    // Fallback: resolve org admin from WorkOS
+    const billedToEmail = recipients[0]?.email ?? actorEmail ?? undefined
+    if (
+      actorEmail &&
+      !recipients.some(
+        (r) => r.email.toLowerCase() === actorEmail.toLowerCase()
+      )
+    ) {
+      recipients.push({ email: actorEmail })
+    }
+    if (recipients.length === 0) {
+      const adminEmail = await this.resolveOrgAdmin(organizationId)
+      if (adminEmail) recipients.push({ email: adminEmail })
+    }
+    return { recipients, billedToEmail }
+  }
+
+  private async resolveOrgAdmin(
+    organizationId: string
+  ): Promise<string | null> {
     try {
       const { createWorkOS } = await import("@workos-inc/node")
       const workos = createWorkOS({ apiKey: process.env.WORKOS_API_KEY ?? "" })
@@ -307,10 +337,7 @@ export class PaymentService {
       })
 
       if (admin?.userId) {
-        const user = await workos.userManagement.getUser(admin.userId)
-        if (user.email && !recipients.some((r) => r.email === user.email)) {
-          recipients.push({ email: user.email })
-        }
+        return (await getCachedUser(admin.userId))?.email || null
       }
     } catch (error) {
       console.error(
@@ -319,7 +346,7 @@ export class PaymentService {
       )
     }
 
-    return recipients
+    return null
   }
 
   private async sendTopupInvoiceEmail(
@@ -336,8 +363,16 @@ export class PaymentService {
     },
     organizationId: string
   ): Promise<void> {
-    const recipients = await this.resolveInvoiceRecipients(organizationId)
+    const stored = await prisma.billingInvoice.findUnique({
+      where: { id: invoice.id },
+    })
+    const { recipients, billedToEmail } = await this.resolveInvoiceRecipients(
+      organizationId,
+      stored?.createdByEmail
+    )
     if (recipients.length === 0) return
+    const organizationName =
+      (await getCachedOrganization(organizationId))?.name ?? organizationId
 
     const invoiceListItem = {
       id: invoice.id,
@@ -354,13 +389,19 @@ export class PaymentService {
 
     await Promise.allSettled(
       recipients.map((r) =>
-        this.emailService.sendInvoiceCreated(invoiceListItem, r.email)
+        this.emailService.sendInvoiceCreated(
+          invoiceListItem,
+          r.email,
+          organizationId,
+          { organizationName, billedToEmail }
+        )
       )
     )
   }
 
   /**
-   * Send "Invoice Paid" email to billing contacts + org admin.
+   * Send "Invoice Paid" email to top-up contacts/actor, or the existing
+   * contact/admin recipients for other invoice types.
    * Fire-and-forget — never blocks the caller.
    */
   async sendInvoicePaidEmail(
@@ -377,8 +418,26 @@ export class PaymentService {
     },
     organizationId: string
   ): Promise<void> {
-    const recipients = await this.resolveInvoiceRecipients(organizationId)
-    if (recipients.length === 0) return
+    const stored = await prisma.billingInvoice.findUnique({
+      where: { id: invoice.id },
+    })
+    const isTopUp = stored?.type === "TOP_UP" || stored?.type === "TOPUP"
+    const { recipients, billedToEmail } = await this.resolveInvoiceRecipients(
+      organizationId,
+      isTopUp ? stored?.createdByEmail : undefined
+    )
+    const adminEmail = await this.resolveOrgAdmin(organizationId)
+    if (
+      !isTopUp &&
+      adminEmail &&
+      !recipients.some(
+        (r) => r.email.toLowerCase() === adminEmail.toLowerCase()
+      )
+    ) {
+      recipients.push({ email: adminEmail })
+    }
+    const organizationName =
+      (await getCachedOrganization(organizationId))?.name ?? organizationId
 
     const invoiceData = {
       id: invoice.id,
@@ -395,9 +454,42 @@ export class PaymentService {
 
     await Promise.allSettled(
       recipients.map((r) =>
-        this.emailService.sendInvoicePaid(invoiceData, r.email)
+        this.emailService.sendInvoicePaid(
+          invoiceData,
+          r.email,
+          organizationId,
+          { organizationName, billedToEmail }
+        )
       )
     )
+    if (isTopUp) {
+      if (!adminEmail) {
+        console.error(`[PaymentService] No org admin for top-up ${invoice.id}`)
+      } else if (
+        adminEmail.toLowerCase() !== stored?.createdByEmail?.toLowerCase()
+      ) {
+        try {
+          await this.emailService.sendTopupReceivedAdminNotice(
+            {
+              invoiceId: invoice.id,
+              organizationId,
+              organizationName,
+              actorEmail: stored?.createdByEmail ?? null,
+              amount: invoiceData.totalAmount,
+              currency: invoice.currency,
+              paymentMethod: stored?.paymentMethod ?? null,
+              paidAt: stored?.paidAt ?? new Date(),
+            },
+            adminEmail
+          )
+        } catch (error) {
+          console.error(
+            `[PaymentService] Failed admin top-up notice for ${invoice.id}:`,
+            error
+          )
+        }
+      }
+    }
   }
 
   async createTopupInvoiceForGap(organizationId: string, gapAmount: number) {

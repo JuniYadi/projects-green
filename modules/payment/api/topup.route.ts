@@ -57,7 +57,7 @@ export const createTopupRoutes = () =>
       "/",
       async ({ body, set }) => {
         const auth = await withAuth()
-        if (!auth.organizationId) {
+        if (!auth.organizationId || !auth.user?.id || !auth.user.email) {
           set.status = 401
           return {
             ok: false,
@@ -139,6 +139,8 @@ export const createTopupRoutes = () =>
 
           const invoice = await paymentService.createTopupInvoice({
             organizationId: auth.organizationId,
+            actorUserId: auth.user.id,
+            actorEmail: auth.user.email,
             amount,
             paymentMethod,
             gatewayId,
