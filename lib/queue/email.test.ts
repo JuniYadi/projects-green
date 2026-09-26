@@ -11,9 +11,27 @@ mock.module("nodemailer", () => ({
   createTransport: () => ({ sendMail: mockSendMail }),
 }))
 
+// ── Mock prisma ───────────────────────────────────────────────────────────
+const mockEmailLogFindUnique = mock(
+  async (_args?: unknown): Promise<{ status: string } | null> => null
+)
+const mockEmailLogUpdate = mock(async (_args?: unknown) => ({}))
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    emailLog: {
+      findUnique: mockEmailLogFindUnique,
+      update: mockEmailLogUpdate,
+    },
+  },
+}))
+
 describe("EmailJob", () => {
   beforeEach(() => {
     mockSendMail.mockClear()
+    mockEmailLogFindUnique.mockClear()
+    mockEmailLogUpdate.mockClear()
+    mockEmailLogFindUnique.mockImplementation(async () => null)
+    mockEmailLogUpdate.mockImplementation(async () => ({}))
     process.env.SMTP_HOST = "smtp.test.com"
     process.env.SMTP_PORT = "587"
     process.env.SMTP_USER = "test@test.com"
@@ -80,6 +98,48 @@ describe("EmailJob", () => {
         from: "Custom <custom@test.com>",
       })
     )
+  })
+
+  it("skips sending when the email log is already SENT", async () => {
+    mockEmailLogFindUnique.mockImplementationOnce(async () => ({
+      status: "SENT",
+    }))
+    const { EmailJob } = await import("@/lib/queue/email")
+    await EmailJob.handle({
+      data: {
+        to: "user@test.com",
+        subject: "Test",
+        html: "<p>Test</p>",
+        emailLogId: "log-1",
+      },
+    } satisfies Pick<Job<EmailJobData>, "data">)
+
+    expect(mockEmailLogFindUnique).toHaveBeenCalledWith({
+      where: { id: "log-1" },
+      select: { status: true },
+    })
+    expect(mockSendMail).not.toHaveBeenCalled()
+  })
+
+  it("sends when the email log exists but is not yet SENT", async () => {
+    mockEmailLogFindUnique.mockImplementationOnce(async () => ({
+      status: "QUEUED",
+    }))
+    const { EmailJob } = await import("@/lib/queue/email")
+    await EmailJob.handle({
+      data: {
+        to: "user@test.com",
+        subject: "Test",
+        html: "<p>Test</p>",
+        emailLogId: "log-2",
+      },
+    } satisfies Pick<Job<EmailJobData>, "data">)
+
+    expect(mockSendMail).toHaveBeenCalledTimes(1)
+    expect(mockEmailLogUpdate).toHaveBeenCalledWith({
+      where: { id: "log-2" },
+      data: expect.objectContaining({ status: "SENT" }),
+    })
   })
 })
 
