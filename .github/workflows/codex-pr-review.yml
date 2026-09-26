@@ -17,7 +17,7 @@ jobs:
   review:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -71,6 +71,18 @@ jobs:
       - name: Generate Prisma client
         run: bun run db:generate
 
+      # Stateless reviews found 1-2 issues per push; feed the last verdict
+      # back so the next run re-checks it and reports everything together.
+      - name: Fetch previous Codex review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/$PR_NUM/reviews" --paginate \
+            | jq -rs 'add | map(select(.body | startswith("VERDICT:"))) | last | .body // ""' \
+            > previous_review.md || true
+          wc -c previous_review.md
+
       # =========================================================
       # RUN CODEX REVIEW
       # =========================================================
@@ -90,9 +102,14 @@ jobs:
             PR TITLE: ${{ github.event.pull_request.title }}
             PR BODY: ${{ github.event.pull_request.body }}
 
-            SPEED & EFFICIENCY DIRECTIVE:
-            - Complete the review swiftly and decisively.
-            - Do not perform unnecessary exploration on unedited files.
+            COMPLETENESS DIRECTIVE:
+            - List ALL blocking issues you find in one pass; do not stop at the first.
+            - Prioritise correctness over speed. Do not explore unedited files unnecessarily.
+
+            PREVIOUS REVIEW:
+            - If previous_review.md (repo root, not part of the diff) is non-empty, it is the last automated review on this PR.
+            - Verify each of its findings against the current code: state which are fixed and which remain.
+            - Report remaining and new issues together in this single review.
 
             SCOPE & PROPORTIONALITY (read this before anything else):
             - Only reference files and lines that appear in git diff origin/${{ github.base_ref }}...HEAD.
@@ -100,7 +117,7 @@ jobs:
             - Inspect changed lines first:
               - SMALL diff (roughly under 100 changed lines): give a fast, compact review.
                 One short paragraph summary + only real blocking bugs. If there is nothing wrong, approve immediately.
-              - LARGER diff: do a focused scan for real bugs, security flaws, or breaking regressions.
+              - LARGER diff: scan every changed file for real bugs, security flaws, or breaking regressions.
             - Every review MUST end with a formal verdict.
 
             ROLE & PERSONA:
