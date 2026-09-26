@@ -376,6 +376,20 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data?.stackSlug).toBe("app-9router-test-2")
   })
 
+  it("resolves new unique stackSlug for GitHub deploy when no existing stack for connection", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    const res = await submit(validBody)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("console-next-app")
+  })
+
   it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {
     mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
       id: "tpl-hermes",

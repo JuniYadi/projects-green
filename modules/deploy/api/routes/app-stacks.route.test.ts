@@ -752,13 +752,15 @@ describe("appStacksRoutes", () => {
 
   it("resolves stack by name fallback when slug does not match exactly", async () => {
     mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
-    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
-      id: "stack-1",
-      slug: "app-9router-test",
-      name: "9router-test",
-      status: "RUNNING",
-      deployments: [],
-    } as never)
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      {
+        id: "stack-1",
+        slug: "app-9router-test",
+        name: "9router-test",
+        status: "RUNNING",
+        deployments: [],
+      },
+    ] as never)
 
     const res = await get("/deploy/apps/9router-test")
     expect(res.status).toBe(200)
@@ -769,6 +771,59 @@ describe("appStacksRoutes", () => {
     expect(body.ok).toBe(true)
     expect(body.data.stack.slug).toBe("app-9router-test")
     expect(body.data.stack.name).toBe("9router-test")
+  })
+
+  it("returns 409 when multiple stacks match name fallback on stack details", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      { id: "stack-1", slug: "app-9router-test" },
+      { id: "stack-2", slug: "app-9router-test-2" },
+    ] as never)
+
+    const res = await get("/deploy/apps/9router-test")
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("AMBIGUOUS_APPLICATION_NAME")
+    expect(body.message).toContain("Multiple applications share this name")
+  })
+
+  it("resolves deployment history by name fallback when slug does not match exactly", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      { id: "stack-1" },
+    ] as never)
+    mockPrisma.applicationDeployment.count.mockResolvedValueOnce(0 as never)
+    mockPrisma.applicationDeployment.findMany.mockResolvedValueOnce([] as never)
+
+    const res = await get("/deploy/apps/9router-test/history")
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { ok: boolean; data: unknown[] }
+    expect(body.ok).toBe(true)
+    expect(body.data).toEqual([])
+  })
+
+  it("returns 409 when multiple stacks match name fallback on deployment history", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findMany.mockResolvedValueOnce([
+      { id: "stack-1" },
+      { id: "stack-2" },
+    ] as never)
+
+    const res = await get("/deploy/apps/9router-test/history")
+    expect(res.status).toBe(409)
+    const body = (await res.json()) as {
+      ok: boolean
+      error: string
+      message: string
+    }
+    expect(body.ok).toBe(false)
+    expect(body.error).toBe("AMBIGUOUS_APPLICATION_NAME")
+    expect(mockPrisma.applicationDeployment.count).not.toHaveBeenCalled()
   })
 
   it("rejects unauthenticated requests", async () => {

@@ -126,5 +126,19 @@ describe("deploy-slug", () => {
       const slug = await resolveUniqueStackSlug(db, "org-1", "target-app")
       expect(slug).toBe("target-app")
     })
+
+    it("falls back to timestamp suffix when collision counter reaches 100", async () => {
+      const db: StackSlugPrisma = {
+        applicationStack: {
+          findUnique: async ({ where }) => ({
+            id: "existing-stack",
+            slug: where.organizationId_slug.slug,
+          }),
+        },
+      }
+      const slug = await resolveUniqueStackSlug(db, "org-1", "test-app")
+      expect(slug.length).toBeLessThanOrEqual(63)
+      expect(slug).toMatch(/^test-app-100-[a-z0-9]+$/)
+    })
   })
 })

@@ -218,13 +218,26 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       })
 
       if (!stack) {
-        stack = await prisma.applicationStack.findFirst({
+        const matchingByName = await prisma.applicationStack.findMany({
           where: {
             organizationId: auth.organizationId,
             name: params.slug,
           },
           select: { id: true },
+          take: 2,
         })
+
+        if (matchingByName.length > 1) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AMBIGUOUS_APPLICATION_NAME",
+            message:
+              "Multiple applications share this name. Use the exact application slug instead.",
+          }
+        }
+
+        stack = matchingByName[0] ?? null
       }
 
       if (!stack) {
@@ -321,11 +334,12 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
       })
 
       if (!stack) {
-        stack = await prisma.applicationStack.findFirst({
+        const matchingByName = await prisma.applicationStack.findMany({
           where: {
             organizationId: auth.organizationId,
             name: params.slug,
           },
+          take: 2,
           include: {
             template: true,
             cluster: {
@@ -345,6 +359,18 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
             },
           },
         })
+
+        if (matchingByName.length > 1) {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AMBIGUOUS_APPLICATION_NAME",
+            message:
+              "Multiple applications share this name. Use the exact application slug instead.",
+          }
+        }
+
+        stack = matchingByName[0] ?? null
       }
 
       if (!stack) {
