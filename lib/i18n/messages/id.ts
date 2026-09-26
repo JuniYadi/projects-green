@@ -6759,7 +6759,11 @@ export const idMessages: AppMessages = {
           "Agent tidak dapat dihapus. Lepaskan channel aktif terlebih dahulu.",
         deleteTitle: "Hapus agent secara permanen?",
         deleteDescription:
-          "Knowledge, sesi, action, dan binding terkait dapat ikut terhapus. Tindakan ini tidak dapat dibatalkan.",
+          "Ini juga menghapus {knowledge} dokumen knowledge dan " +
+          "{actions} action milik agent ini. Riwayat chat tetap " +
+          "disimpan. Tindakan ini tidak bisa dibatalkan.",
+        deleteDescriptionEmpty:
+          "Riwayat chat tetap disimpan. Tindakan ini tidak bisa dibatalkan.",
         forceDeleteTitle: "Agent masih terhubung",
         forceDeleteDescription:
           "Agent ini terhubung ke {count} channel. Menghapusnya akan memutuskan hubungan tersebut. Tindakan ini tidak dapat dibatalkan.",
