@@ -44,4 +44,20 @@ describe("toAiAgentListItemDTO", () => {
     )
     expect(dto.operationalStatus).toBe("NEEDS_ATTENTION")
   })
+
+  it("defaults knowledge and action counts to 0 when _count is absent", () => {
+    const dto = toAiAgentListItemDTO(agent())
+    expect(dto.knowledgeCount).toBe(0)
+    expect(dto.actionCount).toBe(0)
+  })
+
+  it("exposes knowledge and action counts from _count", () => {
+    const dto = toAiAgentListItemDTO(
+      agent({
+        _count: { knowledgeDocuments: 5, actionIntents: 1 },
+      })
+    )
+    expect(dto.knowledgeCount).toBe(5)
+    expect(dto.actionCount).toBe(1)
+  })
 })
