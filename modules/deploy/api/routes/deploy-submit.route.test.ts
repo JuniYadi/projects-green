@@ -390,6 +390,102 @@ describe("deploySubmitRoutes /submit", () => {
     expect(body.data?.stackSlug).toBe("console-next-app")
   })
 
+  it("reuses existing stack slug on repeat MANAGED_TEMPLATE submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-managed",
+      slug: "app-9router-test",
+      name: "9router-test",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-managed",
+      slug: "app-9router-test",
+      name: "9router-test",
+    } as never)
+
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "9router",
+      name: "9router-test",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("app-9router-test")
+  })
+
+  it("reuses existing stack slug on repeat TEMPLATE submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-template",
+      slug: "wordpress",
+      name: "WordPress",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-template",
+      slug: "wordpress",
+      name: "WordPress",
+    } as never)
+
+    const res = await submit({
+      sourceType: "TEMPLATE",
+      templateId: "wordpress",
+      name: "WordPress",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 500,
+      memory: 512,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("wordpress")
+  })
+
+  it("reuses existing stack slug on repeat PUBLIC submission", async () => {
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "existing-public",
+      slug: "my-public-app",
+      name: "my-public-app",
+    } as never)
+    mockPrisma.applicationStack.update.mockResolvedValueOnce({
+      ...stackRecord,
+      id: "existing-public",
+      slug: "my-public-app",
+      name: "my-public-app",
+    } as never)
+
+    const res = await submit({
+      sourceType: "PUBLIC",
+      publicSourceUrl: "https://github.com/acme/my-public-app",
+      name: "my-public-app",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 100,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("my-public-app")
+  })
+
   it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {
     mockPrisma.appTemplate.findFirst.mockResolvedValueOnce({
       id: "tpl-hermes",

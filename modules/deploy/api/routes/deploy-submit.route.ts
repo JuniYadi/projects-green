@@ -156,7 +156,23 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       repositoryConnectionId = null
       name = body.name?.trim() || managedTemplate.name
-      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
+
+      const existingForManagedTemplate =
+        await prisma.applicationStack.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            sourceType: "MANAGED_TEMPLATE",
+            name,
+          },
+          select: { id: true, slug: true, name: true },
+        })
+
+      slug =
+        existingForManagedTemplate &&
+        (!existingForManagedTemplate.name ||
+          existingForManagedTemplate.name === name)
+          ? existingForManagedTemplate.slug
+          : await resolveUniqueStackSlug(prisma, auth.organizationId, name)
 
       if (body.templateId) {
         const dbTemplate = await prisma.appTemplate.findFirst({
@@ -262,7 +278,21 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       repositoryConnectionId = null
       name = body.name?.trim() || template.name
-      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
+
+      const existingForTemplate = await prisma.applicationStack.findFirst({
+        where: {
+          organizationId: auth.organizationId,
+          sourceType: "TEMPLATE",
+          name,
+        },
+        select: { id: true, slug: true, name: true },
+      })
+
+      slug =
+        existingForTemplate &&
+        (!existingForTemplate.name || existingForTemplate.name === name)
+          ? existingForTemplate.slug
+          : await resolveUniqueStackSlug(prisma, auth.organizationId, name)
       resolvedTemplateDefaultPort = template.build.defaultPort ?? null
     } else if (sourceType === "PUBLIC") {
       const parsed = parsePublicGitUrl(body.publicSourceUrl ?? "")
@@ -280,7 +310,24 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         body.publicSourceRef?.trim() || body.branchName?.trim() || "main"
       const derivedName = parsed.host.split(".")[0] || "app"
       name = body.name?.trim() || derivedName
-      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
+
+      const existingForPublic = await prisma.applicationStack.findFirst({
+        where: {
+          organizationId: auth.organizationId,
+          sourceType: "PUBLIC",
+          publicSourceUrl,
+          ...(body.name?.trim() ? { name } : {}),
+        },
+        select: { id: true, slug: true, name: true },
+      })
+
+      slug =
+        existingForPublic &&
+        (!body.name?.trim() ||
+          !existingForPublic.name ||
+          existingForPublic.name === name)
+          ? existingForPublic.slug
+          : await resolveUniqueStackSlug(prisma, auth.organizationId, name)
     } else {
       // Resolve the repository connection for GitHub deploys.
       const rawRepoId = String(body.repositoryId)
