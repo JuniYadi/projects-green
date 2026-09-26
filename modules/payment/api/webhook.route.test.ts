@@ -27,6 +27,7 @@ const mockBillingInvoicePaymentAllocation = {
   create: mock(() => Promise.resolve({})),
   update: mock(() => Promise.resolve({})),
   upsert: mock(() => Promise.resolve({})),
+  updateMany: mock(() => Promise.resolve({ count: 1 })),
   findMany: mock(() => Promise.resolve([])),
 }
 
@@ -114,6 +115,10 @@ describe("Webhook Route - Duitku Callback", () => {
     mockBillingInvoicePaymentAllocation.update.mockResolvedValue({})
     mockBillingInvoicePaymentAllocation.upsert.mockReset()
     mockBillingInvoicePaymentAllocation.upsert.mockResolvedValue({})
+    mockBillingInvoicePaymentAllocation.updateMany.mockReset()
+    mockBillingInvoicePaymentAllocation.updateMany.mockResolvedValue({
+      count: 1,
+    })
     mockBillingInvoicePaymentAllocation.findMany.mockReset()
     mockBillingInvoicePaymentAllocation.findMany.mockResolvedValue([])
     mockCreditBalance.mockReset()
@@ -217,6 +222,18 @@ describe("Webhook Route - Duitku Callback", () => {
         entityId: "inv-123:REF-FAILED-1",
       }),
     })
+    expect(mockBillingInvoicePaymentAllocation.updateMany).toHaveBeenCalledWith(
+      {
+        where: {
+          invoiceId: "inv-123",
+          status: "PENDING",
+          referenceId: "REF-FAILED-1",
+        },
+        data: {
+          status: "FAILED",
+        },
+      }
+    )
 
     // 2. Later attempt succeeds (resultCode "00") with new reference
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)

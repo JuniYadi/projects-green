@@ -177,6 +177,24 @@ export const createWebhookRoutes = () =>
         }
       } else {
         console.log(`Payment failed for ${merchantOrderId}: ${resultCode}`)
+        try {
+          await prisma.billingInvoicePaymentAllocation.updateMany({
+            where: {
+              invoiceId: merchantOrderId,
+              status: "PENDING",
+              ...(reference ? { referenceId: reference } : {}),
+            },
+            data: {
+              status: "FAILED",
+            },
+          })
+        } catch (err) {
+          console.error(
+            `[Webhook] Failed to mark allocation failed for ${merchantOrderId}:`,
+            err
+          )
+        }
+
         // Record failed attempt audit log for diagnostics
         await prisma.paymentAuditLog.create({
           data: {
