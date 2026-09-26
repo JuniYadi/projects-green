@@ -21,10 +21,17 @@ import type {
 } from "@/modules/invoices/invoices.types"
 import {
   resolveInvoiceEmailRecipients,
+  resolveInvoiceBilledTo,
   type BillingEmailRecipient,
+  type InvoiceBilledTo,
 } from "@/modules/billing/email-recipients"
+import { PaymentService } from "@/modules/payment/services/payment.service"
 
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
+
+type TopupPaidEmailInvoice = Parameters<
+  PaymentService["sendInvoicePaidEmail"]
+>[0]
 
 type BillingAuthContext = {
   organizationId?: string | null
@@ -54,6 +61,11 @@ type AdminInvoiceRouteDeps = {
   resolveInvoiceRecipients?: (
     organizationId: string
   ) => Promise<BillingEmailRecipient[]>
+  resolveInvoiceBilledTo?: (organizationId: string) => Promise<InvoiceBilledTo>
+  sendTopupInvoicePaidEmail?: (
+    invoice: TopupPaidEmailInvoice,
+    organizationId: string
+  ) => Promise<void>
 }
 
 const defaultDeps: AdminInvoiceRouteDeps = {
@@ -68,6 +80,10 @@ const defaultDeps: AdminInvoiceRouteDeps = {
     return billingAccount?.organizationId ?? null
   },
   resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
+  resolveInvoiceBilledTo,
+  sendTopupInvoicePaidEmail: async (invoice, organizationId) => {
+    await new PaymentService().sendInvoicePaidEmail(invoice, organizationId)
+  },
   isAdmin: (actor) => resolveAdminActor(actor.platformRole, actor.tenantRole),
 }
 
@@ -188,7 +204,10 @@ const toInvoiceEmailItem = (invoice: {
 async function notifyInvoiceRecipients(input: {
   deps: AdminInvoiceRouteDeps
   invoice: { billingAccountId?: string | null }
-  send: (recipient: BillingEmailRecipient) => Promise<void>
+  send: (
+    recipient: BillingEmailRecipient,
+    context: { organizationId: string; billedTo: InvoiceBilledTo }
+  ) => Promise<void>
 }) {
   if (!input.invoice.billingAccountId) return
 
@@ -203,7 +222,15 @@ async function notifyInvoiceRecipients(input: {
       input.deps.resolveInvoiceRecipients ?? (async () => [])
     )(organizationId)
 
-    await Promise.allSettled(recipients.map(input.send))
+    const billedTo = await (
+      input.deps.resolveInvoiceBilledTo ?? (async () => ({}))
+    )(organizationId)
+
+    await Promise.allSettled(
+      recipients.map((recipient) =>
+        input.send(recipient, { organizationId, billedTo })
+      )
+    )
   } catch (err) {
     console.error(
       "[AdminInvoiceRoute] Failed to resolve invoice recipients:",
@@ -211,6 +238,25 @@ async function notifyInvoiceRecipients(input: {
     )
     // Don't rethrow — callers handle gracefully via their own .catch
   }
+}
+
+async function notifyTopupInvoicePaid(input: {
+  deps: AdminInvoiceRouteDeps
+  invoice: TopupPaidEmailInvoice & { billingAccountId?: string | null }
+}) {
+  if (
+    !input.invoice.billingAccountId ||
+    !input.deps.sendTopupInvoicePaidEmail
+  ) {
+    return
+  }
+
+  const organizationId = await input.deps.getOrganizationIdByBillingAccount(
+    input.invoice.billingAccountId
+  )
+  if (!organizationId) return
+
+  await input.deps.sendTopupInvoicePaidEmail(input.invoice, organizationId)
 }
 
 export const createAdminInvoiceRoutes = (
@@ -368,31 +414,53 @@ export const createAdminInvoiceRoutes = (
             })
           }
 
-          const invoiceEmailItem = toInvoiceEmailItem(updatedInvoice)
-          notifyInvoiceRecipients({
-            deps: routeDeps,
-            invoice: updatedInvoice,
-            send: (recipient) =>
-              targetStatus === "ISSUED"
-                ? emailService.sendInvoiceCreated(
-                    invoiceEmailItem,
-                    recipient.email
-                  )
-                : targetStatus === "PAID"
-                  ? emailService.sendInvoicePaid(
+          const isTopUpInvoice =
+            updatedInvoice.type === "TOP_UP" || updatedInvoice.type === "TOPUP"
+
+          if (targetStatus === "PAID" && isTopUpInvoice) {
+            notifyTopupInvoicePaid({
+              deps: routeDeps,
+              invoice: updatedInvoice,
+            }).catch((err) => {
+              console.error(
+                "[AdminInvoiceUpdate] Failed to send top-up paid email:",
+                err
+              )
+            })
+          } else {
+            const invoiceEmailItem = toInvoiceEmailItem(updatedInvoice)
+            notifyInvoiceRecipients({
+              deps: routeDeps,
+              invoice: updatedInvoice,
+              send: (recipient, { organizationId, billedTo }) =>
+                targetStatus === "ISSUED"
+                  ? emailService.sendInvoiceCreated(
                       invoiceEmailItem,
-                      recipient.email
+                      recipient.email,
+                      organizationId,
+                      billedTo
                     )
-                  : emailService.sendInvoiceCancelled(
-                      invoiceEmailItem,
-                      recipient.email
-                    ),
-          }).catch((err) => {
-            console.error(
-              "[AdminInvoiceUpdate] Failed to send invoice status email:",
-              err
-            )
-          })
+                  : targetStatus === "PAID"
+                    ? emailService.sendInvoicePaid(
+                        invoiceEmailItem,
+                        recipient.email,
+                        organizationId,
+                        billedTo
+                      )
+                    : emailService.sendInvoiceCancelled(
+                        invoiceEmailItem,
+                        recipient.email,
+                        undefined,
+                        organizationId,
+                        billedTo
+                      ),
+            }).catch((err) => {
+              console.error(
+                "[AdminInvoiceUpdate] Failed to send invoice status email:",
+                err
+              )
+            })
+          }
 
           return {
             ok: true as const,
