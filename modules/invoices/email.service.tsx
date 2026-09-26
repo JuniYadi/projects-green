@@ -1,6 +1,6 @@
 import { render } from "react-email"
 
-import { createEmailLog, redactEmailHtml } from "@/lib/email-log"
+import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
@@ -219,7 +219,9 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
           recipientEmail,
           type: "TOPUP_RECEIVED_ADMIN_NOTICE",
           subject,
-          bodyHtml: redactEmailHtml(html),
+          // Raw HTML, not redacted: the sweeper replays this exact
+          // bodyHtml on retry, and this template holds no secrets.
+          bodyHtml: html,
           organizationId: data.organizationId,
           relatedEntityType: "invoice",
           relatedEntityId: data.invoiceId,
@@ -232,14 +234,13 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        const existing = await prisma.emailLog.findUnique({
-          where: { eventKey },
-        })
-        if (!existing || existing.status === "SENT") return
-        emailLogId = existing.id
-      } else {
-        throw error
+        // A claim row already exists, SENT or not. Re-enqueuing here would
+        // reuse the same jobId, which BullMQ silently ignores while
+        // retaining the old job — so just return and let the sweeper own
+        // recovery for anything not yet SENT.
+        return
       }
+      throw error
     }
 
     try {
@@ -248,9 +249,9 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
         { jobId }
       )
     } catch (error) {
-      await prisma.emailLog
-        .update({ where: { id: emailLogId }, data: { status: "FAILED" } })
-        .catch(() => {})
+      // Leave the row QUEUED (not FAILED) so the sweeper can find and
+      // resend it; only log the failure here.
+      console.error("Failed to enqueue topup admin notice email:", error)
       throw error
     }
   },
