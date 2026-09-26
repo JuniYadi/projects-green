@@ -4,6 +4,7 @@ import type {
   InvoiceListItem,
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
+import { resolveInvoiceBilledTo } from "@/modules/billing/email-recipients"
 import { RENEWAL_LADDER, calendarDaysUntil } from "./renewal/renewal-ladder"
 
 const ISSUE_WINDOW_DAYS = RENEWAL_LADDER.invoiceDaysBeforeDue
@@ -218,11 +219,16 @@ export class InvoiceStatusManager {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
       if (recipients.length === 0) return
 
+      const { organizationName, billedToEmail } =
+        await resolveInvoiceBilledTo(organizationId)
+
       await Promise.allSettled(
         recipients.map((r) =>
           this.emailService!.sendInvoiceCreated(
             toInvoiceListItem(invoice),
-            r.email
+            r.email,
+            organizationId,
+            { organizationName, billedToEmail }
           )
         )
       )
@@ -252,11 +258,16 @@ export class InvoiceStatusManager {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
       if (recipients.length === 0) return
 
+      const { organizationName, billedToEmail } =
+        await resolveInvoiceBilledTo(organizationId)
+
       await Promise.allSettled(
         recipients.map((r) =>
           this.emailService!.sendInvoiceOverdue(
             toInvoiceListItem(invoice),
-            r.email
+            r.email,
+            organizationId,
+            { organizationName, billedToEmail }
           )
         )
       )
@@ -286,11 +297,16 @@ export class InvoiceStatusManager {
       const recipients = await this.resolveInvoiceRecipients(organizationId)
       if (recipients.length === 0) return
 
+      const { organizationName, billedToEmail } =
+        await resolveInvoiceBilledTo(organizationId)
+
       await Promise.allSettled(
         recipients.map((r) =>
           this.emailService!.sendPaymentReminder(
             toInvoiceListItem(invoice),
-            r.email
+            r.email,
+            organizationId,
+            { organizationName, billedToEmail }
           )
         )
       )
