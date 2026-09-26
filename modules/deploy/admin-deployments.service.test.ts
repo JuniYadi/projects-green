@@ -2,8 +2,8 @@ import { describe, it, expect, mock, beforeEach } from "bun:test"
 
 const mockPrisma = {
   applicationDeployment: {
-    count: mock(async () => 1),
-    findMany: mock(async () => [
+    count: mock(async (_args: Record<string, unknown>) => 1),
+    findMany: mock(async (_args: Record<string, unknown>) => [
       {
         id: "dep_999",
         stackId: "stack_1",
@@ -32,6 +32,8 @@ const mockPrisma = {
   },
 }
 
+const deploymentRecords = await mockPrisma.applicationDeployment.findMany({})
+
 const mockGetCachedOrganizations = mock(async (ids: string[]) => {
   const map = new Map<string, { id: string; name: string; slug: string }>()
   for (const id of ids) {
@@ -55,6 +57,9 @@ describe("listAdminDeployments", () => {
   beforeEach(() => {
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.applicationDeployment.findMany.mockClear()
+    mockPrisma.applicationDeployment.findMany.mockImplementation(
+      async () => deploymentRecords
+    )
   })
 
   it("filters by organizationId", async () => {
@@ -135,6 +140,27 @@ describe("listAdminDeployments", () => {
       expect.objectContaining({
         where: {},
       })
+    )
+  })
+
+  it("matches the daily operations failed and building deployment queue", async () => {
+    mockPrisma.applicationDeployment.findMany.mockImplementation(
+      async (_args: Record<string, unknown>) => deploymentRecords
+    )
+    await listAdminDeployments({ status: "FAILED,BUILDING" })
+    const where = {
+      status: { in: ["FAILED", "BUILDING"] },
+      stack: { status: { not: "TERMINATED" } },
+      id: { in: ["dep_999"] },
+    }
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ distinct: ["stackId"] })
+    )
+    expect(mockPrisma.applicationDeployment.count).toHaveBeenCalledWith({
+      where,
+    })
+    expect(mockPrisma.applicationDeployment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where })
     )
   })
 

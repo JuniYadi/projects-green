@@ -44,6 +44,7 @@ const STATUS_TONES: Record<string, string> = {
 
 const STATUS_FILTERS = [
   "ALL",
+  "FAILED,BUILDING",
   "RUNNING",
   "BUILDING",
   "DEPLOYING",
@@ -57,6 +58,7 @@ const statusMessageKey: Record<
   keyof AdminDeploymentsMessages["statuses"]
 > = {
   ALL: "all",
+  "FAILED,BUILDING": "failed",
   RUNNING: "running",
   BUILDING: "building",
   DEPLOYING: "deploying",
@@ -344,7 +346,9 @@ export default function AdminDeploymentsPage() {
                 applyFilters(orgInput, queryInput, status)
               }}
             >
-              {messages.statuses[statusMessageKey[status]]}
+              {status === "FAILED,BUILDING"
+                ? `${messages.statuses.failed} / ${messages.statuses.building}`
+                : messages.statuses[statusMessageKey[status]]}
             </Button>
           ))}
         </div>

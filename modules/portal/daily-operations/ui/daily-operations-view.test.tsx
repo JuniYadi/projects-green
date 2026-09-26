@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, render } from "@testing-library/react"
 import "@testing-library/jest-dom"
 import type {
   DailyOperationsDTO,
@@ -35,7 +35,7 @@ const overview: DailyOperationsDTO = {
     metric({
       key: "failed-or-building-deployments",
       label: "Deployment gagal atau sedang dibangun",
-      href: "/portal/app/clusters",
+      href: "/portal/app/deployments?status=FAILED,BUILDING",
     }),
     metric({
       key: "support-tickets-needing-response",
@@ -84,14 +84,15 @@ describe("DailyOperationsView", () => {
   })
 
   it("renders action queues, clean state, age, and direct localized CTAs", () => {
-    render(
+    const { getByRole, getByText, getAllByText, getAllByRole } = render(
       <DailyOperationsView
         overview={overview}
         locale="id"
         localizedHrefs={{
           "payments-awaiting-confirmation":
             "/id/portal/billing/payments?status=PENDING",
-          "failed-or-building-deployments": "/id/portal/app/clusters",
+          "failed-or-building-deployments":
+            "/id/portal/app/deployments?status=FAILED,BUILDING",
           "support-tickets-needing-response":
             "/id/portal/support-tickets?status=OPEN",
           "overdue-or-open-invoices":
@@ -107,28 +108,20 @@ describe("DailyOperationsView", () => {
     )
 
     expect(
-      screen.getByRole("heading", { name: "Portal — Operasional hari ini" })
+      getByRole("heading", { name: "Portal — Operasional hari ini" })
     ).toBeInTheDocument()
+    expect(getByRole("heading", { name: "Perlu tindakan" })).toBeInTheDocument()
+    expect(getByText("Pembayaran menunggu konfirmasi")).toBeInTheDocument()
+    expect(getByText("2 pembayaran menunggu konfirmasi")).toBeInTheDocument()
+    expect(getAllByText("1 jam lalu").length).toBeGreaterThan(0)
     expect(
-      screen.getByRole("heading", { name: "Perlu tindakan" })
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText("Pembayaran menunggu konfirmasi")
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText("2 pembayaran menunggu konfirmasi")
-    ).toBeInTheDocument()
-    expect(screen.getAllByText("1 jam lalu").length).toBeGreaterThan(0)
-    expect(
-      screen.getByText(
+      getByText(
         "Antrean bersih — tidak ada deployment gagal atau sedang dibangun"
       )
     ).toBeInTheDocument()
-    expect(
-      screen.getByText("Antrean ini tidak dapat dimuat")
-    ).toBeInTheDocument()
+    expect(getByText("Antrean ini tidak dapat dimuat")).toBeInTheDocument()
 
-    const paymentLink = screen.getAllByRole("link", {
+    const paymentLink = getAllByRole("link", {
       name: /Tinjau antrean/,
     })[0]
     expect(paymentLink).toHaveAttribute(
@@ -138,18 +131,21 @@ describe("DailyOperationsView", () => {
   })
 
   it("renders queue summary and workspace entry points", () => {
-    render(<DailyOperationsView overview={overview} locale="id" />)
+    const { getByRole, getByText } = render(
+      <DailyOperationsView overview={overview} locale="id" />
+    )
 
     expect(
-      screen.getByRole("heading", { name: "Ringkasan antrean" })
+      getByRole("heading", { name: "Ringkasan antrean" })
     ).toBeInTheDocument()
-    expect(screen.getByText("3 order baru")).toBeInTheDocument()
-    expect(
-      screen.getByRole("heading", { name: "Akses Cepat" })
-    ).toBeInTheDocument()
-    expect(screen.getByText("Documentation Registry")).toBeInTheDocument()
-    expect(screen.getByText("Support Tickets")).toBeInTheDocument()
-    expect(screen.getByText("Billing")).toBeInTheDocument()
-    expect(screen.getByText("App Hosting")).toBeInTheDocument()
+    expect(getByText("3 order baru")).toBeInTheDocument()
+    expect(getByText("Tercatat")).toBeInTheDocument()
+    expect(getByText("Tidak ada")).toBeInTheDocument()
+    expect(getByText("Tidak ada invoice baru dalam 24 jam")).toBeInTheDocument()
+    expect(getByRole("heading", { name: "Akses Cepat" })).toBeInTheDocument()
+    expect(getByText("Documentation Registry")).toBeInTheDocument()
+    expect(getByText("Support Tickets")).toBeInTheDocument()
+    expect(getByText("Billing")).toBeInTheDocument()
+    expect(getByText("App Hosting")).toBeInTheDocument()
   })
 })

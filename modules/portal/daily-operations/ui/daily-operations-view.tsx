@@ -97,6 +97,20 @@ const getStatus = (metric: DailyOperationsMetricDTO, locale: Locale) => {
     }
   }
 
+  if (metric.priority === "INFO") {
+    if (metric.count === 0) {
+      return {
+        label: locale === "en" ? "No activity" : "Tidak ada",
+        variant: "secondary" as const,
+      }
+    }
+
+    return {
+      label: locale === "en" ? "Activity" : "Tercatat",
+      variant: "secondary" as const,
+    }
+  }
+
   if (metric.count === 0) {
     return {
       label: locale === "en" ? "Clear" : "Bersih",
@@ -111,6 +125,11 @@ const getStatus = (metric: DailyOperationsMetricDTO, locale: Locale) => {
 }
 
 const getCleanMessage = (metric: DailyOperationsMetricDTO, locale: Locale) => {
+  if (metric.priority === "INFO") {
+    if (locale === "en")
+      return `No ${metric.label.toLowerCase()} in the last 24 hours`
+    return `Tidak ada ${metric.label.toLowerCase()}`
+  }
   if (locale === "en") return `Queue clear — no ${metric.label.toLowerCase()}`
   return `Antrean bersih — tidak ada ${metric.label.toLowerCase()}`
 }
@@ -169,7 +188,8 @@ function MetricCard({
           </p>
           {metric.available &&
             metric.count > 0 &&
-            metric.ageMinutes !== null && (
+            metric.ageMinutes !== null &&
+            metric.priority !== "INFO" && (
               <p className="text-xs text-muted-foreground">
                 {locale === "en" ? "Oldest item" : "Item tertua"}:{" "}
                 {getAgeLabel(metric.ageMinutes, locale)}

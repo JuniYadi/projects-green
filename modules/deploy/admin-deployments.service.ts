@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma"
 import { getCachedOrganizations } from "@/lib/workos-directory"
 import { StackStatus, type Prisma } from "@prisma/client"
+import {
+  actionableDeploymentWhere,
+  getActionableDeploymentIds,
+} from "./actionable-deployments"
 
 export type AdminDeploymentDTO = {
   id: string
@@ -101,7 +105,10 @@ export async function listAdminDeployments(
   }
 
   const status = params.status?.trim()
-  if (
+  if (status === "FAILED,BUILDING") {
+    const ids = await getActionableDeploymentIds(prisma.applicationDeployment)
+    Object.assign(where, actionableDeploymentWhere, { id: { in: ids } })
+  } else if (
     status &&
     status !== "ALL" &&
     status !== "undefined" &&
