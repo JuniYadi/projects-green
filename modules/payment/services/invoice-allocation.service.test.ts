@@ -24,6 +24,20 @@ mock.module("@/lib/prisma", () => ({
       update: mockUpdateAllocation,
       findMany: mockFindManyAllocation,
     },
+    $transaction: mock(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        billingInvoice: {
+          findFirst: mockFindFirstInvoice,
+          update: mockUpdateInvoice,
+        },
+        billingAccount: {
+          findUnique: mockFindUniqueAccount,
+        },
+        billingInvoicePaymentAllocation: {
+          create: mockCreateAllocation,
+        },
+      })
+    ),
   },
 }))
 
@@ -275,6 +289,42 @@ describe("InvoiceAllocationService", () => {
           referenceId: "duitku_ref_split",
         }),
       })
+    })
+
+    it("reuses existing active pending gateway session instead of creating duplicate", async () => {
+      mockFindFirstInvoice.mockResolvedValueOnce({
+        id: "inv-1",
+        invoiceNumber: "INV-001",
+        status: "OPEN",
+        totalAmount: new Decimal(100000),
+        currency: "IDR",
+        billingAccountId: "acc-1",
+        allocations: [
+          {
+            amount: new Decimal(100000),
+            status: "PENDING",
+            source: "GATEWAY_DUITKU",
+            referenceId: "duitku_ref_existing",
+          },
+        ],
+        metadata: {
+          mode: "POP",
+          reference: "duitku_ref_existing",
+          paymentUrl: "https://duitku.test/pay",
+          clientScriptUrl: "https://duitku.test/lib.js",
+        },
+      })
+
+      const result = await service.initiateGatewayPayment({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+      })
+
+      expect(result.ok).toBe(true)
+      expect(result.reference).toBe("duitku_ref_existing")
+      expect(result.remainingDue).toBe(100000)
+      expect(mockDuitkuCreatePayment).not.toHaveBeenCalled()
+      expect(mockCreateAllocation).not.toHaveBeenCalled()
     })
   })
 

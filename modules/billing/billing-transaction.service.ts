@@ -84,9 +84,10 @@ export class BillingTransactionService {
    * Idempotent — returns alreadyProcessed=true if the same idempotencyKey exists.
    */
   async debitBalance(
-    input: BalanceMutationInput
+    input: BalanceMutationInput,
+    transactionClient: PrismaClient | TxClient = this.prisma
   ): Promise<BalanceMutationResult> {
-    return this.mutateBalance(input, "DEBIT")
+    return this.mutateBalance(input, "DEBIT", transactionClient)
   }
 
   /**

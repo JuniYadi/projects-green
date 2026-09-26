@@ -10,7 +10,7 @@ const mockPaymentAuditLog = {
 }
 
 const mockBillingInvoice = {
-  findUnique: mock(() =>
+  findUnique: mock<() => Promise<Record<string, unknown> | null>>(() =>
     Promise.resolve({ id: "inv-123", billingAccountId: "ba-123" })
   ),
   update: mock(() => Promise.resolve({})),
@@ -101,9 +101,9 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(body).toEqual({ ok: true })
     expect(mockVerifyCallback).toHaveBeenCalledTimes(1)
     expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
-      where: { entityId: "inv-123:REF001", action: "DUITKU_CALLBACK_RECEIVED" },
+      where: { entityId: "inv-123:REF001", action: "DUITKU_PAYMENT_COMPLETED" },
     })
-    expect(mockPaymentAuditLog.create).toHaveBeenCalledTimes(2)
+    expect(mockPaymentAuditLog.create).toHaveBeenCalledTimes(1)
     expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
     expect(mockMarkInvoiceAsPaid).toHaveBeenCalledWith("inv-123")
     expect(mockSendInvoicePaidEmail).toHaveBeenCalledWith({}, "org-123")
@@ -124,7 +124,7 @@ describe("Webhook Route - Duitku Callback", () => {
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce({
       id: "log-123",
       entityId: "inv-123:REF001",
-      action: "DUITKU_CALLBACK_RECEIVED",
+      action: "DUITKU_PAYMENT_COMPLETED",
     })
 
     const res = await postCallback(DEFAULT_BODY)
@@ -147,7 +147,7 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(res.status).toBe(200)
     expect(body).toEqual({ ok: true })
     expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
-      where: { entityId: "inv-123:REF002", action: "DUITKU_CALLBACK_RECEIVED" },
+      where: { entityId: "inv-123:REF002", action: "DUITKU_PAYMENT_COMPLETED" },
     })
   })
 
@@ -164,8 +164,14 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
       where: {
         entityId: "inv-123:REF-FAILED-1",
-        action: "DUITKU_CALLBACK_RECEIVED",
+        action: "DUITKU_PAYMENT_COMPLETED",
       },
+    })
+    expect(mockPaymentAuditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "DUITKU_PAYMENT_FAILED",
+        entityId: "inv-123:REF-FAILED-1",
+      }),
     })
 
     // 2. Later attempt succeeds (resultCode "00") with new reference
@@ -179,11 +185,38 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
       where: {
         entityId: "inv-123:REF-SUCCESS-2",
-        action: "DUITKU_CALLBACK_RECEIVED",
+        action: "DUITKU_PAYMENT_COMPLETED",
       },
     })
     expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
     expect(mockMarkInvoiceAsPaid).toHaveBeenCalledWith("inv-123")
+  })
+
+  it("does not complete payment when service invoice allocation processing fails", async () => {
+    mockBillingInvoice.findUnique.mockResolvedValueOnce({
+      id: "inv-service-1",
+      billingAccountId: "ba-123",
+      type: "SERVICE",
+      allocations: [
+        {
+          id: "alloc-1",
+          status: "PENDING",
+          amount: { toNumber: () => 50000 },
+          referenceId: "REF-OTHER",
+        },
+      ],
+    })
+
+    const res = await postCallback({
+      ...DEFAULT_BODY,
+      merchantOrderId: "inv-service-1",
+      reference: "REF-SERVICE-ERR",
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(400)
+    expect(body.ok).toBe(false)
+    expect(mockCreditBalance).not.toHaveBeenCalled()
   })
 
   it("does not credit balance when resultCode is not 00", async () => {

@@ -72,124 +72,130 @@ export class InvoiceAllocationService {
       throw new Error("Amount must be greater than zero")
     }
 
-    const invoice = await prisma.billingInvoice.findFirst({
-      where: {
-        id: invoiceId,
-        billingAccount: { organizationId },
-      },
-      include: {
-        allocations: {
-          where: { status: "COMPLETED" },
+    return prisma.$transaction(async (tx) => {
+      // Lock billing account and invoice row atomically
+      const invoice = await tx.billingInvoice.findFirst({
+        where: {
+          id: invoiceId,
+          billingAccount: { organizationId },
         },
-      },
-    })
+        include: {
+          allocations: {
+            where: { status: "COMPLETED" },
+          },
+        },
+      })
 
-    if (!invoice) {
-      throw new Error("Invoice not found")
-    }
+      if (!invoice) {
+        throw new Error("Invoice not found")
+      }
 
-    if (
-      invoice.status !== "OPEN" &&
-      invoice.status !== "PARTIALLY_PAID" &&
-      invoice.status !== "ISSUED"
-    ) {
-      throw new Error("Invoice is not open for payment")
-    }
+      if (
+        invoice.status !== "OPEN" &&
+        invoice.status !== "PARTIALLY_PAID" &&
+        invoice.status !== "ISSUED"
+      ) {
+        throw new Error("Invoice is not open for payment")
+      }
 
-    const totalAmount = invoice.totalAmount.toNumber()
-    const currentPaid = (invoice.allocations ?? []).reduce(
-      (sum, a) => sum + a.amount.toNumber(),
-      0
-    )
-    const remainingDue = Math.max(0, totalAmount - currentPaid)
-
-    if (remainingDue <= 0.000001) {
-      throw new Error("Invoice is already fully paid")
-    }
-
-    // Rounding safety: allow paying up to remainingDue
-    const roundedRemaining = Math.round(remainingDue * 100) / 100
-    const roundedToUse = Math.round(amountToUse * 100) / 100
-
-    if (roundedToUse > roundedRemaining) {
-      throw new Error(
-        `Amount to use (${amountToUse}) exceeds remaining due (${remainingDue})`
+      const totalAmount = invoice.totalAmount.toNumber()
+      const currentPaid = (invoice.allocations ?? []).reduce(
+        (sum, a) => sum + a.amount.toNumber(),
+        0
       )
-    }
+      const remainingDue = Math.max(0, totalAmount - currentPaid)
 
-    const account = await prisma.billingAccount.findUnique({
-      where: { organizationId },
-    })
+      if (remainingDue <= 0.000001) {
+        throw new Error("Invoice is already fully paid")
+      }
 
-    if (!account) {
-      throw new Error("Billing account not found")
-    }
+      // Rounding safety: allow paying up to remainingDue
+      const roundedRemaining = Math.round(remainingDue * 100) / 100
+      const roundedToUse = Math.round(amountToUse * 100) / 100
 
-    if (account.balance.toNumber() < roundedToUse) {
-      throw new Error("Insufficient balance")
-    }
-
-    const idempotencyKey = `alloc:balance:${invoiceId}:${Date.now()}`
-
-    // Debit balance atomically
-    await this.billingTransactions.debitBalance({
-      organizationId,
-      amount: new Prisma.Decimal(roundedToUse),
-      currency: invoice.currency,
-      source: "ADJUSTMENT",
-      reason: `Partial payment for invoice ${invoice.invoiceNumber}`,
-      idempotencyKey,
-      invoiceId,
-    })
-
-    // Record completed allocation
-    const allocation = await prisma.billingInvoicePaymentAllocation.create({
-      data: {
-        invoiceId,
-        billingAccountId: account.id,
-        amount: new Prisma.Decimal(roundedToUse),
-        currency: invoice.currency,
-        source: "BALANCE",
-        status: "COMPLETED",
-        completedAt: new Date(),
-        idempotencyKey,
-      },
-    })
-
-    const newPaid = currentPaid + roundedToUse
-    const newRemaining = Math.max(0, totalAmount - newPaid)
-    const isFullyPaid = newRemaining <= 0.0001
-
-    const newStatus = isFullyPaid ? "PAID" : "PARTIALLY_PAID"
-
-    await prisma.billingInvoice.update({
-      where: { id: invoiceId },
-      data: {
-        status: newStatus,
-        paidAt: isFullyPaid ? new Date() : undefined,
-      },
-    })
-
-    if (isFullyPaid) {
-      await settleProductOrdersForInvoice(invoiceId)
-      this.paymentService
-        .sendInvoicePaidEmail(invoice, organizationId)
-        .catch((err) =>
-          console.error(
-            `[InvoiceAllocation] Failed to send paid email for ${invoice.invoiceNumber}:`,
-            err
-          )
+      if (roundedToUse > roundedRemaining) {
+        throw new Error(
+          `Amount to use (${amountToUse}) exceeds remaining due (${remainingDue})`
         )
-    }
+      }
 
-    return {
-      ok: true as const,
-      allocationId: allocation.id,
-      invoiceStatus: newStatus,
-      allocatedAmount: roundedToUse,
-      totalPaid: newPaid,
-      remainingDue: newRemaining,
-    }
+      const account = await tx.billingAccount.findUnique({
+        where: { organizationId },
+      })
+
+      if (!account) {
+        throw new Error("Billing account not found")
+      }
+
+      if (account.balance.toNumber() < roundedToUse) {
+        throw new Error("Insufficient balance")
+      }
+
+      const idempotencyKey = `alloc:balance:${invoiceId}:${Date.now()}`
+
+      // Debit balance atomically inside the same transaction
+      await this.billingTransactions.debitBalance(
+        {
+          organizationId,
+          amount: new Prisma.Decimal(roundedToUse),
+          currency: invoice.currency,
+          source: "ADJUSTMENT",
+          reason: `Partial payment for invoice ${invoice.invoiceNumber}`,
+          idempotencyKey,
+          invoiceId,
+        },
+        tx
+      )
+
+      // Record completed allocation inside the same transaction
+      const allocation = await tx.billingInvoicePaymentAllocation.create({
+        data: {
+          invoiceId,
+          billingAccountId: account.id,
+          amount: new Prisma.Decimal(roundedToUse),
+          currency: invoice.currency,
+          source: "BALANCE",
+          status: "COMPLETED",
+          completedAt: new Date(),
+          idempotencyKey,
+        },
+      })
+
+      const newPaid = currentPaid + roundedToUse
+      const newRemaining = Math.max(0, totalAmount - newPaid)
+      const isFullyPaid = newRemaining <= 0.0001
+
+      const newStatus = isFullyPaid ? "PAID" : "PARTIALLY_PAID"
+
+      await tx.billingInvoice.update({
+        where: { id: invoiceId },
+        data: {
+          status: newStatus,
+          paidAt: isFullyPaid ? new Date() : undefined,
+        },
+      })
+
+      if (isFullyPaid) {
+        await settleProductOrdersForInvoice(invoiceId)
+        this.paymentService
+          .sendInvoicePaidEmail(invoice, organizationId)
+          .catch((err) =>
+            console.error(
+              `[InvoiceAllocation] Failed to send paid email for ${invoice.invoiceNumber}:`,
+              err
+            )
+          )
+      }
+
+      return {
+        ok: true as const,
+        allocationId: allocation.id,
+        invoiceStatus: newStatus,
+        allocatedAmount: roundedToUse,
+        totalPaid: newPaid,
+        remainingDue: newRemaining,
+      }
+    })
   }
 
   /**
@@ -209,7 +215,9 @@ export class InvoiceAllocationService {
       },
       include: {
         allocations: {
-          where: { status: "COMPLETED" },
+          where: {
+            status: { in: ["COMPLETED", "PENDING"] },
+          },
         },
       },
     })
@@ -226,11 +234,37 @@ export class InvoiceAllocationService {
       throw new Error("Invoice is not open for payment")
     }
 
-    const totalAmount = invoice.totalAmount.toNumber()
-    const currentPaid = (invoice.allocations ?? []).reduce(
-      (sum, a) => sum + a.amount.toNumber(),
-      0
+    // Guard against creating another gateway session when a pending gateway attempt already exists
+    const existingPendingGateway = (invoice.allocations ?? []).find(
+      (a) => a.status === "PENDING" && a.source === "GATEWAY_DUITKU"
     )
+
+    if (existingPendingGateway) {
+      // Reuse existing active pending session details from invoice metadata if available
+      const existingMetadata =
+        invoice.metadata &&
+        typeof invoice.metadata === "object" &&
+        !Array.isArray(invoice.metadata)
+          ? (invoice.metadata as Record<string, unknown>)
+          : {}
+
+      const pendingAmount = existingPendingGateway.amount.toNumber()
+      return {
+        ok: true as const,
+        mode: (existingMetadata.mode as string) || "POP",
+        reference:
+          existingPendingGateway.referenceId ||
+          (existingMetadata.reference as string),
+        clientScriptUrl: existingMetadata.clientScriptUrl as string | undefined,
+        paymentUrl: existingMetadata.paymentUrl as string | undefined,
+        remainingDue: pendingAmount,
+      }
+    }
+
+    const totalAmount = invoice.totalAmount.toNumber()
+    const currentPaid = (invoice.allocations ?? [])
+      .filter((a) => a.status === "COMPLETED")
+      .reduce((sum, a) => sum + a.amount.toNumber(), 0)
     const remainingDue = Math.max(0, totalAmount - currentPaid)
 
     if (remainingDue <= 0.000001) {
@@ -254,21 +288,22 @@ export class InvoiceAllocationService {
     const duitkuMethod = isPopMode ? "" : paymentMethod === "QRIS" ? "QR" : "VC"
 
     // Call Duitku for remainingDue
+    const roundedGatewayAmount = Math.round(remainingDue)
     const duitkuResult = await this.duitkuService.createPayment({
       invoiceId: invoice.id,
-      amount: Math.round(remainingDue),
+      amount: roundedGatewayAmount,
       paymentMethod: duitkuMethod,
       customerName: `Org ${organizationId}`,
       email: `${organizationId}@payment.local`,
       productDetails: `Payment for ${invoice.invoiceNumber}`,
     })
 
-    // Create a pending allocation for this gateway attempt
+    // Create a pending allocation for this gateway attempt with exact requested amount
     await prisma.billingInvoicePaymentAllocation.create({
       data: {
         invoiceId,
         billingAccountId: invoice.billingAccountId,
-        amount: new Prisma.Decimal(remainingDue),
+        amount: new Prisma.Decimal(roundedGatewayAmount),
         currency: invoice.currency,
         source: "GATEWAY_DUITKU",
         status: "PENDING",
@@ -341,7 +376,8 @@ export class InvoiceAllocationService {
     }
 
     // Find pending allocation with matching reference or fallback to single pending allocation
-    const pendingAllocation = invoice.allocations.find(
+    const allocations = invoice.allocations ?? []
+    const pendingAllocation = allocations.find(
       (a) =>
         a.status === "PENDING" &&
         (reference ? a.referenceId === reference : true)
@@ -354,12 +390,10 @@ export class InvoiceAllocationService {
       return { ok: false, error: "PENDING_ALLOCATION_NOT_FOUND" }
     }
 
-    // Validate callback amount against the requested pending allocation amount
+    // Validate callback amount against the requested pending allocation amount exactly
     const pendingAmount = pendingAllocation.amount.toNumber()
-    const amountDifference = Math.abs(pendingAmount - amount)
 
-    // Allow rounding tolerance up to 1 currency unit if gateway rounded decimal to integer
-    if (amountDifference > 1.0) {
+    if (Math.abs(pendingAmount - amount) > 0.0001) {
       console.error(
         `[InvoiceAllocation] Amount mismatch for invoice ${merchantOrderId} (ref: ${reference}): expected ${pendingAmount}, received ${amount}`
       )

@@ -33,27 +33,18 @@ export const createWebhookRoutes = () =>
         ? `${merchantOrderId}:${reference}`
         : merchantOrderId
 
-      const existingLog = await prisma.paymentAuditLog.findFirst({
+      // Check if this payment attempt was already completed
+      const completedLog = await prisma.paymentAuditLog.findFirst({
         where: {
           entityId: attemptKey,
-          action: "DUITKU_CALLBACK_RECEIVED",
+          action: "DUITKU_PAYMENT_COMPLETED",
         },
       })
 
-      if (existingLog) {
-        console.log(`Callback already processed for ${attemptKey}`)
+      if (completedLog) {
+        console.log(`Payment already completed for ${attemptKey}`)
         return { ok: true, message: "Already processed" }
       }
-
-      await prisma.paymentAuditLog.create({
-        data: {
-          action: "DUITKU_CALLBACK_RECEIVED",
-          entityType: "Invoice",
-          entityId: attemptKey,
-          actorId: "SYSTEM",
-          details: params,
-        },
-      })
 
       if (resultCode === "00") {
         try {
@@ -66,8 +57,8 @@ export const createWebhookRoutes = () =>
             console.error(
               `Invoice ${merchantOrderId} not found or missing billingAccountId`
             )
-            // Return 200 to prevent Duitku retries for invalid orders
-            return { ok: true }
+            set.status = 400
+            return { ok: false, error: "INVOICE_NOT_FOUND" }
           }
 
           const billingAccount = await prisma.billingAccount.findUnique({
@@ -78,7 +69,8 @@ export const createWebhookRoutes = () =>
             console.error(
               `Billing account not found for invoice ${merchantOrderId}`
             )
-            return { ok: true }
+            set.status = 400
+            return { ok: false, error: "BILLING_ACCOUNT_NOT_FOUND" }
           }
 
           const isTopUp =
@@ -125,20 +117,34 @@ export const createWebhookRoutes = () =>
               )
           } else {
             // Service invoice payment via Duitku allocation
-            await invoiceAllocationService.processGatewayCallback({
-              merchantOrderId,
-              reference,
-              amount: parseInt(amount),
-            })
+            const callbackResult =
+              await invoiceAllocationService.processGatewayCallback({
+                merchantOrderId,
+                reference,
+                amount: parseInt(amount),
+              })
+
+            if (!callbackResult.ok) {
+              console.error(
+                `[Webhook] Callback processing failed for invoice ${merchantOrderId}:`,
+                callbackResult.error
+              )
+              set.status = 400
+              return {
+                ok: false,
+                error: callbackResult.error ?? "CALLBACK_PROCESSING_FAILED",
+              }
+            }
           }
 
+          // Record payment completion ONLY after successful processing
           await prisma.paymentAuditLog.create({
             data: {
               action: "DUITKU_PAYMENT_COMPLETED",
               entityType: "Invoice",
               entityId: attemptKey,
               actorId: "SYSTEM",
-              details: { amount, reference },
+              details: { amount, reference, resultCode },
             },
           })
         } catch (error) {
@@ -146,9 +152,21 @@ export const createWebhookRoutes = () =>
             `Failed to process payment for ${merchantOrderId}:`,
             error
           )
+          set.status = 500
+          return { ok: false, error: "INTERNAL_PROCESSING_ERROR" }
         }
       } else {
         console.log(`Payment failed for ${merchantOrderId}: ${resultCode}`)
+        // Record failed attempt audit log for diagnostics
+        await prisma.paymentAuditLog.create({
+          data: {
+            action: "DUITKU_PAYMENT_FAILED",
+            entityType: "Invoice",
+            entityId: attemptKey,
+            actorId: "SYSTEM",
+            details: { amount, reference, resultCode },
+          },
+        })
       }
 
       return { ok: true }
