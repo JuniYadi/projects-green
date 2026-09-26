@@ -52,7 +52,14 @@ const mockPrisma = {
     ),
     update: mock(() => Promise.resolve({})),
     findFirst: mock(() => Promise.resolve(null)),
-    findUnique: mock(() => Promise.resolve(null)),
+    findUnique: mock<
+      () => Promise<{
+        type: string
+        createdByEmail: string | null
+        paymentMethod?: string
+        paidAt?: Date
+      } | null>
+    >(() => Promise.resolve(null)),
     findMany: mock(() => Promise.resolve([])),
   },
   billingAccount: {
@@ -127,9 +134,13 @@ const mockBillingTransactions = {
 
 // Mock email service to prevent actual email sending during tests
 const mockEmailService = {
-  sendInvoiceCreated: mock(() => Promise.resolve()),
+  sendInvoiceCreated: mock((_invoice: unknown, _email: string) =>
+    Promise.resolve()
+  ),
   sendPaymentReminder: mock(() => Promise.resolve()),
-  sendInvoicePaid: mock(() => Promise.resolve()),
+  sendInvoicePaid: mock((_invoice: unknown, _email: string) =>
+    Promise.resolve()
+  ),
   sendInvoiceOverdue: mock(() => Promise.resolve()),
   sendInvoiceCancelled: mock(() => Promise.resolve()),
   sendTopupReceivedAdminNotice: mock(() => Promise.resolve()),
