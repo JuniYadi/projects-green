@@ -2,7 +2,12 @@ import { generateText, stepCountIs, type ModelMessage } from "ai"
 
 import { logger, logStageFailure } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
-import { claimProcessedEvent } from "@/lib/whatsapp/idempotency-repository"
+import {
+  acquireProcessingClaim,
+  hasClaimMarker,
+  markClaimDone,
+  releaseProcessingClaim,
+} from "@/lib/whatsapp/idempotency-repository"
 import {
   getAiBotTimeoutMs,
   isAiBotTimeoutError,
@@ -80,6 +85,23 @@ export const VISION_FALLBACK_TEXT =
  */
 export const GENERIC_AI_FALLBACK_MESSAGE =
   "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
+
+// Two-state reply claim (AC-01/AC-03). The "done" marker (24h TTL) means an
+// outcome was already delivered for this wamid, so a BullMQ retry must
+// return DUPLICATE_REPLY_CLAIMED instead of sending again. The "processing"
+// claim covers a single in-flight attempt with a TTL derived from the AI
+// timeout (+ buffer for surrounding I/O) — long enough for one attempt,
+// short enough that a crashed process can't block a later retry forever.
+const REPLY_DONE_TTL_SECONDS = 86_400
+// ponytail: timeout + 60 s keeps a crashed attempt's claim shorter than the
+// 60 s + 120 s webhook backoff, so the last BullMQ attempt can still run
+const REPLY_PROCESSING_TTL_BUFFER_SECONDS = 60
+
+const getReplyDoneKey = (inboundMessageId: string) =>
+  `wa:bot-reply:done:${inboundMessageId}`
+
+const getReplyProcessingKey = (inboundMessageId: string) =>
+  `wa:bot-reply:processing:${inboundMessageId}`
 
 /**
  * Attempts one best-effort fallback send after a stage has already failed
@@ -247,20 +269,40 @@ export async function processWhatsappAiBotInbound(
     }
   }
 
+  let ownsProcessingClaim = false
   try {
-    // Claim this inbound message's reply before any LLM/send call, so a
-    // BullMQ retry of the same wamid (per AC-01) can never send a second
-    // reply for it, even after a mid-pipeline crash.
-    const claimedReply = await claimProcessedEvent(
-      `wa:bot-reply:${inboundMessageId}`
-    )
-    if (!claimedReply) {
+    // Two-state reply claim before any LLM/send call (per AC-01/AC-03). A
+    // "done" marker means an outcome was already delivered for this wamid,
+    // so a BullMQ retry must never send a second reply for it. A "processing"
+    // claim covers this single attempt; it's released in the catch below on
+    // any thrown error so a failed attempt (session setup, provider
+    // resolution, retrieval, generation) can still be retried instead of
+    // being permanently dropped.
+    const replyDoneKey = getReplyDoneKey(inboundMessageId)
+    const replyProcessingKey = getReplyProcessingKey(inboundMessageId)
+
+    if (await hasClaimMarker(replyDoneKey)) {
       return {
         handled: true,
         reason: "DUPLICATE_REPLY_CLAIMED",
         agentProfileId: agent.id,
       }
     }
+
+    const processingTtlSeconds =
+      Math.ceil(getAiBotTimeoutMs() / 1000) +
+      REPLY_PROCESSING_TTL_BUFFER_SECONDS
+    const acquiredProcessingClaim = await acquireProcessingClaim(
+      replyProcessingKey,
+      processingTtlSeconds
+    )
+    if (!acquiredProcessingClaim) {
+      // Another attempt holds the claim (or crashed holding it). Throw so
+      // BullMQ retries after backoff instead of recording SUCCESS and
+      // dropping the message; the claim expires on its own.
+      throw new Error(`REPLY_IN_PROGRESS: ${inboundMessageId}`)
+    }
+    ownsProcessingClaim = true
 
     let session = await prisma.aiChatSession.findUnique({
       where: { sessionId },
@@ -301,6 +343,9 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: `SAFETY_${safetyReason}`,
       })
+      // Mark done right after the send: a failing strike write below must
+      // not let a retry send the fallback twice.
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       await recordSafetyViolation({
         sessionId: session.sessionId,
         organizationId,
@@ -341,6 +386,7 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: dailyGuard.reason,
       })
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
         reason: dailyGuard.reason,
@@ -382,6 +428,7 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: "PROVIDER_RESOLUTION",
       })
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
         reason: "AI_PROVIDER_ERROR",
@@ -413,6 +460,8 @@ export async function processWhatsappAiBotInbound(
           },
         },
       })
+
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
 
       await prisma.aiChatMessage.create({
         data: {
@@ -647,12 +696,19 @@ export async function processWhatsappAiBotInbound(
           sessionId,
           stage: "SEND",
         })
+        await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
         return {
           handled: true,
           reason: "SEND_FAILED",
           agentProfileId: agent.id,
         }
       }
+
+      // Outcome delivered — mark done before any further post-send work
+      // (token/usage bookkeeping, message logging) so a later, unrelated
+      // failure downstream can never cause a retry to send a second reply.
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
+
       await prisma.aiChatSession.update({
         where: { id: session.id },
         data: {
@@ -700,12 +756,23 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: "GENERATION",
       })
+      await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
       return {
         handled: true,
         reason: timedOut ? "TIMEOUT" : "GENERATION_FAILED",
         agentProfileId: agent.id,
       }
     }
+  } catch (error) {
+    // An outcome was never delivered (session setup, provider resolution,
+    // retrieval or another step above threw before a reply/fallback was
+    // sent) — release the processing claim so BullMQ's retry of the same
+    // wamid can actually attempt this again instead of being permanently
+    // dropped as DUPLICATE_REPLY_CLAIMED (AC-01/AC-03, PR #934 review).
+    if (ownsProcessingClaim) {
+      await releaseProcessingClaim(getReplyProcessingKey(inboundMessageId))
+    }
+    throw error
   } finally {
     await releaseSessionLock(sessionId, lockToken)
   }
