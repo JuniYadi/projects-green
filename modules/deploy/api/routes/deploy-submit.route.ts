@@ -161,7 +161,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         await prisma.applicationStack.findFirst({
           where: {
             organizationId: auth.organizationId,
-            sourceType: "MANAGED_TEMPLATE",
+            sourceType: "TEMPLATE",
             name,
           },
           select: { id: true, slug: true, name: true },
