@@ -80,9 +80,9 @@ export const VISION_FALLBACK_TEXT =
 
 /**
  * Generic Indonesian fallback shown when the model returns no usable text
- * and the agent has no `fallbackMessage` configured. Reused by the widget
- * (`widget-stream.route.ts`) and the simulator so all three bot paths show
- * the same wording when they have nothing better to say.
+ * and the agent has no `fallbackMessage` configured. The widget
+ * (`widget-stream.route.ts`) and the simulator repeat this exact wording
+ * (not imported, to keep them off this module's dependencies).
  */
 export const GENERIC_AI_FALLBACK_MESSAGE =
   "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
@@ -258,6 +258,16 @@ export async function processWhatsappAiBotInbound(
     if (contentGuard.reason === "MAX_CHAR_EXCEEDED") {
       return { handled: false, reason: contentGuard.reason }
     }
+    // Runs before the lock/claim, so it uses the same done-marker directly:
+    // a later retry of this wamid must not send the fallback twice.
+    const blockedDoneKey = getReplyDoneKey(inboundMessageId)
+    if (await hasClaimMarker(blockedDoneKey)) {
+      return {
+        handled: true,
+        reason: "DUPLICATE_REPLY_CLAIMED",
+        agentProfileId: agent.id,
+      }
+    }
     const delivered = await sendBestEffortFallback({
       organizationId,
       phoneNumber: contactPhone,
@@ -271,6 +281,7 @@ export async function processWhatsappAiBotInbound(
     if (!delivered) {
       throw new FallbackNotDeliveredError(contentGuard.reason)
     }
+    await markClaimDone(blockedDoneKey, REPLY_DONE_TTL_SECONDS)
     return {
       handled: true,
       reason: contentGuard.reason,
@@ -373,17 +384,28 @@ export async function processWhatsappAiBotInbound(
       // Mark done right after the send: a failing strike write below must
       // not let a retry send the fallback twice.
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
-      await recordSafetyViolation({
-        sessionId: session.sessionId,
-        organizationId,
-        userId: null,
-        customerPhone: contactPhone,
-        ipAddress: null,
-        content: cleanText,
-        reason: safetyReason,
-        enableStrikeEscalation: agent.strikeEscalation,
-        banScope: "PHONE_ONLY",
-      })
+      try {
+        await recordSafetyViolation({
+          sessionId: session.sessionId,
+          organizationId,
+          userId: null,
+          customerPhone: contactPhone,
+          ipAddress: null,
+          content: cleanText,
+          reason: safetyReason,
+          enableStrikeEscalation: agent.strikeEscalation,
+          banScope: "PHONE_ONLY",
+        })
+      } catch (error) {
+        // Refusal already delivered and claim done; a retry can't redo this.
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "PERSIST_REPLY",
+          error,
+        })
+      }
       return {
         handled: true,
         reason: `SAFETY_VIOLATION_${safetyReason}`,
@@ -432,12 +454,6 @@ export async function processWhatsappAiBotInbound(
       }
     }
 
-    // Lifetime stat only; the daily guard above counts message rows.
-    await prisma.aiChatSession.update({
-      where: { id: session.id },
-      data: { totalMessages: { increment: 1 } },
-    })
-
     // 4. Universal AI Model Resolution (BYOK via Vault or Managed)
     let model
     let resolvedModelName = ""
@@ -461,7 +477,7 @@ export async function processWhatsappAiBotInbound(
         phoneNumber: contactPhone,
         deviceId,
         replyToMessageId: inboundMessageId,
-        fallbackMessage: agent.fallbackMessage,
+        fallbackMessage: agent.fallbackMessage || GENERIC_AI_FALLBACK_MESSAGE,
         agentProfileId: agent.id,
         sessionId,
         stage: "PROVIDER_RESOLUTION",
@@ -479,40 +495,75 @@ export async function processWhatsappAiBotInbound(
 
     // 5. Vision Capability Fallback Check
     if (isImage && !isVisionSupportedModel(resolvedModelName)) {
-      const fallbackResult = await messageService.sendMessage({
-        organizationId,
-        phoneNumber: contactPhone,
-        deviceId,
-        type: "interactive",
-        replyToMessageId: inboundMessageId,
-        interactivePayload: {
-          type: "button",
-          body: { text: VISION_FALLBACK_TEXT },
-          action: {
-            buttons: [
-              {
-                type: "reply",
-                reply: {
-                  id: "action_contact_cs",
-                  title: "💬 Hubungi CS Admin",
+      let fallbackResult: { messageId?: string }
+      try {
+        fallbackResult = await messageService.sendMessage({
+          organizationId,
+          phoneNumber: contactPhone,
+          deviceId,
+          type: "interactive",
+          replyToMessageId: inboundMessageId,
+          interactivePayload: {
+            type: "button",
+            body: { text: VISION_FALLBACK_TEXT },
+            action: {
+              buttons: [
+                {
+                  type: "reply",
+                  reply: {
+                    id: "action_contact_cs",
+                    title: "💬 Hubungi CS Admin",
+                  },
                 },
-              },
-            ],
+              ],
+            },
           },
-        },
-      })
+        })
+      } catch (sendError) {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "SEND",
+          error: sendError,
+        })
+        const delivered = await sendBestEffortFallback({
+          organizationId,
+          phoneNumber: contactPhone,
+          deviceId,
+          replyToMessageId: inboundMessageId,
+          fallbackMessage: VISION_FALLBACK_TEXT,
+          agentProfileId: agent.id,
+          sessionId,
+          stage: "SEND",
+        })
+        if (!delivered) {
+          throw new FallbackNotDeliveredError("SEND")
+        }
+        fallbackResult = { messageId: undefined }
+      }
 
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
 
-      await prisma.aiChatMessage.create({
-        data: {
-          sessionId: session.sessionId,
-          role: "assistant",
-          content: VISION_FALLBACK_TEXT,
-          promptTokens: 0,
-          responseTokens: 0,
-        },
-      })
+      try {
+        await prisma.aiChatMessage.create({
+          data: {
+            sessionId: session.sessionId,
+            role: "assistant",
+            content: VISION_FALLBACK_TEXT,
+            promptTokens: 0,
+            responseTokens: 0,
+          },
+        })
+      } catch (error) {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "PERSIST_REPLY",
+          error,
+        })
+      }
 
       return {
         handled: true,
@@ -554,19 +605,57 @@ export async function processWhatsappAiBotInbound(
         : "Tolong bantu periksa dokumen PDF ini kak."
     }
 
-    // Log user message
-    await prisma.aiChatMessage.create({
-      data: {
-        sessionId: session.sessionId,
-        role: "user",
-        content:
-          typeof userMessageContent === "string"
-            ? userMessageContent
-            : JSON.stringify(userMessageContent),
-        promptTokens: 0,
-        responseTokens: 0,
-      },
-    })
+    // The customer row and counters are written only after an outcome was
+    // delivered (and the claim marked done), never before generation: a
+    // failed attempt BullMQ retries must not leave a duplicate user row
+    // that the retry's history, and the rolling daily limit, would count.
+    const recordTurn = async (reply?: {
+      content: string
+      promptTokens: number
+      responseTokens: number
+      totalTokens: number
+    }) => {
+      try {
+        await prisma.aiChatSession.update({
+          where: { id: session.id },
+          data: {
+            totalMessages: { increment: 1 },
+            totalTokens: { increment: reply?.totalTokens ?? 0 },
+          },
+        })
+        await prisma.aiChatMessage.create({
+          data: {
+            sessionId: session.sessionId,
+            role: "user",
+            content:
+              typeof userMessageContent === "string"
+                ? userMessageContent
+                : JSON.stringify(userMessageContent),
+            promptTokens: 0,
+            responseTokens: 0,
+          },
+        })
+        if (reply) {
+          await prisma.aiChatMessage.create({
+            data: {
+              sessionId: session.sessionId,
+              role: "assistant",
+              content: reply.content,
+              promptTokens: reply.promptTokens,
+              responseTokens: reply.responseTokens,
+            },
+          })
+        }
+      } catch (error) {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "PERSIST_REPLY",
+          error,
+        })
+      }
+    }
 
     const messages: ModelMessage[] = history.map((msg) => {
       if (typeof msg.content === "string" && msg.role === "user") {
@@ -737,7 +826,7 @@ export async function processWhatsappAiBotInbound(
           phoneNumber: contactPhone,
           deviceId,
           replyToMessageId: inboundMessageId,
-          fallbackMessage: agent.fallbackMessage,
+          fallbackMessage: agent.fallbackMessage || GENERIC_AI_FALLBACK_MESSAGE,
           agentProfileId: agent.id,
           sessionId,
           stage: "SEND",
@@ -746,6 +835,7 @@ export async function processWhatsappAiBotInbound(
           throw new FallbackNotDeliveredError("SEND")
         }
         await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
+        await recordTurn()
         return {
           handled: true,
           reason: "SEND_FAILED",
@@ -758,39 +848,17 @@ export async function processWhatsappAiBotInbound(
       // failure downstream can never cause a retry to send a second reply.
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
 
-      // Bookkeeping failures after a delivered reply are only logged; they
-      // must not reach the generation catch below and send a fallback too.
-      try {
-        await prisma.aiChatSession.update({
-          where: { id: session.id },
-          data: {
-            totalTokens: {
-              increment: (aiResult.usage?.totalTokens as number) || 0,
-            },
-          },
-        })
-
-        // Log chat message
-        const usage = aiResult.usage as
-          { promptTokens?: number; completionTokens?: number } | undefined
-        await prisma.aiChatMessage.create({
-          data: {
-            sessionId: session.sessionId,
-            role: "assistant",
-            content: outboundText,
-            promptTokens: usage?.promptTokens || 0,
-            responseTokens: usage?.completionTokens || 0,
-          },
-        })
-      } catch (error) {
-        logStageFailure({
-          agentProfileId: agent.id,
-          sessionId,
-          channel: "WHATSAPP",
-          stage: "PERSIST_REPLY",
-          error,
-        })
-      }
+      // Bookkeeping failures after a delivered reply are only logged
+      // (inside recordTurn); they must not reach the generation catch below
+      // and send a fallback too.
+      const usage = aiResult.usage as
+        { promptTokens?: number; completionTokens?: number } | undefined
+      await recordTurn({
+        content: outboundText,
+        promptTokens: usage?.promptTokens || 0,
+        responseTokens: usage?.completionTokens || 0,
+        totalTokens: (aiResult.usage?.totalTokens as number) || 0,
+      })
 
       return {
         handled: true,
@@ -817,7 +885,7 @@ export async function processWhatsappAiBotInbound(
         phoneNumber: contactPhone,
         deviceId,
         replyToMessageId: inboundMessageId,
-        fallbackMessage: agent.fallbackMessage,
+        fallbackMessage: agent.fallbackMessage || GENERIC_AI_FALLBACK_MESSAGE,
         agentProfileId: agent.id,
         sessionId,
         stage: "GENERATION",
@@ -826,6 +894,7 @@ export async function processWhatsappAiBotInbound(
         throw new FallbackNotDeliveredError("GENERATION")
       }
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
+      await recordTurn()
       return {
         handled: true,
         reason: timedOut ? "TIMEOUT" : "GENERATION_FAILED",
