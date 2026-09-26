@@ -4,7 +4,11 @@ import {
   createInvoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
-import { resolveInvoiceEmailRecipients } from "@/modules/billing/email-recipients"
+import { getCachedOrganization } from "@/lib/workos-directory"
+import {
+  notifySuperAdmins,
+  sendCustomerPaymentDecision,
+} from "@/modules/billing/notifications/billing-notifications"
 
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
@@ -24,9 +28,30 @@ export class ConfirmationService {
     this.emailService = emailService ?? createInvoiceEmailService()
   }
 
+  private async customerEmails(
+    organizationId: string,
+    actorEmail?: string | null
+  ): Promise<string[]> {
+    const account = await prisma.billingAccount.findUnique({
+      where: { organizationId },
+      include: {
+        contacts: { where: { isActive: true, notifyOnInvoice: true } },
+      },
+    })
+    return Array.from(
+      new Set([
+        ...(account?.contacts ?? []).map((contact) =>
+          contact.email.toLowerCase()
+        ),
+        ...(actorEmail ? [actorEmail.toLowerCase()] : []),
+      ])
+    )
+  }
+
   async create(input: {
     invoiceId: string
     organizationId: string
+    actorEmail?: string | null
     data: {
       bankAccountId: string
       amount: number
@@ -84,10 +109,10 @@ export class ConfirmationService {
       },
     })
 
-    void resolveInvoiceEmailRecipients(organizationId)
+    void this.customerEmails(organizationId, input.actorEmail)
       .then((recipients) =>
         Promise.all(
-          recipients.map(({ email }) =>
+          recipients.map((email) =>
             this.emailService
               .sendPaymentConfirmationSubmitted(
                 {
@@ -117,6 +142,22 @@ export class ConfirmationService {
           error
         )
       })
+
+    void (async () => {
+      const organizationName =
+        (await getCachedOrganization(organizationId))?.name ?? organizationId
+      await notifySuperAdmins("confirmation_submitted", {
+        organizationName,
+        actorEmail: input.actorEmail,
+        amount: Number(confirmation.amount),
+        currency: invoice.currency,
+        reference: invoice.invoiceNumber,
+        occurredAt: confirmation.createdAt,
+        path: `/en/portal/billing/payments?tab=confirmations&confirmation=${encodeURIComponent(confirmation.id)}`,
+      })
+    })().catch((error) =>
+      console.error("[ConfirmationService] Admin notice failed:", error)
+    )
 
     return confirmation
   }
@@ -299,6 +340,18 @@ export class ConfirmationService {
       },
     })
 
+    void this.customerEmails(result.organizationId)
+      .then((emails) =>
+        Promise.allSettled(
+          emails.map((email) =>
+            sendCustomerPaymentDecision(email, result.invoiceNumber, true)
+          )
+        )
+      )
+      .catch((error) =>
+        console.error("[ConfirmationService] Approval email failed:", error)
+      )
+
     return result
   }
 
@@ -330,5 +383,29 @@ export class ConfirmationService {
         details: { reason },
       },
     })
+    void prisma.billingInvoice
+      .findUnique({
+        where: { id: confirmation.invoiceId },
+        include: { billingAccount: true },
+      })
+      .then((invoice) => {
+        if (!invoice?.billingAccount) return
+        return this.customerEmails(invoice.billingAccount.organizationId).then(
+          (emails) =>
+            Promise.allSettled(
+              emails.map((email) =>
+                sendCustomerPaymentDecision(
+                  email,
+                  invoice.invoiceNumber,
+                  false,
+                  reason
+                )
+              )
+            )
+        )
+      })
+      .catch((error) =>
+        console.error("[ConfirmationService] Rejection email failed:", error)
+      )
   }
 }

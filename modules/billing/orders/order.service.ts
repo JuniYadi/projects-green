@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client"
 import type { PrismaClient } from "@prisma/client"
 
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import { getCachedOrganization } from "@/lib/workos-directory"
+import { notifySuperAdmins } from "@/modules/billing/notifications/billing-notifications"
 import {
   BillingTransactionService,
   type BillingChargeSource,
@@ -233,6 +235,7 @@ export class BillingOrderService {
         : rawMetadata
     const lineMetadata = { ...metadata, planId: price.planId }
     let order: OrderWithLines
+    let created = false
     try {
       order = await this.prisma.$transaction(async (tx) => {
         const raced = await tx.billingOrder.findUnique({
@@ -240,7 +243,7 @@ export class BillingOrderService {
           include: { lines: true },
         })
         if (raced) return raced
-        return tx.billingOrder.create({
+        const inserted = await tx.billingOrder.create({
           data: {
             organizationId: input.organizationId,
             billingAccountId: account.id,
@@ -275,12 +278,31 @@ export class BillingOrderService {
           },
           include: { lines: true },
         })
+        created = true
+        return inserted
       })
     } catch (error) {
       if (!isIdempotencyConflict(error)) throw error
       const raced = await this.findByIdempotencyKey(input.idempotencyKey)
       if (!raced) throw error
       order = raced
+    }
+    if (created) {
+      void (async () => {
+        const organizationName =
+          (await getCachedOrganization(input.organizationId))?.name ??
+          input.organizationId
+        await notifySuperAdmins("order_placed", {
+          organizationName,
+          amount: Number(order.totalAmount),
+          currency: order.currency,
+          reference: order.id,
+          occurredAt: order.createdAt,
+          path: `/en/portal/billing/orders`,
+        })
+      })().catch((error) =>
+        console.error("[BillingOrder] Admin notice failed:", error)
+      )
     }
     return toResult(order)
   }

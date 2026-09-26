@@ -14,6 +14,7 @@ const mockPaymentConfirmation = {
 
 const mockInvoice = {
   findFirst: mock((): Promise<MockVal> => Promise.resolve(null)),
+  findUnique: mock((): Promise<MockVal> => Promise.resolve(null)),
   update: mock(() => Promise.resolve({})),
 }
 const mockInvoiceLine = {
@@ -21,25 +22,42 @@ const mockInvoiceLine = {
 }
 
 const mockBillingAccount = {
-  findUnique: mock(() => Promise.resolve(null)),
+  findUnique: mock((): Promise<MockVal> => Promise.resolve(null)),
 }
 
 const mockAuditLog = {
   create: mock(() => Promise.resolve({})),
 }
 const mockSendPaymentConfirmationSubmitted = mock(async () => {})
-const mockResolveInvoiceEmailRecipients = mock(() =>
-  Promise.resolve([] as Array<{ email: string }>)
-)
+const mockSendEmail = mock(async () => null)
+const mockRender = mock(async () => "<html>notice</html>")
+mock.module("react-email", () => ({
+  render: mockRender,
+  Body: "body",
+  Button: "a",
+  Container: "div",
+  Head: "head",
+  Heading: "h1",
+  Hr: "hr",
+  Html: "html",
+  Preview: "div",
+  Section: "section",
+  Text: "p",
+}))
+const mockAdminEmails = mock(async () => [] as string[])
+const mockGetCachedOrganization = mock(async () => ({ name: "Acme" }))
+mock.module("@/lib/queue/email", () => ({ sendEmail: mockSendEmail }))
+mock.module("@/lib/platform-admin-emails", () => ({
+  getPlatformAdminEmails: mockAdminEmails,
+}))
+mock.module("@/lib/workos-directory", () => ({
+  getCachedOrganization: mockGetCachedOrganization,
+}))
 
 mock.module("@/modules/invoices/email.service", () => ({
   createInvoiceEmailService: () => ({
     sendPaymentConfirmationSubmitted: mockSendPaymentConfirmationSubmitted,
   }),
-}))
-
-mock.module("@/modules/billing/email-recipients", () => ({
-  resolveInvoiceEmailRecipients: mockResolveInvoiceEmailRecipients,
 }))
 
 const mockSettleProductOrdersForInvoice = mock(async () => {})
@@ -98,21 +116,28 @@ describe("ConfirmationService", () => {
     mockPaymentConfirmation.update.mockClear()
     mockPaymentConfirmation.findMany.mockClear()
     mockInvoice.findFirst.mockClear()
+    mockInvoice.findUnique.mockClear()
     mockInvoice.update.mockClear()
     mockInvoiceLine.update.mockClear()
     mockBillingAccount.findUnique.mockClear()
     mockAuditLog.create.mockClear()
     mockSendPaymentConfirmationSubmitted.mockClear()
-    mockResolveInvoiceEmailRecipients.mockClear()
+    mockSendEmail.mockClear()
+    mockAdminEmails.mockClear()
+    mockGetCachedOrganization.mockClear()
     mockSettleProductOrdersForInvoice.mockClear()
     mockEmitBillingAudit.mockClear()
   }
 
   beforeEach(() => {
-    mockResolveInvoiceEmailRecipients.mockResolvedValue([])
+    mockAdminEmails.mockResolvedValue([])
+    mockSendEmail.mockResolvedValue(null)
+    mockGetCachedOrganization.mockResolvedValue({ name: "Acme" })
     mockSendPaymentConfirmationSubmitted.mockResolvedValue(undefined)
     resetMocks()
     mockInvoice.findFirst.mockResolvedValue(null)
+    mockInvoice.findUnique.mockResolvedValue(null)
+    mockBillingAccount.findUnique.mockResolvedValue(null)
     mockInvoiceLine.update.mockResolvedValue({})
     mockPaymentConfirmation.findFirst.mockResolvedValue(null)
     mockPaymentConfirmation.findUnique.mockResolvedValue(null)
@@ -157,6 +182,32 @@ describe("ConfirmationService", () => {
         expect.objectContaining({
           where: { id: "conf-123" },
           data: expect.objectContaining({ status: "APPROVED" }),
+        })
+      )
+    })
+
+    it("emails billing contacts only after a successful approval", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-123",
+        status: "PENDING",
+        amount: 50000,
+        invoiceId: "inv-123",
+        invoice: {
+          id: "inv-123",
+          invoiceNumber: "TOP-ABC123",
+          status: "PAID",
+          billingAccount: { organizationId: "org-123", currency: "IDR" },
+        },
+      })
+      mockBillingAccount.findUnique.mockResolvedValueOnce({
+        contacts: [{ email: "finance@example.com" }],
+      })
+      await service.approve("conf-123", "admin-1")
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "finance@example.com",
+          subject: "Payment approved",
         })
       )
     })
@@ -399,9 +450,9 @@ describe("ConfirmationService", () => {
         senderName: "Sender",
         bankAccount: { bankName: "BCA" },
       })
-      mockResolveInvoiceEmailRecipients.mockResolvedValueOnce([
-        { email: "finance@example.com" },
-      ])
+      mockBillingAccount.findUnique.mockResolvedValueOnce({
+        contacts: [{ email: "finance@example.com" }],
+      })
 
       await service.create({
         invoiceId: "inv-1",
@@ -429,6 +480,58 @@ describe("ConfirmationService", () => {
         "finance@example.com"
       )
     })
+    it("notifies platform super admins separately from customer recipients", async () => {
+      mockInvoice.findFirst.mockResolvedValueOnce({
+        id: "inv-1",
+        invoiceNumber: "INV-001",
+        currency: "IDR",
+        status: "OPEN",
+      })
+      mockPaymentConfirmation.create.mockResolvedValueOnce({
+        id: "conf-new",
+        amount: 100000,
+        createdAt: new Date(),
+        bankAccount: { bankName: "BCA" },
+      })
+      mockBillingAccount.findUnique.mockResolvedValueOnce({
+        contacts: [{ email: "finance@example.com" }],
+      })
+      mockAdminEmails.mockResolvedValueOnce(["platform@example.com"])
+
+      await service.create({
+        invoiceId: "inv-1",
+        organizationId: "org-1",
+        actorEmail: "actor@example.com",
+        data: {
+          bankAccountId: "ba-1",
+          amount: 100000,
+          paymentDateTime: new Date(),
+        },
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "platform@example.com",
+          subject: "Payment confirmation needs review",
+        })
+      )
+      expect(mockRender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          props: expect.objectContaining({
+            notice: expect.objectContaining({
+              path: "/en/portal/billing/payments?tab=confirmations&confirmation=conf-new",
+            }),
+          }),
+        })
+      )
+      expect(mockSendPaymentConfirmationSubmitted).toHaveBeenCalledTimes(2)
+      expect(mockSendPaymentConfirmationSubmitted).not.toHaveBeenCalledWith(
+        expect.anything(),
+        "platform@example.com"
+      )
+    })
+
     it("continues when recipient resolution fails", async () => {
       mockInvoice.findFirst.mockResolvedValueOnce({
         id: "inv-1",
@@ -444,7 +547,7 @@ describe("ConfirmationService", () => {
         amount: 100000,
         bankAccount: { bankName: "BCA" },
       })
-      mockResolveInvoiceEmailRecipients.mockRejectedValueOnce(
+      mockBillingAccount.findUnique.mockRejectedValueOnce(
         new Error("recipient lookup failed")
       )
 
@@ -483,9 +586,9 @@ describe("ConfirmationService", () => {
         amount: 100000,
         bankAccount: { bankName: "BCA" },
       })
-      mockResolveInvoiceEmailRecipients.mockResolvedValueOnce([
-        { email: "finance@example.com" },
-      ])
+      mockBillingAccount.findUnique.mockResolvedValueOnce({
+        contacts: [{ email: "finance@example.com" }],
+      })
       mockSendPaymentConfirmationSubmitted.mockRejectedValueOnce(
         new Error("smtp unavailable")
       )
@@ -565,6 +668,33 @@ describe("ConfirmationService", () => {
             action: "PAYMENT_REJECTED",
             entityId: "conf-1",
           }),
+        })
+      )
+    })
+    it("emails the rejection reason to billing contacts after rejection", async () => {
+      mockPaymentConfirmation.findUnique.mockResolvedValueOnce({
+        id: "conf-1",
+        status: "PENDING",
+        invoiceId: "inv-1",
+      })
+      mockInvoice.findUnique.mockResolvedValueOnce({
+        invoiceNumber: "INV-1",
+        billingAccount: { organizationId: "org-1" },
+      })
+      mockBillingAccount.findUnique.mockResolvedValueOnce({
+        contacts: [{ email: "finance@example.com" }],
+      })
+      await service.reject("conf-1", "admin-1", "Unmatched transfer")
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "finance@example.com",
+          subject: "Payment rejected",
+        })
+      )
+      expect(mockRender).toHaveBeenCalledWith(
+        expect.objectContaining({
+          props: expect.objectContaining({ reason: "Unmatched transfer" }),
         })
       )
     })

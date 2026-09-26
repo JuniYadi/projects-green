@@ -11,6 +11,7 @@ import {
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
 import { resolveInvoiceBilledTo } from "@/modules/billing/email-recipients"
+import { notifySuperAdmins } from "@/modules/billing/notifications/billing-notifications"
 
 export class PaymentService {
   private billingTransactions: BillingTransactionService
@@ -486,6 +487,20 @@ export class PaymentService {
       )
     )
     if (isTopUp) {
+      void notifySuperAdmins("topup_paid", {
+        organizationName: organizationName ?? organizationId,
+        actorEmail,
+        amount: invoiceData.totalAmount,
+        currency: invoice.currency,
+        reference: invoice.invoiceNumber,
+        occurredAt: stored?.paidAt ?? new Date(),
+        path: `/en/portal/billing/invoices`,
+      }).catch((error) =>
+        console.error(
+          `[PaymentService] Platform top-up notice failed for ${invoice.id}:`,
+          error
+        )
+      )
       if (!adminEmail) {
         console.error(`[PaymentService] No org admin for top-up ${invoice.id}`)
       } else if (usedAdminFallback) {

@@ -10,11 +10,35 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const { getPlatformSuperAdminEmails } = await import("./platform-admin-emails")
+const { getPlatformAdminEmails, getPlatformSuperAdminEmails } =
+  await import("./platform-admin-emails")
 
-describe("getPlatformSuperAdminEmails", () => {
+describe("platform admin email resolution", () => {
   beforeEach(() => {
     mockFindMany.mockClear()
+    mockFindMany.mockResolvedValue([])
+  })
+
+  it("includes every registered platform user for billing notices", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      { email: "Admin1@Example.com" },
+      { email: "admin1@example.com" },
+      { email: "operator@example.com" },
+      { email: null },
+    ])
+    expect(await getPlatformAdminEmails()).toEqual([
+      "admin1@example.com",
+      "operator@example.com",
+    ])
+    expect(mockFindMany).toHaveBeenCalledWith({
+      where: { email: { not: null } },
+      select: { email: true },
+    })
+  })
+
+  it("returns no platform addresses if the directory lookup fails", async () => {
+    mockFindMany.mockRejectedValueOnce(new Error("DB error"))
+    expect(await getPlatformAdminEmails()).toEqual([])
   })
 
   it("returns unique lowercased super admin emails", async () => {

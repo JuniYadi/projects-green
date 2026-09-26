@@ -75,6 +75,7 @@ export const createConfirmRoutes = () =>
         const confirmation = await confirmationService.create({
           invoiceId: params.id,
           organizationId: auth.organizationId,
+          actorEmail: auth.user?.email,
           data: {
             bankAccountId,
             amount,

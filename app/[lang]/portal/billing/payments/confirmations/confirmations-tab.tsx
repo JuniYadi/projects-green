@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useCallback, useEffect, useState, useMemo } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useSearchParams } from "next/navigation"
 import { resolveLocaleOrDefault } from "@/lib/i18n/pathname"
 import { getMessages } from "@/lib/i18n/messages"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -105,6 +105,8 @@ type ConfirmationsRequestState =
 
 export function ConfirmationsTab() {
   const params = useParams<{ lang?: string }>()
+  const searchParams = useSearchParams()
+  const confirmationId = searchParams.get("confirmation")
   const lang = resolveLocaleOrDefault(params?.lang)
   const messages = getMessages(lang).console.adminBillingPayments.confirmations
   const [state, setState] = useState<ConfirmationsRequestState>({
@@ -142,6 +144,34 @@ export function ConfirmationsTab() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchConfirmations()
   }, [fetchConfirmations])
+
+  useEffect(() => {
+    if (!confirmationId || state.status !== "success") return
+    let cancelled = false
+    const openConfirmation = (confirmation: PaymentConfirmation) => {
+      if (cancelled) return
+      setSelectedConfirmation(confirmation)
+      setVerifiedAmount(String(confirmation.amount))
+    }
+    const existing = state.data.find((item) => item.id === confirmationId)
+    if (existing) {
+      openConfirmation(existing)
+    } else {
+      void eden.api.portal.payments.confirmations[confirmationId]
+        .get()
+        .then(({ data, error }) => {
+          if (!error && data && "id" in data) {
+            openConfirmation(data as PaymentConfirmation)
+          }
+        })
+        .catch((error) =>
+          console.error("Failed to load confirmation from email link:", error)
+        )
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [confirmationId, state])
 
   async function reviewConfirmation(
     id: string,
@@ -294,7 +324,7 @@ export function ConfirmationsTab() {
         ),
       },
     ],
-    [lang]
+    [lang, messages]
   )
 
   if (state.status === "loading") {
