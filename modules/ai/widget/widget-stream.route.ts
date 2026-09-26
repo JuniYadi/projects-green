@@ -341,9 +341,23 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
               timeout: getAiBotTimeoutMs(),
             })
 
-            for await (const chunk of aiStream.textStream) {
-              fullAssistantText += chunk
-              controller.enqueue(encoder.encode(sseChunk(chunk)))
+            // streamText never throws: provider errors and timeouts arrive
+            // as "error"/"abort" parts, which textStream silently drops.
+            // Read fullStream so they reach the fallback catch below.
+            for await (const part of aiStream.fullStream) {
+              if (part.type === "text-delta") {
+                fullAssistantText += part.text
+                controller.enqueue(encoder.encode(sseChunk(part.text)))
+              } else if (part.type === "error") {
+                throw part.error
+              } else if (part.type === "abort") {
+                const abortError = new Error(part.reason ?? "stream aborted")
+                abortError.name = "AbortError"
+                throw abortError
+              }
+            }
+            if (!fullAssistantText.trim()) {
+              throw new Error("model returned no text")
             }
 
             // End of stream marker
