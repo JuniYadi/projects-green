@@ -664,6 +664,14 @@ describe("widget-stream.route", () => {
           role: "assistant",
         })
       )
+      // Flagged like WhatsApp's recordSafetyViolation (AC-09 parity)
+      expect(mockRecordMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: "user",
+          isFlagged: true,
+          flagReason: "PROFANITY",
+        })
+      )
       expect(mockRecordSessionStrike).toHaveBeenCalledWith(
         "widget_agent-1_vis-1",
         "PROFANITY"
