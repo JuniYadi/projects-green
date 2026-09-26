@@ -134,6 +134,15 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
       // channel binding, so only agent.dailyUserLimit applies. A blocked
       // message returns JSON before the stream is built and releases the
       // lock it just acquired.
+      //
+      // The daily limit means "N customer messages" (AC-07), so it is
+      // checked against a count of this session's role="user" rows, not
+      // session.totalMessages — that column increments for both the user
+      // message and the assistant reply (recordMessage), which would let a
+      // visitor hit the limit after roughly half the allowed count.
+      const inboundMessageCount = await prisma.aiChatMessage.count({
+        where: { sessionId: session.sessionId, role: "user" },
+      })
       const guardResult = checkInboundAgentGuardrails({
         text: message,
         maxCharLength: agent.maxCharLength,
@@ -141,7 +150,7 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         customBlockedWords: agent.customBlockedWords,
         fallbackMessage: agent.fallbackMessage,
         dailyUserLimit: agent.dailyUserLimit,
-        currentMessageCount: session.totalMessages,
+        currentMessageCount: inboundMessageCount,
       })
       if (!guardResult.ok) {
         await releaseSessionLock(session.sessionId, lockToken)
