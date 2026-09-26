@@ -547,6 +547,10 @@ export default function AiAgentsPage() {
     }
   }
 
+  // Null while the dialog animates closed; default to 0 so copy doesn't flip
+  const deleteKnowledgeCount = agentToDelete?.knowledgeCount ?? 0
+  const deleteActionCount = agentToDelete?.actionCount ?? 0
+
   const handleDelete = async () => {
     if (!agentToDelete) return
     const res = await eden.api.console.ai.agents[agentToDelete.id].delete({
@@ -1251,19 +1255,11 @@ export default function AiAgentsPage() {
                   {messages.lifecycle.deleteTitle}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {agentToDelete &&
-                  agentToDelete.knowledgeCount === 0 &&
-                  agentToDelete.actionCount === 0
+                  {deleteKnowledgeCount + deleteActionCount === 0
                     ? messages.lifecycle.deleteDescriptionEmpty
                     : messages.lifecycle.deleteDescription
-                        .replace(
-                          "{knowledge}",
-                          String(agentToDelete?.knowledgeCount ?? 0)
-                        )
-                        .replace(
-                          "{actions}",
-                          String(agentToDelete?.actionCount ?? 0)
-                        )}
+                        .replace("{knowledge}", String(deleteKnowledgeCount))
+                        .replace("{actions}", String(deleteActionCount))}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
