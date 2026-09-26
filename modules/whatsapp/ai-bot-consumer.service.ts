@@ -654,7 +654,9 @@ export async function processWhatsappAiBotInbound(
       // a model that emits [BUTTON:]/[URL:] tags never leaks raw markup.
       const { cleanText, buttons } = parseInteractiveButtons(rawReplyText)
       const hasButtons = agent.allowInteractiveReplies && buttons.length > 0
-      const outboundText = cleanText || rawReplyText
+      // A tag-only reply strips to "", fall back rather than send raw markup.
+      const outboundText =
+        cleanText || agent.fallbackMessage || GENERIC_AI_FALLBACK_MESSAGE
 
       // Send reply back to customer. Guarded separately from the
       // generateText call above so a send failure is tagged SEND_FAILED,
@@ -667,7 +669,10 @@ export async function processWhatsappAiBotInbound(
               phoneNumber: contactPhone,
               deviceId,
               type: "interactive",
-              interactivePayload: buildInteractivePayload(cleanText, buttons),
+              interactivePayload: buildInteractivePayload(
+                outboundText,
+                buttons
+              ),
               message: outboundText,
               replyToMessageId: inboundMessageId,
             })
