@@ -17,6 +17,10 @@ type ListAgent = AiAgentProfile & {
     AiChannelBinding,
     "channel" | "id" | "isActive" | "targetId" | "targetName"
   >[]
+  _count?: {
+    knowledgeDocuments: number
+    actionIntents: number
+  }
 }
 
 export type AiAgentListItemDTO = {
@@ -27,6 +31,8 @@ export type AiAgentListItemDTO = {
   operationalStatus: AiAgentOperationalStatus
   activeChannelsCount: number
   channelBindings: ListAgent["channelBindings"]
+  knowledgeCount: number
+  actionCount: number
   createdAt: Date
   updatedAt: Date
 }
@@ -84,6 +90,8 @@ export function toAiAgentListItemDTO(agent: ListAgent): AiAgentListItemDTO {
     operationalStatus,
     activeChannelsCount: activeBindings.length,
     channelBindings: activeBindings,
+    knowledgeCount: agent._count?.knowledgeDocuments ?? 0,
+    actionCount: agent._count?.actionIntents ?? 0,
     createdAt: agent.createdAt,
     updatedAt: agent.updatedAt,
   }
