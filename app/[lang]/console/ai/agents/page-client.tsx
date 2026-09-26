@@ -1251,7 +1251,19 @@ export default function AiAgentsPage() {
                   {messages.lifecycle.deleteTitle}
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                  {messages.lifecycle.deleteDescription}
+                  {agentToDelete &&
+                  agentToDelete.knowledgeCount === 0 &&
+                  agentToDelete.actionCount === 0
+                    ? messages.lifecycle.deleteDescriptionEmpty
+                    : messages.lifecycle.deleteDescription
+                        .replace(
+                          "{knowledge}",
+                          String(agentToDelete?.knowledgeCount ?? 0)
+                        )
+                        .replace(
+                          "{actions}",
+                          String(agentToDelete?.actionCount ?? 0)
+                        )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
