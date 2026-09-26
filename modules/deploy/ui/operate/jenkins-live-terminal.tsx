@@ -318,6 +318,27 @@ export function JenkinsLiveTerminal({
   }, [fetchJenkinsLogs, fetchAuxLogs, status])
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const jenkinsStages = useMemo(
+    () =>
+      parseJenkinsStages(
+        jenkinsLogs ? jenkinsLogs.split("\n") : [],
+        isStreaming
+      ),
+    [jenkinsLogs, isStreaming]
+  )
+
+  useEffect(() => {
+    onJenkinsStagesChange?.(jenkinsStages)
+  }, [jenkinsStages, onJenkinsStagesChange])
+
+  const isSelectedStageRunning = useMemo(() => {
+    if (!selectedJenkinsStage) return false
+    return (
+      jenkinsStages.find((s) => s.name === selectedJenkinsStage)?.status ===
+      "running"
+    )
+  }, [jenkinsStages, selectedJenkinsStage])
+
   // Autoscroll logic
   useEffect(() => {
     if (autoScroll && !selectedJenkinsStage && terminalContainerRef.current) {
@@ -336,10 +357,10 @@ export function JenkinsLiveTerminal({
   useEffect(() => {
     if (!terminalContainerRef.current || activeTab !== "jenkins") return
     terminalContainerRef.current.scrollTop =
-      selectedJenkinsStage && isStreaming
+      selectedJenkinsStage && isSelectedStageRunning
         ? terminalContainerRef.current.scrollHeight
         : 0
-  }, [selectedJenkinsStage, activeTab, isStreaming])
+  }, [selectedJenkinsStage, activeTab, isSelectedStageRunning])
 
   // Handle escape to exit fullscreen
   useEffect(() => {
@@ -357,7 +378,7 @@ export function JenkinsLiveTerminal({
     if (activeTab === "jenkins") {
       const lines = jenkinsLogs ? jenkinsLogs.split("\n") : []
       if (!selectedJenkinsStage) return lines
-      const stage = parseJenkinsStages(lines, isStreaming).find(
+      const stage = jenkinsStages.find(
         (item) => item.name === selectedJenkinsStage
       )
       return stage ? lines.slice(stage.startLine, stage.endLine) : lines
@@ -372,21 +393,8 @@ export function JenkinsLiveTerminal({
     gitopsLogs,
     appLogs,
     selectedJenkinsStage,
-    isStreaming,
+    jenkinsStages,
   ])
-
-  const jenkinsStages = useMemo(
-    () =>
-      parseJenkinsStages(
-        jenkinsLogs ? jenkinsLogs.split("\n") : [],
-        isStreaming
-      ),
-    [jenkinsLogs, isStreaming]
-  )
-
-  useEffect(() => {
-    onJenkinsStagesChange?.(jenkinsStages)
-  }, [jenkinsStages, onJenkinsStagesChange])
 
   // Filtered lines with search query
   const filteredLines = useMemo(() => {
