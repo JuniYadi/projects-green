@@ -115,7 +115,10 @@ export function resetRateLimiterStores() {
  */
 export function inspectPromptSafety(
   text: string,
-  customBlockedWords: string[] = []
+  customBlockedWords: string[] = [],
+  // false skips the blocked-word and profanity checks (an agent's
+  // enableProfanityFilter toggle); oversize and injection always run.
+  { checkProfanity = true }: { checkProfanity?: boolean } = {}
 ): SafetyCheckResult {
   const trimmed = text.trim()
 
@@ -129,7 +132,7 @@ export function inspectPromptSafety(
   }
 
   // 2. Custom Blocked Words Check
-  for (const word of customBlockedWords) {
+  for (const word of checkProfanity ? customBlockedWords : []) {
     if (word.trim()) {
       const regex = new RegExp(`\\b${escapeRegExp(word.trim())}\\b`, "i")
       if (regex.test(trimmed)) {
@@ -143,7 +146,7 @@ export function inspectPromptSafety(
   }
 
   // 3. Built-in Profanity Check
-  for (const pattern of PROFANITY_PATTERNS) {
+  for (const pattern of checkProfanity ? PROFANITY_PATTERNS : []) {
     if (pattern.test(trimmed)) {
       return {
         ok: false,
