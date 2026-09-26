@@ -9,6 +9,7 @@ import {
   releaseProcessingClaim,
 } from "@/lib/whatsapp/idempotency-repository"
 import {
+  getAiBotLockTtlSeconds,
   getAiBotTimeoutMs,
   isAiBotTimeoutError,
 } from "@/modules/ai/ai-bot-timeout"
@@ -260,7 +261,10 @@ export async function processWhatsappAiBotInbound(
 
   // 3. Concurrency Lock & Retrieve/Create AI Chat Session
   const sessionId = `wa_${conversationId}`
-  const lockToken = await acquireSessionLock(sessionId)
+  const lockToken = await acquireSessionLock(
+    sessionId,
+    getAiBotLockTtlSeconds()
+  )
   if (!lockToken) {
     return {
       handled: false,
@@ -714,27 +718,39 @@ export async function processWhatsappAiBotInbound(
       // failure downstream can never cause a retry to send a second reply.
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
 
-      await prisma.aiChatSession.update({
-        where: { id: session.id },
-        data: {
-          totalTokens: {
-            increment: (aiResult.usage?.totalTokens as number) || 0,
+      // Bookkeeping failures after a delivered reply are only logged; they
+      // must not reach the generation catch below and send a fallback too.
+      try {
+        await prisma.aiChatSession.update({
+          where: { id: session.id },
+          data: {
+            totalTokens: {
+              increment: (aiResult.usage?.totalTokens as number) || 0,
+            },
           },
-        },
-      })
+        })
 
-      // Log chat message
-      const usage = aiResult.usage as
-        { promptTokens?: number; completionTokens?: number } | undefined
-      await prisma.aiChatMessage.create({
-        data: {
-          sessionId: session.id,
-          role: "assistant",
-          content: outboundText,
-          promptTokens: usage?.promptTokens || 0,
-          responseTokens: usage?.completionTokens || 0,
-        },
-      })
+        // Log chat message
+        const usage = aiResult.usage as
+          { promptTokens?: number; completionTokens?: number } | undefined
+        await prisma.aiChatMessage.create({
+          data: {
+            sessionId: session.id,
+            role: "assistant",
+            content: outboundText,
+            promptTokens: usage?.promptTokens || 0,
+            responseTokens: usage?.completionTokens || 0,
+          },
+        })
+      } catch (error) {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "PERSIST_REPLY",
+          error,
+        })
+      }
 
       return {
         handled: true,
