@@ -32,6 +32,8 @@ mock.module("@/lib/eden", () => ({
                       status: "DRAFT",
                       operationalStatus: "READY_TO_CONNECT",
                       activeChannelsCount: 0,
+                      knowledgeCount: 0,
+                      actionCount: 0,
                       channelBindings: [],
                       createdAt: new Date().toISOString(),
                       updatedAt: new Date().toISOString(),
