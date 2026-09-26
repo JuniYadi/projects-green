@@ -134,11 +134,11 @@ const mockBillingTransactions = {
 
 // Mock email service to prevent actual email sending during tests
 const mockEmailService = {
-  sendInvoiceCreated: mock((_invoice: unknown, _email: string) =>
+  sendInvoiceCreated: mock<InvoiceEmailService["sendInvoiceCreated"]>(() =>
     Promise.resolve()
   ),
   sendPaymentReminder: mock(() => Promise.resolve()),
-  sendInvoicePaid: mock((_invoice: unknown, _email: string) =>
+  sendInvoicePaid: mock<InvoiceEmailService["sendInvoicePaid"]>(() =>
     Promise.resolve()
   ),
   sendInvoiceOverdue: mock(() => Promise.resolve()),
@@ -530,19 +530,21 @@ describe("PaymentService", () => {
     it("sends email to billing contacts when present", async () => {
       ;(
         mockPrisma.billingAccount.findUnique as ReturnType<typeof mock>
-      ).mockResolvedValueOnce({
-        id: "ba-123",
-        organizationId: "org-123",
-        currency: "IDR",
-        contacts: [
-          {
-            id: "c1",
-            email: "billing@example.com",
-            isActive: true,
-            notifyOnInvoice: true,
-          },
-        ],
-      })
+      ).mockImplementation(() =>
+        Promise.resolve({
+          id: "ba-123",
+          organizationId: "org-123",
+          currency: "IDR",
+          contacts: [
+            {
+              id: "c1",
+              email: "billing@example.com",
+              isActive: true,
+              notifyOnInvoice: true,
+            },
+          ],
+        })
+      )
 
       await service.sendInvoicePaidEmail(
         {
@@ -741,6 +743,9 @@ describe("PaymentService", () => {
         "org-123",
         { billedToEmail: undefined, organizationName: "Acme" }
       )
+      expect(
+        mockEmailService.sendTopupReceivedAdminNotice
+      ).not.toHaveBeenCalled()
     })
 
     it("does not throw when WorkOS fails (fire-and-forget resilience)", async () => {
@@ -780,10 +785,12 @@ describe("PaymentService", () => {
         role: { slug: "user_owner" },
       },
     ])
-    mockPrisma.billingAccount.findUnique.mockResolvedValueOnce({
-      id: "ba-123",
-      contacts: [{ email: "billing@example.com" }],
-    } as never)
+    mockPrisma.billingAccount.findUnique.mockImplementation(() =>
+      Promise.resolve({
+        id: "ba-123",
+        contacts: [{ email: "billing@example.com" }],
+      } as never)
+    )
     await service["sendTopupInvoiceEmail"](
       {
         id: "inv-123",
@@ -805,5 +812,64 @@ describe("PaymentService", () => {
       "org-123",
       { organizationName: "Acme", billedToEmail: "billing@example.com" }
     )
+  })
+
+  it("billedToEmail is the primary billing contact, identical on created and paid", async () => {
+    mockPrisma.billingAccount.findUnique.mockImplementation(() =>
+      Promise.resolve({
+        id: "ba-123",
+        organizationId: "org-123",
+        currency: "IDR",
+        contacts: [
+          {
+            email: "general@example.com",
+            role: "GENERAL",
+            createdAt: new Date("2026-01-01"),
+          },
+          {
+            email: "owner@example.com",
+            role: "OWNER",
+            createdAt: new Date("2026-01-02"),
+          },
+        ],
+      } as never)
+    )
+
+    await service["sendTopupInvoiceEmail"](
+      {
+        id: "inv-123",
+        invoiceNumber: "TOP-ABC123",
+        totalAmount: { toNumber: () => 50000 },
+        currency: "IDR",
+        status: "OPEN",
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      },
+      "org-123"
+    )
+    const createdOptions = mockEmailService.sendInvoiceCreated.mock.calls[0][3]
+
+    await service.sendInvoicePaidEmail(
+      {
+        id: "inv-123",
+        invoiceNumber: "TOP-ABC123",
+        totalAmount: { toNumber: () => 50000 },
+        currency: "IDR",
+        status: "PAID",
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      },
+      "org-123"
+    )
+    const paidOptions = mockEmailService.sendInvoicePaid.mock.calls[0][3]
+
+    expect(createdOptions).toEqual({
+      organizationName: "Acme",
+      billedToEmail: "owner@example.com",
+    })
+    expect(paidOptions).toEqual({
+      organizationName: "Acme",
+      billedToEmail: "owner@example.com",
+    })
   })
 })
