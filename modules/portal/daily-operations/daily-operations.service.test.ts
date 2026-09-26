@@ -74,5 +74,11 @@ describe("DailyOperationsService", () => {
 
     expect(result.paymentsAwaitingConfirmation.ageMinutes).toBe(90)
     expect(result.overdueInvoices.message).toBe("Antrean bersih")
+    expect(result.newOrders.message).toBe(
+      "Tidak ada order baru dalam 24 jam terakhir"
+    )
+    expect(result.failedDeployments.href).toBe(
+      "/portal/app/deployments?status=FAILED"
+    )
   })
 })

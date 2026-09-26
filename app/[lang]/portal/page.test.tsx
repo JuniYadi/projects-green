@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from "bun:test"
-import { render, screen } from "@testing-library/react"
+import { render } from "@testing-library/react"
 
 import PortalPage from "./page"
 
@@ -115,10 +115,10 @@ describe("PortalPage", () => {
     const Page = await PortalPage({
       params: Promise.resolve({ lang: "en" }),
     })
-    render(Page)
+    const { getByText } = render(Page)
 
-    expect(screen.getByText("Portal — Daily Operations")).toBeInTheDocument()
-    expect(screen.getByText("Payment Confirmation")).toBeInTheDocument()
-    expect(screen.getByText("New Orders (24h)")).toBeInTheDocument()
+    expect(getByText("Portal — Daily Operations")).toBeInTheDocument()
+    expect(getByText("Payment Confirmation")).toBeInTheDocument()
+    expect(getByText("New Orders (24h)")).toBeInTheDocument()
   })
 })
