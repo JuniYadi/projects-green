@@ -129,6 +129,22 @@ export const createWebhookRoutes = () =>
                 `[Webhook] Callback processing failed for invoice ${merchantOrderId}:`,
                 callbackResult.error
               )
+              // Record the failed attempt for diagnostics. No completion log is
+              // written, so a gateway retry is still accepted.
+              await prisma.paymentAuditLog.create({
+                data: {
+                  action: "DUITKU_PAYMENT_FAILED",
+                  entityType: "Invoice",
+                  entityId: attemptKey,
+                  actorId: "SYSTEM",
+                  details: {
+                    amount,
+                    reference,
+                    resultCode,
+                    error: callbackResult.error,
+                  },
+                },
+              })
               set.status = 400
               return {
                 ok: false,

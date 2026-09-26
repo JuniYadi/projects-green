@@ -179,11 +179,27 @@ export default function InvoiceDetailPage() {
   async function handlePayWithBalance() {
     setIsProcessing(true)
     setError(null)
+    setPartialSuccessMessage(null)
     try {
-      await payWithBalance(invoiceId)
-      setPaymentSuccess(true)
-      const result = await getInvoice(invoiceId)
-      setData(result)
+      if (totalPaidNum > 0 || isPartiallyPaidStatus) {
+        // Legacy pay-with-balance only accepts OPEN invoices and always debits
+        // the full invoice total, so an invoice that already carries an
+        // allocation has to settle exactly what is still due.
+        const res = await payPartialBalance(invoiceId, remainingDueNum)
+        setPartialSuccessMessage(res.message)
+        if (res.invoiceStatus === "PAID") {
+          setPaymentSuccess(true)
+        }
+      } else {
+        await payWithBalance(invoiceId)
+        setPaymentSuccess(true)
+      }
+      const [invoiceResult, accountResult] = await Promise.all([
+        getInvoice(invoiceId),
+        getAccount(),
+      ])
+      setData(invoiceResult)
+      setAccount(accountResult)
     } catch (err) {
       setError(err instanceof Error ? err.message : billing.paymentFailed)
     } finally {
@@ -393,6 +409,8 @@ export default function InvoiceDetailPage() {
     invoice.remainingDue !== undefined
       ? invoice.remainingDue
       : Math.max(0, totalAmountNum - totalPaidNum)
+  const isPartiallyPaidStatus =
+    invoice.status === "PARTIALLY_PAID" || invoice.status === "partially_paid"
   const availableBalanceNum = Number(account?.balanceIdr ?? 0)
   const maxUsableBalance = Math.min(availableBalanceNum, remainingDueNum)
   const subtotalAmount = invoice.subtotalAmountIdr ?? invoice.totalAmountIdr
