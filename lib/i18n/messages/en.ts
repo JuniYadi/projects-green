@@ -2247,6 +2247,8 @@ export const enMessages: AppMessages = {
           "Complete your payment through the payment gateway. Your balance will be updated automatically once the payment is confirmed.",
         continueToGateway: "Continue to Payment Gateway",
         continuePayment: "Continue Payment",
+        popExitHint:
+          "To close Duitku checkout, select ⋮ then Exit. Opening it again resumes the same payment method. Contact support before paying if you need a different method.",
         paymentReference: "Payment Reference",
         gatewayUnavailable:
           "The payment gateway link is not available for this invoice. Please create a new top-up or contact support.",

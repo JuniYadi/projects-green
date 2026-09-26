@@ -2028,6 +2028,7 @@ export type AppMessages = {
         gatewayDescription: string
         continueToGateway: string
         continuePayment: string
+        popExitHint: string
         paymentReference: string
         gatewayUnavailable: string
         noPaymentMethodSelected: string

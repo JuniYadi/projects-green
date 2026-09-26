@@ -2264,6 +2264,8 @@ export const idMessages: AppMessages = {
           "Selesaikan pembayaran melalui gerbang pembayaran. Saldo Anda akan diperbarui otomatis setelah pembayaran dikonfirmasi.",
         continueToGateway: "Lanjutkan ke Gerbang Pembayaran",
         continuePayment: "Lanjutkan Pembayaran",
+        popExitHint:
+          "Untuk menutup checkout Duitku, pilih ⋮ lalu Keluar. Membuka kembali pembayaran akan melanjutkan metode yang sama. Jika ingin metode lain, hubungi dukungan sebelum membayar.",
         paymentReference: "Referensi Pembayaran",
         gatewayUnavailable:
           "Tautan gerbang pembayaran tidak tersedia untuk invoice ini. Buat isi ulang baru atau hubungi dukungan.",

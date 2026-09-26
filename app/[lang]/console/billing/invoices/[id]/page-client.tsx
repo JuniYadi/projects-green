@@ -1073,7 +1073,7 @@ export default function InvoiceDetailPage() {
                       <p className="leading-relaxed text-muted-foreground">
                         {billing.invoices.gatewayDescription}
                       </p>
-                      {invoice.paymentReference && (
+                      {invoice.paymentReference && !isTopUp && (
                         <div className="space-y-1 rounded-lg border bg-muted/30 p-2.5">
                           <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                             {billing.invoices.paymentReference ||
@@ -1086,21 +1086,26 @@ export default function InvoiceDetailPage() {
                       )}
                       {invoice.paymentReference &&
                       invoice.checkoutMode !== "REDIRECT" ? (
-                        <Button
-                          onClick={handleContinuePayment}
-                          disabled={isLaunchingPop}
-                          className="w-full font-medium"
-                        >
-                          {isLaunchingPop ? (
-                            <ArrowClockwiseIcon className="mr-2 h-4 w-4 animate-spin" />
-                          ) : (
-                            <CreditCardIcon className="mr-2 h-4 w-4" />
-                          )}
-                          {isLaunchingPop
-                            ? billing.processing
-                            : billing.invoices.continuePayment ||
-                              billing.invoices.continueToGateway}
-                        </Button>
+                        <div className="space-y-2">
+                          <Button
+                            onClick={handleContinuePayment}
+                            disabled={isLaunchingPop}
+                            className="w-full font-medium"
+                          >
+                            {isLaunchingPop ? (
+                              <ArrowClockwiseIcon className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <CreditCardIcon className="mr-2 h-4 w-4" />
+                            )}
+                            {isLaunchingPop
+                              ? billing.processing
+                              : billing.invoices.continuePayment ||
+                                billing.invoices.continueToGateway}
+                          </Button>
+                          <p className="text-xs leading-relaxed text-muted-foreground">
+                            {billing.invoices.popExitHint}
+                          </p>
+                        </div>
                       ) : invoice.paymentUrl ? (
                         <Button asChild className="w-full font-medium">
                           <Link
