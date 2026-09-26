@@ -71,6 +71,7 @@ const mockHasClaimMarker = mock(async () => false)
 const mockAcquireProcessingClaim = mock(async () => true)
 const mockMarkClaimDone = mock(async () => undefined as void)
 const mockReleaseProcessingClaim = mock(async () => undefined as void)
+const mockLoggerInfo = mock(() => {})
 const mockLogStageFailure = mock(() => {})
 const mockCheckActiveBan = mock(async () => ({ isBanned: false }) as never)
 const mockInspectAgentPromptSafety = mock(() => ({ ok: true }) as never)
@@ -94,7 +95,7 @@ mock.module("@/lib/whatsapp/idempotency-repository", () => ({
 mock.module("@/lib/logger", () => ({
   logger: {
     warn: mock(() => {}),
-    info: mock(() => {}),
+    info: mockLoggerInfo,
     error: mock(() => {}),
     debug: mock(() => {}),
   },
@@ -302,6 +303,13 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
 
     expect(res.handled).toBe(false)
     expect(res.reason).toBe("MAX_CHAR_EXCEEDED")
+    expect(mockLoggerInfo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "ai_bot.inbound_silenced",
+        reason: "MAX_CHAR_EXCEEDED",
+      }),
+      expect.any(String)
+    )
   })
 
   it("filters blocked words and sends fallback message", async () => {
