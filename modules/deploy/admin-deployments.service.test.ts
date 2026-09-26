@@ -142,7 +142,7 @@ describe("listAdminDeployments", () => {
     await listAdminDeployments({ status: "FAILED,BUILDING" })
     const where = {
       status: { in: ["FAILED", "BUILDING"] },
-      stack: { status: { in: ["FAILED", "BUILDING"] } },
+      stack: { status: { not: "TERMINATED" } },
     }
     expect(mockPrisma.applicationDeployment.count).toHaveBeenCalledWith({
       where,

@@ -52,7 +52,7 @@ describe("DailyOperationsService", () => {
     expect(count.mock.calls[1][0]).toEqual({
       where: {
         status: { in: ["FAILED", "BUILDING"] },
-        stack: { status: { in: ["FAILED", "BUILDING"] } },
+        stack: { status: { not: "TERMINATED" } },
       },
     })
     expect(result.overdueInvoices.count).toBe(4)

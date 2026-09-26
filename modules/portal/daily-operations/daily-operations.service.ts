@@ -154,7 +154,7 @@ export class DailyOperationsService {
           href: "/portal/app/deployments?status=FAILED,BUILDING",
           where: {
             status: { in: ["FAILED", "BUILDING"] },
-            stack: { status: { in: ["FAILED", "BUILDING"] } },
+            stack: { status: { not: "TERMINATED" } },
           },
           activeMessage: "{count} deployment perlu ditindaklanjuti",
           cleanMessage: "Antrean bersih",

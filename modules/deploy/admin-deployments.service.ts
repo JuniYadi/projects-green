@@ -103,9 +103,7 @@ export async function listAdminDeployments(
   const status = params.status?.trim()
   if (status === "FAILED,BUILDING") {
     where.status = { in: [StackStatus.FAILED, StackStatus.BUILDING] }
-    where.stack = {
-      status: { in: [StackStatus.FAILED, StackStatus.BUILDING] },
-    }
+    where.stack = { status: { not: StackStatus.TERMINATED } }
   } else if (
     status &&
     status !== "ALL" &&
