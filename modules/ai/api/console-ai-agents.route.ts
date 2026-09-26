@@ -366,44 +366,53 @@ export function createConsoleAiAgentsRoutes() {
 
       return { ok: true }
     })
-    .delete("/:id", async ({ params, set }) => {
-      const auth = await requireConsoleOrgAuth()
-      if ("error" in auth) {
-        set.status = auth.status
-        return { ok: false, error: auth.error }
-      }
-
-      const existing = await prisma.aiAgentProfile.findFirst({
-        where: { id: params.id, organizationId: auth.orgId },
-        include: {
-          channelBindings: {
-            where: { isActive: true },
-            select: { id: true },
-          },
-        },
-      })
-
-      if (!existing) {
-        set.status = 404
-        return { ok: false, error: "NOT_FOUND", message: "Agent not found" }
-      }
-
-      if (existing.channelBindings.length > 0) {
-        set.status = 409
-        return {
-          ok: false,
-          error: "AGENT_HAS_ACTIVE_BINDINGS",
-          message: "Disconnect active channels before deleting the agent",
+    .delete(
+      "/:id",
+      async ({ params, query, set }) => {
+        const auth = await requireConsoleOrgAuth()
+        if ("error" in auth) {
+          set.status = auth.status
+          return { ok: false, error: auth.error }
         }
-      }
 
-      await prisma.aiAgentProfile.delete({
-        where: { id: existing.id },
-      })
+        const existing = await prisma.aiAgentProfile.findFirst({
+          where: { id: params.id, organizationId: auth.orgId },
+          include: {
+            channelBindings: {
+              where: { isActive: true },
+              select: { id: true },
+            },
+          },
+        })
 
-      return {
-        ok: true,
-        message: "Agent deleted successfully",
+        if (!existing) {
+          set.status = 404
+          return { ok: false, error: "NOT_FOUND", message: "Agent not found" }
+        }
+
+        if (existing.channelBindings.length > 0 && query.force !== "true") {
+          set.status = 409
+          return {
+            ok: false,
+            error: "AGENT_HAS_ACTIVE_BINDINGS",
+            message: "Disconnect active channels before deleting the agent",
+            activeBindings: existing.channelBindings.length,
+          }
+        }
+
+        await prisma.aiAgentProfile.delete({
+          where: { id: existing.id },
+        })
+
+        return {
+          ok: true,
+          message: "Agent deleted successfully",
+        }
+      },
+      {
+        query: t.Object({
+          force: t.Optional(t.String()),
+        }),
       }
-    })
+    )
 }
