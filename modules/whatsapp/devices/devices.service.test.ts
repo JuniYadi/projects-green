@@ -369,4 +369,32 @@ describe("devices service token storage", () => {
       data: { quotaBaseOut: 5000 },
     })
   })
+
+  it("removes associated media and AI channel bindings on delete", async () => {
+    const findUniqueTx = mock(async () => device())
+    const mediaDeleteMany = mock(async () => ({ count: 2 }))
+    const bindingDeleteMany = mock(async () => ({ count: 1 }))
+    const deviceDelete = mock(async () => device())
+    const txTransaction = mock(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({
+        whatsappDevice: { findUnique: findUniqueTx, delete: deviceDelete },
+        whatsappMedia: { deleteMany: mediaDeleteMany },
+        aiChannelBinding: { deleteMany: bindingDeleteMany },
+      })
+    )
+
+    const service = createDeviceService({
+      prisma: { $transaction: txTransaction } as never,
+    })
+
+    await service.delete("dev_1")
+
+    expect(mediaDeleteMany).toHaveBeenCalledWith({
+      where: { deviceId: "dev_1" },
+    })
+    expect(bindingDeleteMany).toHaveBeenCalledWith({
+      where: { channel: "WHATSAPP", targetId: "dev_1" },
+    })
+    expect(deviceDelete).toHaveBeenCalledWith({ where: { id: "dev_1" } })
+  })
 })
