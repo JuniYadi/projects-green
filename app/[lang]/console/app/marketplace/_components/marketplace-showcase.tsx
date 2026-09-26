@@ -34,7 +34,9 @@ export function MarketplaceShowcase({
   onDeploy,
   locale = "en",
 }: MarketplaceShowcaseProps) {
-  const messages = getMessages(resolveLocaleOrDefault(locale)).pMarketplaceShowcase
+  const messages = getMessages(
+    resolveLocaleOrDefault(locale)
+  ).pMarketplaceShowcase
   const [selectedCategory, setSelectedCategory] =
     useState<MarketplaceCategory>("ALL")
   const [searchQuery, setSearchQuery] = useState("")
@@ -67,12 +69,7 @@ export function MarketplaceShowcase({
     async function fetchTemplates() {
       try {
         const res = await eden.api.templates.get({ $query: {} })
-        if (
-          !isCancelled &&
-          res.data &&
-          Array.isArray(res.data) &&
-          res.data.length > 0
-        ) {
+        if (!isCancelled && res.data && Array.isArray(res.data)) {
           const mapped: MarketplaceTemplateItem[] = res.data.map((tmpl) => ({
             id: tmpl.slug || tmpl.id,
             slug: tmpl.slug,
@@ -134,7 +131,9 @@ export function MarketplaceShowcase({
           className="w-fit"
         >
           <TabsList>
-            <TabsTrigger value="marketplace">{messages.marketplaceHub}</TabsTrigger>
+            <TabsTrigger value="marketplace">
+              {messages.marketplaceHub}
+            </TabsTrigger>
             <TabsTrigger value="workspace" asChild>
               <Link href={`/${locale}/console/app/marketplace/my-templates`}>
                 {messages.myWorkspaceTemplates}

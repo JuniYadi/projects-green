@@ -76,10 +76,10 @@ export async function computeReinstallPreflight(params: {
     )
   }
 
-  // Tenant isolation: template must be public/official OR belong to caller org
+  // Tenant isolation: template must be public/unlisted OR belong to caller org
   const isAccessible =
     targetTemplate.visibility === "PUBLIC" ||
-    targetTemplate.isOfficial ||
+    targetTemplate.visibility === "UNLISTED" ||
     (targetTemplate.organizationId !== null &&
       targetTemplate.organizationId === params.organizationId)
 
@@ -320,7 +320,7 @@ export async function executeReinstall(params: {
 
   const isAccessible =
     targetTemplate.visibility === "PUBLIC" ||
-    targetTemplate.isOfficial ||
+    targetTemplate.visibility === "UNLISTED" ||
     (targetTemplate.organizationId !== null &&
       targetTemplate.organizationId === params.organizationId)
 

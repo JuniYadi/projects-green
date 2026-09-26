@@ -556,7 +556,7 @@ export const idMessages: AppMessages = {
           officialBadgeTitle: "Template Resmi Platform",
           officialBadgeDescription:
             "Stack first-party yang terverifikasi dan terjamin",
-          featuredBadgeTitle: "Ditampilkan di Marketplace",
+          featuredBadgeTitle: "Template Unggulan di Marketplace",
           featuredBadgeDescription:
             "Sorot template pada showcase utama marketplace",
         },
