@@ -57,6 +57,8 @@ import {
   getVouchers,
   getAdminAuditLogs,
   updateVoucher,
+  initiateInvoiceGatewayPayment,
+  payPartialBalance,
   payWithBalance,
   previewChangePlan,
   publishAdminPromotion,
@@ -674,6 +676,22 @@ describe("customer billing and payment helpers", () => {
     )
     expect(calledRequest().init?.body).toBe(
       JSON.stringify({ invoiceId: "invoice-1" })
+    )
+
+    await payPartialBalance("invoice-1", 50000)
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/pay-partial-balance"
+    )
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({ invoiceId: "invoice-1", amountToUse: 50000 })
+    )
+
+    await initiateInvoiceGatewayPayment("invoice-1", "QRIS")
+    expect(calledRequest().url.pathname).toBe(
+      "/api/payments/invoice/initiate-gateway-payment"
+    )
+    expect(calledRequest().init?.body).toBe(
+      JSON.stringify({ invoiceId: "invoice-1", paymentMethod: "QRIS" })
     )
 
     await topupAndPay("invoice-2")

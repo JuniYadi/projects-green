@@ -1,9 +1,13 @@
 import type {
   InvoiceDetailRecord,
   InvoiceRepository,
+  PrismaInvoiceStatus,
 } from "@/modules/invoices/invoices.repository"
 import { prisma } from "@/lib/prisma"
-import { toPaymentInfoDTO } from "@/modules/invoices/invoices.dto"
+import {
+  toPaymentInfoDTO,
+  toInvoicePaymentAllocationDTO,
+} from "@/modules/invoices/invoices.dto"
 import type {
   InvoiceDetail,
   InvoiceLineItem,
@@ -66,17 +70,14 @@ const PRISMA_TO_APP_INVOICE_STATUS: Record<PrismaInvoiceStatus, InvoiceStatus> =
     DRAFT: "draft",
     ISSUED: "open",
     OPEN: "open",
+    PARTIALLY_PAID: "partially_paid",
     PAID: "paid",
     VOID: "canceled",
     UNCOLLECTIBLE: "uncollectible",
   }
 
 type PrismaInvoiceLineType =
-  | "SUBSCRIPTION"
-  | "METERED"
-  | "ADJUSTMENT"
-  | "TAX"
-  | "CREDIT"
+  "SUBSCRIPTION" | "METERED" | "ADJUSTMENT" | "TAX" | "CREDIT"
 
 const FALLBACK_LINE_DESCRIPTION_BY_TYPE: Record<PrismaInvoiceLineType, string> =
   {
@@ -193,6 +194,14 @@ const toInvoiceOrder = (
 export const toInvoiceDetail = (
   invoice: InvoiceDetailRecord
 ): InvoiceDetail => {
+  const allocations =
+    invoice.allocations?.map(toInvoicePaymentAllocationDTO) ?? []
+  const totalPaid = allocations
+    .filter((a) => a.status === "COMPLETED")
+    .reduce((sum, a) => sum + a.amount, 0)
+  const totalAmount = toNumber(invoice.totalAmount)
+  const remainingDue = Math.max(0, totalAmount - totalPaid)
+
   return {
     ...toInvoiceListItem(invoice),
     subtotalAmount: toNumber(invoice.subtotalAmount),
@@ -206,6 +215,9 @@ export const toInvoiceDetail = (
     lineItems: invoice.lines.map((line) => toInvoiceLineItem(line)),
     billingAccountId: invoice.billingAccountId,
     orders: invoice.orders?.map(toInvoiceOrder) ?? [],
+    allocations,
+    totalPaid,
+    remainingDue,
   }
 }
 
@@ -442,10 +454,3 @@ export const createInvoiceService = (
     },
   }
 }
-type PrismaInvoiceStatus =
-  | "DRAFT"
-  | "ISSUED"
-  | "OPEN"
-  | "PAID"
-  | "VOID"
-  | "UNCOLLECTIBLE"

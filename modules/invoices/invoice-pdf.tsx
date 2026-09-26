@@ -70,6 +70,7 @@ const MAX_DESCRIPTION = 40
 
 const STATUS_RIBBON_COLORS: Record<string, { bg: string }> = {
   open: { bg: "#f59e0b" },
+  partially_paid: { bg: "#f59e0b" },
   paid: { bg: "#22c55e" },
   canceled: { bg: "#6b7280" },
   uncollectible: { bg: "#ef4444" },
@@ -246,6 +247,35 @@ const styles = StyleSheet.create({
   paymentDetailsSection: {
     marginTop: 12,
   },
+  allocationsSection: {
+    marginTop: 12,
+  },
+  allocRow: {
+    flexDirection: "row",
+    paddingVertical: 3,
+  },
+  allocDateCell: {
+    width: 110,
+    fontSize: 8,
+    color: "#333333",
+  },
+  allocSourceCell: {
+    flex: 1,
+    fontSize: 8,
+    color: "#333333",
+  },
+  allocRefCell: {
+    width: 140,
+    fontSize: 8,
+    color: "#6b7280",
+  },
+  allocAmountCell: {
+    width: 100,
+    textAlign: "right",
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#333333",
+  },
   paymentDetailsSubtitle: {
     fontSize: 8,
     color: "#6b7280",
@@ -384,6 +414,51 @@ const PaymentDetailsBlock = ({
                 {account.swiftCode}
               </>
             ) : null}
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+const PaymentAllocationsBlock = ({
+  allocations,
+  currency,
+}: {
+  allocations?: InvoiceDetail["allocations"]
+  currency: string
+}) => {
+  if (!allocations || allocations.length === 0) return null
+
+  return (
+    <View style={styles.allocationsSection}>
+      <Text style={styles.sectionLabel}>Riwayat Pembayaran</Text>
+      <View style={styles.tableHeaderRow}>
+        <Text style={[styles.allocDateCell, styles.tableHeaderCell]}>
+          Tanggal
+        </Text>
+        <Text style={[styles.allocSourceCell, styles.tableHeaderCell]}>
+          Metode / Sumber
+        </Text>
+        <Text style={[styles.allocRefCell, styles.tableHeaderCell]}>
+          Referensi
+        </Text>
+        <Text style={[styles.allocAmountCell, styles.tableHeaderCell]}>
+          Jumlah
+        </Text>
+      </View>
+      <View style={styles.rule} />
+      {allocations.map((alloc) => (
+        <View key={alloc.id} style={styles.allocRow}>
+          <Text style={styles.allocDateCell}>
+            {formatInvoiceDate(alloc.completedAt || alloc.createdAt)}
+          </Text>
+          <Text style={styles.allocSourceCell}>
+            {alloc.source.replace("_", " ")}
+          </Text>
+          <Text style={styles.allocRefCell}>{alloc.referenceId || "—"}</Text>
+          <Text style={styles.allocAmountCell}>
+            {formatInvoiceCurrency(alloc.amount, currency)}
           </Text>
         </View>
       ))}
@@ -541,7 +616,28 @@ const InvoicePdfDocument = ({
               {formatInvoiceCurrency(invoice.totalAmount, currency)}
             </Text>
           </View>
+          {invoice.totalPaid && invoice.totalPaid > 0 ? (
+            <>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Sudah Dibayar</Text>
+                <Text style={styles.totalsValue}>
+                  {formatInvoiceCurrency(invoice.totalPaid, currency)}
+                </Text>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Sisa Tagihan</Text>
+                <Text style={styles.totalValue}>
+                  {formatInvoiceCurrency(invoice.remainingDue ?? 0, currency)}
+                </Text>
+              </View>
+            </>
+          ) : null}
         </View>
+
+        <PaymentAllocationsBlock
+          allocations={invoice.allocations}
+          currency={currency}
+        />
 
         <PaymentDetailsBlock
           paymentMethod={invoice.paymentMethod}

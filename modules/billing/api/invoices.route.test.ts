@@ -373,6 +373,18 @@ describe("InvoicesRoute", () => {
             currency: "USD",
           },
         ],
+        allocations: [
+          {
+            id: "alloc-1",
+            amount: new Decimal("40.00"),
+            currency: "USD",
+            source: "BALANCE",
+            status: "COMPLETED",
+            referenceId: null,
+            createdAt: new Date("2026-05-01T10:00:00Z"),
+            completedAt: new Date("2026-05-01T10:05:00Z"),
+          },
+        ],
       })
 
       const app = new Elysia()
@@ -404,7 +416,16 @@ describe("InvoicesRoute", () => {
         taxAmountIdr: "10.00",
         discountAmountIdr: "5.00",
         totalAmountIdr: "105.00",
+        totalPaid: 40,
+        remainingDue: 65,
         currency: "USD",
+      })
+      expect(body.invoice.allocations).toHaveLength(1)
+      expect(body.invoice.allocations[0]).toMatchObject({
+        id: "alloc-1",
+        amount: 40,
+        source: "BALANCE",
+        status: "COMPLETED",
       })
       expect(body.invoice.lines[0]).toMatchObject({
         unitPriceIdr: "100.00",

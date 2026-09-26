@@ -21,6 +21,11 @@ export const INVOICE_STATUS_META: Record<InvoiceStatus, InvoiceStatusMeta> = {
     toneClassName:
       "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   },
+  partially_paid: {
+    label: "Partially Paid",
+    toneClassName:
+      "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
   paid: {
     label: "Paid",
     toneClassName:

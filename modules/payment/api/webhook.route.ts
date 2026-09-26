@@ -1,10 +1,13 @@
 import { Elysia } from "elysia"
+import { Prisma } from "@prisma/client"
 import { DuitkuService } from "../services/duitku.service"
 import { PaymentService } from "../services/payment.service"
+import { InvoiceAllocationService } from "../services/invoice-allocation.service"
 import { prisma } from "@/lib/prisma"
 
 const duitkuService = new DuitkuService()
 const paymentService = new PaymentService()
+const invoiceAllocationService = new InvoiceAllocationService()
 
 export const createWebhookRoutes = () =>
   new Elysia()
@@ -26,27 +29,22 @@ export const createWebhookRoutes = () =>
 
       const { merchantOrderId, resultCode, reference, amount } = params
 
-      const existingLog = await prisma.paymentAuditLog.findFirst({
+      const attemptKey = reference
+        ? `${merchantOrderId}:${reference}`
+        : merchantOrderId
+
+      // Check if this payment attempt was already completed
+      const completedLog = await prisma.paymentAuditLog.findFirst({
         where: {
-          entityId: merchantOrderId,
-          action: "DUITKU_CALLBACK_RECEIVED",
+          entityId: attemptKey,
+          action: "DUITKU_PAYMENT_COMPLETED",
         },
       })
 
-      if (existingLog) {
-        console.log(`Callback already processed for ${merchantOrderId}`)
+      if (completedLog) {
+        console.log(`Payment already completed for ${attemptKey}`)
         return { ok: true, message: "Already processed" }
       }
-
-      await prisma.paymentAuditLog.create({
-        data: {
-          action: "DUITKU_CALLBACK_RECEIVED",
-          entityType: "Invoice",
-          entityId: merchantOrderId,
-          actorId: "SYSTEM",
-          details: params,
-        },
-      })
 
       if (resultCode === "00") {
         try {
@@ -59,8 +57,8 @@ export const createWebhookRoutes = () =>
             console.error(
               `Invoice ${merchantOrderId} not found or missing billingAccountId`
             )
-            // Return 200 to prevent Duitku retries for invalid orders
-            return { ok: true }
+            set.status = 400
+            return { ok: false, error: "INVOICE_NOT_FOUND" }
           }
 
           const billingAccount = await prisma.billingAccount.findUnique({
@@ -71,35 +69,102 @@ export const createWebhookRoutes = () =>
             console.error(
               `Billing account not found for invoice ${merchantOrderId}`
             )
-            return { ok: true }
+            set.status = 400
+            return { ok: false, error: "BILLING_ACCOUNT_NOT_FOUND" }
           }
 
-          await paymentService.creditBalance(
-            billingAccount.organizationId,
-            parseInt(amount),
-            merchantOrderId
-          )
+          const isTopUp =
+            invoice.type === "TOP_UP" ||
+            invoice.type === "TOPUP" ||
+            invoice.type === null ||
+            invoice.type === undefined
 
-          const paidInvoice =
-            await paymentService.markInvoiceAsPaid(merchantOrderId)
-
-          // Fire-and-forget: send invoice paid email
-          paymentService
-            .sendInvoicePaidEmail(paidInvoice, billingAccount.organizationId)
-            .catch((err) =>
-              console.error(
-                `[Webhook] Failed to send paid email for ${merchantOrderId}:`,
-                err
-              )
+          if (isTopUp) {
+            await paymentService.creditBalance(
+              billingAccount.organizationId,
+              parseInt(amount),
+              merchantOrderId
             )
 
+            const paidInvoice =
+              await paymentService.markInvoiceAsPaid(merchantOrderId)
+
+            const allocationIdempotencyKey = `alloc:topup:${attemptKey}`
+            try {
+              await prisma.billingInvoicePaymentAllocation.upsert({
+                where: { idempotencyKey: allocationIdempotencyKey },
+                update: {},
+                create: {
+                  invoiceId: merchantOrderId,
+                  billingAccountId: invoice.billingAccountId,
+                  amount: new Prisma.Decimal(parseInt(amount)),
+                  currency: invoice.currency ?? "IDR",
+                  source: "GATEWAY_DUITKU",
+                  status: "COMPLETED",
+                  referenceId: reference ?? null,
+                  idempotencyKey: allocationIdempotencyKey,
+                  completedAt: new Date(),
+                },
+              })
+            } catch {
+              // Ignore duplicate or non-critical allocation creation error in webhook
+            }
+
+            // Fire-and-forget: send invoice paid email
+            paymentService
+              .sendInvoicePaidEmail(paidInvoice, billingAccount.organizationId)
+              .catch((err) =>
+                console.error(
+                  `[Webhook] Failed to send paid email for ${merchantOrderId}:`,
+                  err
+                )
+              )
+          } else {
+            // Service invoice payment via Duitku allocation
+            const callbackResult =
+              await invoiceAllocationService.processGatewayCallback({
+                merchantOrderId,
+                reference,
+                amount: parseInt(amount),
+              })
+
+            if (!callbackResult.ok) {
+              console.error(
+                `[Webhook] Callback processing failed for invoice ${merchantOrderId}:`,
+                callbackResult.error
+              )
+              // Record the failed attempt for diagnostics. No completion log is
+              // written, so a gateway retry is still accepted.
+              await prisma.paymentAuditLog.create({
+                data: {
+                  action: "DUITKU_PAYMENT_FAILED",
+                  entityType: "Invoice",
+                  entityId: attemptKey,
+                  actorId: "SYSTEM",
+                  details: {
+                    amount,
+                    reference,
+                    resultCode,
+                    error: callbackResult.error,
+                  },
+                },
+              })
+              set.status = 400
+              return {
+                ok: false,
+                error: callbackResult.error ?? "CALLBACK_PROCESSING_FAILED",
+              }
+            }
+          }
+
+          // Record payment completion ONLY after successful processing
           await prisma.paymentAuditLog.create({
             data: {
               action: "DUITKU_PAYMENT_COMPLETED",
               entityType: "Invoice",
-              entityId: merchantOrderId,
+              entityId: attemptKey,
               actorId: "SYSTEM",
-              details: { amount, reference },
+              details: { amount, reference, resultCode },
             },
           })
         } catch (error) {
@@ -107,9 +172,39 @@ export const createWebhookRoutes = () =>
             `Failed to process payment for ${merchantOrderId}:`,
             error
           )
+          set.status = 500
+          return { ok: false, error: "INTERNAL_PROCESSING_ERROR" }
         }
       } else {
         console.log(`Payment failed for ${merchantOrderId}: ${resultCode}`)
+        try {
+          await prisma.billingInvoicePaymentAllocation.updateMany({
+            where: {
+              invoiceId: merchantOrderId,
+              status: "PENDING",
+              ...(reference ? { referenceId: reference } : {}),
+            },
+            data: {
+              status: "FAILED",
+            },
+          })
+        } catch (err) {
+          console.error(
+            `[Webhook] Failed to mark allocation failed for ${merchantOrderId}:`,
+            err
+          )
+        }
+
+        // Record failed attempt audit log for diagnostics
+        await prisma.paymentAuditLog.create({
+          data: {
+            action: "DUITKU_PAYMENT_FAILED",
+            entityType: "Invoice",
+            entityId: attemptKey,
+            actorId: "SYSTEM",
+            details: { amount, reference, resultCode },
+          },
+        })
       }
 
       return { ok: true }

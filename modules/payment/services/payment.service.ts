@@ -237,9 +237,22 @@ export class PaymentService {
       invoiceId,
     })
 
+    await prisma.billingInvoicePaymentAllocation.create({
+      data: {
+        invoiceId,
+        billingAccountId: account.id,
+        amount: new Prisma.Decimal(amount),
+        currency: invoice.currency,
+        source: "BALANCE",
+        status: "COMPLETED",
+        completedAt: new Date(),
+        idempotencyKey: `alloc:pay:${invoiceId}`,
+      },
+    })
+
     await prisma.billingInvoice.update({
       where: { id: invoiceId },
-      data: { status: "PAID" },
+      data: { status: "PAID", paidAt: new Date() },
     })
     await settleProductOrdersForInvoice(invoiceId)
 

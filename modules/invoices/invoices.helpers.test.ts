@@ -20,6 +20,7 @@ describe("invoice helpers", () => {
     expect(INVOICE_STATUS_FILTER_OPTIONS).toEqual([
       { value: "draft", label: "Draft" },
       { value: "open", label: "Open" },
+      { value: "partially_paid", label: "Partially Paid" },
       { value: "paid", label: "Paid" },
       { value: "canceled", label: "Canceled" },
       { value: "uncollectible", label: "Uncollectible" },

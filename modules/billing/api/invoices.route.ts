@@ -271,6 +271,7 @@ export const createBillingInvoicesRoutes = (
               include: {
                 lines: true,
                 paymentConfirmations: { include: { bankAccount: true } },
+                allocations: { orderBy: { createdAt: "asc" } },
               },
             }),
             getCachedOrganization(auth.organizationId),
@@ -320,8 +321,28 @@ export const createBillingInvoicesRoutes = (
               taxAmountIdr: invoice.taxAmount.toFixed(2),
               discountAmountIdr: invoice.discountAmount.toFixed(2),
               totalAmountIdr: invoice.totalAmount.toFixed(2),
+              totalPaid: (invoice.allocations ?? [])
+                .filter((a) => a.status === "COMPLETED")
+                .reduce((sum, a) => sum + Number(a.amount), 0),
+              remainingDue: Math.max(
+                0,
+                Number(invoice.totalAmount) -
+                  (invoice.allocations ?? [])
+                    .filter((a) => a.status === "COMPLETED")
+                    .reduce((sum, a) => sum + Number(a.amount), 0)
+              ),
               currency: invoice.currency,
               lines: invoice.lines.map((line) => formatInvoiceLine(line)),
+              allocations: (invoice.allocations ?? []).map((a) => ({
+                id: a.id,
+                amount: Number(a.amount),
+                currency: a.currency,
+                source: a.source,
+                status: a.status,
+                referenceId: a.referenceId ?? null,
+                createdAt: a.createdAt.toISOString(),
+                completedAt: a.completedAt?.toISOString() ?? null,
+              })),
               confirmations: (invoice.paymentConfirmations ?? []).map((pc) => ({
                 id: pc.id,
                 status: String(pc.status),

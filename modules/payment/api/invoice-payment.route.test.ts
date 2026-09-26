@@ -37,20 +37,32 @@ mock.module("@/lib/prisma", () => ({ prisma: mockPrisma }))
 
 const mockPayWithBalance = mock()
 const mockCreateTopupInvoiceForGap = mock()
+const mockPayPartialWithBalance = mock()
+const mockInitiateGatewayPayment = mock()
 
-mock.module("../services/payment.service", () => ({
-  PaymentService: class {
-    payWithBalance = mockPayWithBalance
-    createTopupInvoiceForGap = mockCreateTopupInvoiceForGap
-  },
-}))
+const mockPaymentServiceInstance = {
+  payWithBalance: mockPayWithBalance,
+  createTopupInvoiceForGap: mockCreateTopupInvoiceForGap,
+}
+
+const mockInvoiceAllocationServiceInstance = {
+  payPartialWithBalance: mockPayPartialWithBalance,
+  initiateGatewayPayment: mockInitiateGatewayPayment,
+}
 
 // ── Import route after mocks ────────────────────────────
 
 const { createInvoicePaymentRoutes } = await import("./invoice-payment.route")
 
 function app() {
-  return new Elysia().use(createInvoicePaymentRoutes()).compile()
+  return new Elysia()
+    .use(
+      createInvoicePaymentRoutes({
+        paymentService: mockPaymentServiceInstance as never,
+        invoiceAllocationService: mockInvoiceAllocationServiceInstance as never,
+      })
+    )
+    .compile()
 }
 
 describe("InvoicePaymentRoute POST /invoice/pay-with-balance", () => {
@@ -439,5 +451,248 @@ describe("InvoicePaymentRoute POST /invoice/topup-and-pay", () => {
     expect(json.ok).toBe(false)
     expect(json.error).toBe("INTERNAL_SERVER_ERROR")
     expect(json.message).toBe("Database failure")
+  })
+})
+
+describe("InvoicePaymentRoute POST /invoice/pay-partial-balance", () => {
+  beforeEach(() => {
+    mockAuthValue = { user: null }
+    mockPayPartialWithBalance.mockReset()
+  })
+
+  it("returns 401 when not authenticated", async () => {
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1", amountToUse: 50000 }),
+      })
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 422 for invalid amount", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1", amountToUse: -10 }),
+      })
+    )
+    expect(res.status).toBe(422)
+  })
+
+  it("returns 200 on successful partial payment", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockPayPartialWithBalance.mockResolvedValueOnce({
+      ok: true,
+      allocationId: "alloc-1",
+      invoiceStatus: "PARTIALLY_PAID",
+      allocatedAmount: 40000,
+      totalPaid: 40000,
+      remainingDue: 60000,
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1", amountToUse: 40000 }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.invoiceStatus).toBe("PARTIALLY_PAID")
+    expect(json.remainingDue).toBe(60000)
+  })
+
+  it("returns 403 when user has no active organization", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: undefined,
+    }
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1", amountToUse: 40000 }),
+      })
+    )
+
+    expect(res.status).toBe(403)
+  })
+
+  it("returns 404 when invoice not found", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockPayPartialWithBalance.mockRejectedValueOnce(
+      new Error("Invoice not found")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: "inv-not-found",
+          amountToUse: 40000,
+        }),
+      })
+    )
+
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 400 when insufficient balance or amount exceeds remaining due", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockPayPartialWithBalance.mockRejectedValueOnce(
+      new Error("Insufficient balance")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/pay-partial-balance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1", amountToUse: 40000 }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+  })
+})
+
+describe("InvoicePaymentRoute POST /invoice/initiate-gateway-payment", () => {
+  beforeEach(() => {
+    mockAuthValue = { user: null }
+    mockInitiateGatewayPayment.mockReset()
+  })
+
+  it("returns 401 when not authenticated", async () => {
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1" }),
+      })
+    )
+    expect(res.status).toBe(401)
+  })
+
+  it("returns 403 when no organizationId", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: undefined,
+    }
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1" }),
+      })
+    )
+
+    expect(res.status).toBe(403)
+  })
+
+  it("returns 422 for invalid body", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "" }),
+      })
+    )
+
+    expect(res.status).toBe(422)
+  })
+
+  it("returns 404 when invoice not found", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockInitiateGatewayPayment.mockRejectedValueOnce(
+      new Error("Invoice not found")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1" }),
+      })
+    )
+
+    expect(res.status).toBe(404)
+  })
+
+  it("returns 400 when invoice is not open or gateway is not available", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockInitiateGatewayPayment.mockRejectedValueOnce(
+      new Error("Gateway is not available for USD")
+    )
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1" }),
+      })
+    )
+
+    expect(res.status).toBe(400)
+  })
+
+  it("returns 200 with gateway session details for remaining due", async () => {
+    mockAuthValue = {
+      user: { id: "u-1", email: "u@test.local" },
+      organizationId: "org-1",
+    }
+    mockInitiateGatewayPayment.mockResolvedValueOnce({
+      ok: true,
+      mode: "POP",
+      reference: "duitku_ref_split_123",
+      clientScriptUrl: "https://duitku.test/lib.js",
+      paymentUrl: "https://duitku.test/pay",
+      remainingDue: 60000,
+    })
+
+    const res = await app().handle(
+      new Request("http://localhost/invoice/initiate-gateway-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId: "inv-1" }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(json.reference).toBe("duitku_ref_split_123")
+    expect(json.remainingDue).toBe(60000)
   })
 })

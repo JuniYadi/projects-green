@@ -17,6 +17,8 @@ const statusStyles: Record<string, string> = {
   OPEN: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   OVERDUE: "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
   PAID: "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
+  PARTIALLY_PAID:
+    "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   PENDING:
     "border-yellow-500/20 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   UNCOLLECTIBLE:
@@ -35,6 +37,7 @@ function getStatusLabel(
     OPEN: labels.statusOpen,
     OVERDUE: labels.statusOverdue,
     PAID: labels.statusPaid,
+    PARTIALLY_PAID: labels.statusPartiallyPaid || "Partially Paid",
     PENDING: labels.statusOpen,
     UNCOLLECTIBLE: labels.statusUncollectible,
     VOID: labels.statusVoid,

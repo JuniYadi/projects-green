@@ -6,7 +6,14 @@ import type {
   InvoiceStatus,
 } from "@/modules/invoices/invoices.types"
 
-type PrismaInvoiceStatus = "DRAFT" | "OPEN" | "PAID" | "VOID" | "UNCOLLECTIBLE"
+export type PrismaInvoiceStatus =
+  | "DRAFT"
+  | "ISSUED"
+  | "OPEN"
+  | "PARTIALLY_PAID"
+  | "PAID"
+  | "VOID"
+  | "UNCOLLECTIBLE"
 
 type InvoiceLineRecord = {
   id: string
@@ -87,11 +94,25 @@ type InvoicePaymentConfirmationRecord = {
   bankAccount: InvoiceBankAccountRecord
 }
 
+type InvoiceAllocationRecord = {
+  id: string
+  invoiceId: string
+  billingAccountId: string
+  amount: unknown
+  currency: string
+  source: string
+  status: string
+  referenceId: string | null
+  createdAt: Date
+  completedAt: Date | null
+}
+
 export type InvoiceDetailRecord = InvoiceRecord & {
   lines: InvoiceLineRecord[]
   gateway: InvoiceGatewayRecord | null
   paymentConfirmations: InvoicePaymentConfirmationRecord[]
   orders?: InvoiceOrderRecord[]
+  allocations?: InvoiceAllocationRecord[]
 }
 type InvoiceOrderRecord = {
   id: string
@@ -121,6 +142,7 @@ type InvoiceDelegate = {
 const APP_TO_PRISMA_STATUS: Record<InvoiceStatus, PrismaInvoiceStatus> = {
   draft: "DRAFT",
   open: "OPEN",
+  partially_paid: "PARTIALLY_PAID",
   paid: "PAID",
   canceled: "VOID",
   uncollectible: "UNCOLLECTIBLE",
@@ -249,6 +271,11 @@ export const createPrismaInvoiceRepository = (): InvoiceRepository => {
             include: {
               bankAccount: true,
             },
+            orderBy: {
+              createdAt: "asc",
+            },
+          },
+          allocations: {
             orderBy: {
               createdAt: "asc",
             },

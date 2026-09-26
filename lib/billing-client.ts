@@ -82,6 +82,17 @@ export type InvoiceLineItem = {
   metadata?: Record<string, unknown>
 }
 
+export type InvoiceAllocationItem = {
+  id: string
+  amount: number
+  currency: string
+  source: string
+  status: string
+  referenceId?: string | null
+  createdAt: string
+  completedAt?: string | null
+}
+
 export type InvoiceListItem = {
   id: string
   invoiceNumber: string
@@ -103,9 +114,12 @@ export type InvoiceListItem = {
   taxAmountIdr?: string
   discountAmountIdr?: string
   totalAmountIdr: string
+  totalPaid?: number
+  remainingDue?: number
   currency: string
   orders?: InvoiceOrderItem[]
   lines?: InvoiceLineItem[]
+  allocations?: InvoiceAllocationItem[]
   confirmations?: Array<{
     id: string
     status: string
@@ -272,6 +286,40 @@ export async function topupAndPay(
       body: JSON.stringify({ invoiceId }),
     }
   )
+}
+
+export async function payPartialBalance(
+  invoiceId: string,
+  amountToUse: number
+): Promise<{
+  ok: true
+  message: string
+  invoiceStatus: string
+  allocatedAmount: number
+  totalPaid: number
+  remainingDue: number
+}> {
+  return fetchBilling("/api/payments/invoice/pay-partial-balance", {
+    method: "POST",
+    body: JSON.stringify({ invoiceId, amountToUse }),
+  })
+}
+
+export async function initiateInvoiceGatewayPayment(
+  invoiceId: string,
+  paymentMethod?: string
+): Promise<{
+  ok: true
+  mode: "POP" | "REDIRECT"
+  reference?: string | null
+  clientScriptUrl?: string | null
+  paymentUrl?: string | null
+  remainingDue: number
+}> {
+  return fetchBilling("/api/payments/invoice/initiate-gateway-payment", {
+    method: "POST",
+    body: JSON.stringify({ invoiceId, paymentMethod }),
+  })
 }
 
 // Payment Methods API

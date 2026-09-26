@@ -1,16 +1,8 @@
 export type InvoiceStatus =
-  | "draft"
-  | "open"
-  | "paid"
-  | "canceled"
-  | "uncollectible"
+  "draft" | "open" | "partially_paid" | "paid" | "canceled" | "uncollectible"
 
 export type InvoiceListSortBy =
-  | "invoiceNumber"
-  | "issuedAt"
-  | "dueAt"
-  | "totalAmount"
-  | "status"
+  "invoiceNumber" | "issuedAt" | "dueAt" | "totalAmount" | "status"
 
 export type InvoiceSortDirection = "asc" | "desc"
 
@@ -59,6 +51,19 @@ export type InvoiceOrderDTO = {
   invoiceStatus: InvoiceStatus
 }
 
+export type InvoicePaymentAllocationDTO = {
+  id: string
+  invoiceId: string
+  billingAccountId: string
+  amount: number
+  currency: string
+  source: string
+  status: string
+  referenceId: string | null
+  createdAt: string
+  completedAt: string | null
+}
+
 export type InvoiceDetail = InvoiceListItem & {
   subtotalAmount: number
   taxAmount: number
@@ -71,6 +76,9 @@ export type InvoiceDetail = InvoiceListItem & {
   lineItems: InvoiceLineItem[]
   billingAccountId?: string
   orders?: InvoiceOrderDTO[]
+  allocations?: InvoicePaymentAllocationDTO[]
+  totalPaid?: number
+  remainingDue?: number
 }
 
 export type InvoicePaymentMethod = {
