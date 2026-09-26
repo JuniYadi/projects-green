@@ -221,6 +221,13 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         return sseTextResponse(fallbackText)
       }
 
+      // AC-09 safety check (acted on in 6b); computed first so the user
+      // row below can be flagged.
+      const safetyCheck = inspectAgentPromptSafety(message, {
+        maxChars: agent.maxCharLength,
+        customBlockedWords: agent.customBlockedWords,
+      })
+
       // 5. Sliding window memory + build tools
       // 6. Record user message
       let history: Awaited<ReturnType<typeof getSlidingWindowMessages>>
@@ -232,10 +239,15 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
           agentProfileId: agent.id,
           sessionId: session.sessionId,
         })
+        // Flagged like WhatsApp's recordSafetyViolation so the violation
+        // shows in the sessions review screen (AC-09 parity).
         await recordMessage({
           sessionId: session.sessionId,
           role: "user",
           content: message,
+          ...(safetyCheck.ok
+            ? {}
+            : { isFlagged: true, flagReason: safetyCheck.reason }),
         })
       } catch (error) {
         return failBeforeStream("CONTEXT_LOAD", error)
@@ -249,10 +261,6 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
       // session.isBlocked (checked at the top of the next request) and never
       // creates an AiChatBan row, so no other visitor or WhatsApp customer of
       // the org is ever affected.
-      const safetyCheck = inspectAgentPromptSafety(message, {
-        maxChars: agent.maxCharLength,
-        customBlockedWords: agent.customBlockedWords,
-      })
       if (!safetyCheck.ok) {
         const refusalText =
           safetyCheck.refusalMessage ||
