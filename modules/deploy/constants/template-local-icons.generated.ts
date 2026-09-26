@@ -16,10 +16,106 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/9router.svg"
   },
   {
+    "slug": "actix",
+    "name": "Actix Web",
+    "fileName": "actix.svg",
+    "path": "/app-hosting/icons/actix.svg"
+  },
+  {
+    "slug": "adonisjs",
+    "name": "AdonisJS",
+    "fileName": "adonisjs.svg",
+    "path": "/app-hosting/icons/adonisjs.svg"
+  },
+  {
+    "slug": "angular",
+    "name": "Angular",
+    "fileName": "angular.svg",
+    "path": "/app-hosting/icons/angular.svg"
+  },
+  {
+    "slug": "astro",
+    "name": "Astro",
+    "fileName": "astro.svg",
+    "path": "/app-hosting/icons/astro.svg"
+  },
+  {
+    "slug": "axum",
+    "name": "Axum",
+    "fileName": "axum.svg",
+    "path": "/app-hosting/icons/axum.svg"
+  },
+  {
     "slug": "bun",
     "name": "Bun",
     "fileName": "bun.svg",
     "path": "/app-hosting/icons/bun.svg"
+  },
+  {
+    "slug": "codeigniter",
+    "name": "CodeIgniter",
+    "fileName": "codeigniter.svg",
+    "path": "/app-hosting/icons/codeigniter.svg"
+  },
+  {
+    "slug": "directus",
+    "name": "Directus",
+    "fileName": "directus.svg",
+    "path": "/app-hosting/icons/directus.svg"
+  },
+  {
+    "slug": "django",
+    "name": "Django",
+    "fileName": "django.svg",
+    "path": "/app-hosting/icons/django.svg"
+  },
+  {
+    "slug": "elysia",
+    "name": "Elysia",
+    "fileName": "elysia.svg",
+    "path": "/app-hosting/icons/elysia.svg"
+  },
+  {
+    "slug": "express",
+    "name": "Express.js",
+    "fileName": "express.svg",
+    "path": "/app-hosting/icons/express.svg"
+  },
+  {
+    "slug": "fastapi",
+    "name": "FastAPI",
+    "fileName": "fastapi.svg",
+    "path": "/app-hosting/icons/fastapi.svg"
+  },
+  {
+    "slug": "fastify",
+    "name": "Fastify",
+    "fileName": "fastify.svg",
+    "path": "/app-hosting/icons/fastify.svg"
+  },
+  {
+    "slug": "fiber",
+    "name": "Fiber",
+    "fileName": "fiber.svg",
+    "path": "/app-hosting/icons/fiber.svg"
+  },
+  {
+    "slug": "filament",
+    "name": "Filament",
+    "fileName": "filament.svg",
+    "path": "/app-hosting/icons/filament.svg"
+  },
+  {
+    "slug": "flask",
+    "name": "Flask",
+    "fileName": "flask.svg",
+    "path": "/app-hosting/icons/flask.svg"
+  },
+  {
+    "slug": "gin",
+    "name": "Gin",
+    "fileName": "gin.svg",
+    "path": "/app-hosting/icons/gin.svg"
   },
   {
     "slug": "go",
@@ -28,10 +124,22 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/go.svg"
   },
   {
+    "slug": "gradio",
+    "name": "Gradio",
+    "fileName": "gradio.svg",
+    "path": "/app-hosting/icons/gradio.svg"
+  },
+  {
     "slug": "hermes",
     "name": "Hermes Agent",
     "fileName": "hermes.svg",
     "path": "/app-hosting/icons/hermes.svg"
+  },
+  {
+    "slug": "hono",
+    "name": "Hono",
+    "fileName": "hono.svg",
+    "path": "/app-hosting/icons/hono.svg"
   },
   {
     "slug": "laravel",
@@ -46,6 +154,12 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/n8n.svg"
   },
   {
+    "slug": "nestjs",
+    "name": "NestJS",
+    "fileName": "nestjs.svg",
+    "path": "/app-hosting/icons/nestjs.svg"
+  },
+  {
     "slug": "nextjs",
     "name": "Next.js",
     "fileName": "nextjs.svg",
@@ -56,6 +170,12 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "name": "Node.js",
     "fileName": "nodejs.svg",
     "path": "/app-hosting/icons/nodejs.svg"
+  },
+  {
+    "slug": "nuxt",
+    "name": "Nuxt",
+    "fileName": "nuxt.svg",
+    "path": "/app-hosting/icons/nuxt.svg"
   },
   {
     "slug": "omniroute",
@@ -82,10 +202,64 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/python.svg"
   },
   {
+    "slug": "rails",
+    "name": "Ruby on Rails",
+    "fileName": "rails.svg",
+    "path": "/app-hosting/icons/rails.svg"
+  },
+  {
+    "slug": "react",
+    "name": "React",
+    "fileName": "react.svg",
+    "path": "/app-hosting/icons/react.svg"
+  },
+  {
+    "slug": "remix",
+    "name": "Remix",
+    "fileName": "remix.svg",
+    "path": "/app-hosting/icons/remix.svg"
+  },
+  {
     "slug": "rust",
     "name": "Rust",
     "fileName": "rust.svg",
     "path": "/app-hosting/icons/rust.svg"
+  },
+  {
+    "slug": "solidjs",
+    "name": "SolidJS",
+    "fileName": "solidjs.svg",
+    "path": "/app-hosting/icons/solidjs.svg"
+  },
+  {
+    "slug": "spring",
+    "name": "Spring Boot",
+    "fileName": "spring.svg",
+    "path": "/app-hosting/icons/spring.svg"
+  },
+  {
+    "slug": "strapi",
+    "name": "Strapi",
+    "fileName": "strapi.svg",
+    "path": "/app-hosting/icons/strapi.svg"
+  },
+  {
+    "slug": "streamlit",
+    "name": "Streamlit",
+    "fileName": "streamlit.svg",
+    "path": "/app-hosting/icons/streamlit.svg"
+  },
+  {
+    "slug": "svelte",
+    "name": "Svelte",
+    "fileName": "svelte.svg",
+    "path": "/app-hosting/icons/svelte.svg"
+  },
+  {
+    "slug": "symfony",
+    "name": "Symfony",
+    "fileName": "symfony.svg",
+    "path": "/app-hosting/icons/symfony.svg"
   },
   {
     "slug": "uptime-kuma",
@@ -104,6 +278,18 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "name": "Vaultwarden",
     "fileName": "vaultwarden.svg",
     "path": "/app-hosting/icons/vaultwarden.svg"
+  },
+  {
+    "slug": "vite",
+    "name": "Vite",
+    "fileName": "vite.svg",
+    "path": "/app-hosting/icons/vite.svg"
+  },
+  {
+    "slug": "vue",
+    "name": "Vue",
+    "fileName": "vue.svg",
+    "path": "/app-hosting/icons/vue.svg"
   },
   {
     "slug": "wordpress",
