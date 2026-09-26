@@ -39,7 +39,9 @@ mock.module("@/lib/prisma", () => ({
   },
 }))
 
-const mockDebitBalance = mock(() => Promise.resolve({}))
+const mockDebitBalance = mock((_input?: unknown, _tx?: unknown) =>
+  Promise.resolve({})
+)
 mock.module("@/modules/billing/billing-transaction.service", () => ({
   BillingTransactionService: mock(() => ({
     debitBalance: mockDebitBalance,
@@ -270,7 +272,9 @@ describe("InvoiceAllocationService", () => {
       expectInvoiceLocked("inv-1")
       expect(mockTransaction).toHaveBeenCalledTimes(1)
       expect(mockDebitBalance).toHaveBeenCalledTimes(1)
-      expect(mockDebitBalance.mock.calls[0][1]).toBe(transactionClient)
+      expect((mockDebitBalance.mock.calls[0] as unknown[])[1]).toBe(
+        transactionClient
+      )
     })
 
     it("successfully applies partial balance and transitions invoice to PARTIALLY_PAID", async () => {
@@ -334,7 +338,7 @@ describe("InvoiceAllocationService", () => {
       expect(result.invoiceStatus).toBe("PAID")
       expect(result.totalPaid).toBe(100000)
       expect(result.remainingDue).toBe(0)
-      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1", expect.anything())
+      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
     })
 
     it("stays PARTIALLY_PAID while a pending gateway allocation still owes the rest", async () => {
@@ -613,7 +617,7 @@ describe("InvoiceAllocationService", () => {
         where: { id: "inv-1" },
         data: expect.objectContaining({ status: "PAID" }),
       })
-      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1", expect.anything())
+      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
     })
 
     it("completes the allocation and the invoice status atomically in one transaction", async () => {
@@ -918,7 +922,7 @@ describe("InvoiceAllocationService", () => {
           referenceId: "ref-attempt-2",
         }),
       })
-      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1", expect.anything())
+      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
     })
   })
 })

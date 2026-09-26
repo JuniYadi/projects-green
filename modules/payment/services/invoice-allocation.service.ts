@@ -247,7 +247,7 @@ export class InvoiceAllocationService {
       })
 
       if (isFullyPaid) {
-        await settleProductOrdersForInvoice(invoiceId, tx)
+        await settleProductOrdersForInvoice(invoiceId)
         this.paymentService
           .sendInvoicePaidEmail(invoice, organizationId)
           .catch((err) =>
@@ -272,9 +272,10 @@ export class InvoiceAllocationService {
   /**
    * Initiate a gateway session (Duitku POP) specifically for the remaining due.
    *
-   * The invoice row is locked for the whole flow, so a double click cannot open
-   * a second session for money that is already committed: the second call waits
-   * for the first to commit and then returns that session.
+   * The invoice row is locked for the whole flow — including the Duitku call —
+   * so a double click cannot open a second session for money that is already
+   * committed: the second call waits for the first to commit and then returns
+   * that session.
    */
   async initiateGatewayPayment(input: {
     invoiceId: string
@@ -521,7 +522,7 @@ export class InvoiceAllocationService {
       })
 
       if (isFullyPaid) {
-        await settleProductOrdersForInvoice(merchantOrderId, tx)
+        await settleProductOrdersForInvoice(merchantOrderId)
         const organizationId = invoice.billingAccount?.organizationId
         if (organizationId) {
           this.paymentService
