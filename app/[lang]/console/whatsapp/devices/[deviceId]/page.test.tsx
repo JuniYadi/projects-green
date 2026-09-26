@@ -143,6 +143,11 @@ mock.module("@/lib/i18n/messages", () => ({
         },
       },
     },
+    sharedComponents: {
+      dialog: {
+        close: "Close",
+      },
+    },
   }),
 }))
 
