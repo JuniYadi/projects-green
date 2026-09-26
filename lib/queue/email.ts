@@ -110,8 +110,15 @@ function createTransporter(): Transporter {
 /**
  * Enqueue an email for async delivery.
  * Throws if the enqueue fails so callers can handle the error.
+ *
+ * Pass `opts.jobId` for a deterministic BullMQ job id so retries of the
+ * same logical send (e.g. re-running after a crash) dedupe instead of
+ * enqueueing a duplicate — BullMQ ignores `add()` of an existing jobId.
  */
-export async function sendEmail(data: EmailJobData): Promise<string | null> {
-  await EmailJob.enqueue(data)
+export async function sendEmail(
+  data: EmailJobData,
+  opts?: { jobId?: string }
+): Promise<string | null> {
+  await EmailJob.enqueue(data, opts)
   return data.emailLogId ?? null
 }
