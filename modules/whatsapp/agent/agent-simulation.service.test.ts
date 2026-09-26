@@ -171,6 +171,48 @@ describe("agent-simulation.service", () => {
       if (!res.ok) {
         expect(res.error).toBe("INFERENCE_ERROR")
         expect(res.status).toBe(500)
+        expect(res.message).toContain("Offline")
+      }
+    })
+
+    it("returns TIMEOUT with fallbackMessage and latencyMs when generate times out", async () => {
+      const auth = { orgId: "org_1" }
+      const deps: AgentSimulationDependencies = {
+        findAgent: mock(async () => ({
+          id: "agent_active",
+          organizationId: "org_1",
+          name: "Bot",
+          systemPrompt: "Prompt",
+          fallbackMessage: "Mohon coba lagi nanti.",
+          allowInteractiveReplies: false,
+          isActive: true,
+        })),
+        resolveProvider: mock(async () => ({
+          providerType: "MANAGED" as const,
+          baseUrl: null,
+          defaultModel: "gpt-4o",
+          apiKey: "key",
+        })),
+        createModel: mock(() => ({}) as never),
+        buildTools: mock(async () => ({})),
+        generate: mock(async () => {
+          throw Object.assign(new Error("timed out"), {
+            name: "TimeoutError",
+          })
+        }),
+      }
+
+      const res = await simulateAgentInference(
+        { agentProfileId: "agent_active", message: "Halo" },
+        auth,
+        deps
+      )
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.error).toBe("TIMEOUT")
+        expect(res.status).toBe(500)
+        expect(res.message).toContain("Mohon coba lagi nanti.")
+        expect(res.message).toMatch(/latency: \d+ms/)
       }
     })
 
@@ -194,10 +236,13 @@ describe("agent-simulation.service", () => {
         })),
         createModel: mock(() => ({}) as never),
         buildTools: mock(async () => ({})),
-        generate: mock(async () => ({
-          text: "",
-          usage: { promptTokens: 5, completionTokens: 0, totalTokens: 5 },
-        }) as never),
+        generate: mock(
+          async () =>
+            ({
+              text: "",
+              usage: { promptTokens: 5, completionTokens: 0, totalTokens: 5 },
+            }) as never
+        ),
       }
 
       const res = await simulateAgentInference(

@@ -1,14 +1,17 @@
 import { generateText, stepCountIs, type ModelMessage, type Tool } from "ai"
 import { t } from "elysia"
+import { logStageFailure } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
+import {
+  getAiBotTimeoutMs,
+  isAiBotTimeoutError,
+} from "@/modules/ai/ai-bot-timeout"
 import {
   resolveAiProviderConfig,
   createAiLanguageModel,
 } from "@/modules/ai/ai-provider.factory"
 import { buildAgentTools } from "@/modules/ai/agents/ai-agent-tools"
-import {
-  parseInteractiveButtons,
-} from "@/modules/whatsapp/ai/ai-interactive-parser"
+import { parseInteractiveButtons } from "@/modules/whatsapp/ai/ai-interactive-parser"
 
 export const agentSimulateBodySchema = t.Object({
   agentProfileId: t.String(),
@@ -86,7 +89,10 @@ export type SimulationAuthContext = {
 }
 
 export type AgentSimulationDependencies = {
-  findAgent?: (id: string, orgId: string) => Promise<{
+  findAgent?: (
+    id: string,
+    orgId: string
+  ) => Promise<{
     id: string
     organizationId: string | null
     name: string
@@ -283,8 +289,7 @@ export async function simulateAgentInference(
             return output
           } catch (err: unknown) {
             status = "ERROR"
-            const errMessage =
-              err instanceof Error ? err.message : String(err)
+            const errMessage = err instanceof Error ? err.message : String(err)
             output = { error: errMessage }
             throw err
           } finally {
@@ -332,13 +337,13 @@ export async function simulateAgentInference(
     Boolean(input.mediaUrl) &&
     Boolean(
       input.mediaType?.startsWith("image/") ||
-        input.mediaUrl?.match(/\.(jpeg|jpg|png|webp|gif)$/i)
+      input.mediaUrl?.match(/\.(jpeg|jpg|png|webp|gif)$/i)
     )
   const isPdf =
     Boolean(input.mediaUrl) &&
     Boolean(
       input.mediaType === "application/pdf" ||
-        input.mediaUrl?.toLowerCase().endsWith(".pdf")
+      input.mediaUrl?.toLowerCase().endsWith(".pdf")
     )
 
   if (isImage && input.mediaUrl) {
@@ -378,16 +383,30 @@ export async function simulateAgentInference(
       messages,
       tools: tracedTools,
       stopWhen: stepCountIs(5),
+      timeout: getAiBotTimeoutMs(),
       ...({ maxSteps: 5 } as Record<string, unknown>),
     })
   } catch (err: unknown) {
     const latencyMs = Date.now() - overallStart
+    const timedOut = isAiBotTimeoutError(err)
     const errorMessage =
       err instanceof Error ? err.message : "Inference execution failed"
+    const fallbackMessage = agent.fallbackMessage?.trim()
+
+    logStageFailure({
+      agentProfileId: agent.id,
+      channel: "CONSOLE",
+      stage: "GENERATION",
+      error: err,
+    })
+
     return {
       ok: false,
-      error: "INFERENCE_ERROR",
-      message: `${errorMessage} (latency: ${latencyMs}ms)`,
+      error: timedOut ? "TIMEOUT" : "INFERENCE_ERROR",
+      message: fallbackMessage
+        ? `${errorMessage} (latency: ${latencyMs}ms) — ` +
+          `fallback: ${fallbackMessage}`
+        : `${errorMessage} (latency: ${latencyMs}ms)`,
       status: 500,
     }
   }

@@ -179,6 +179,33 @@ describe("WebhookRetryJob", () => {
     )
   })
 
+  it("retries when the bot dispatch throws (non-final attempt rethrows without a dead letter)", async () => {
+    mockFindFirst.mockResolvedValueOnce({
+      organizationId: "org-1",
+    } as unknown as never)
+    mockProcessInboundMessage.mockRejectedValueOnce(
+      new Error("bot dispatch failed")
+    )
+
+    const job = {
+      data: {
+        eventId: "evt-retry",
+        eventType: "message",
+        deviceId: "dev-1",
+        payload: { from: "628123456" },
+      },
+      opts: { attempts: 3 },
+      attemptsMade: 0, // 1st attempt — BullMQ will retry
+    } as unknown as never
+
+    await expect(WebhookRetryJob.handle(job)).rejects.toThrow(
+      "bot dispatch failed"
+    )
+
+    expect(mockRecordProcessingResult).not.toHaveBeenCalled()
+    expect(mockCreateDeadLetter).not.toHaveBeenCalled()
+  })
+
   it("creates dead letter when error happens on final attempt", async () => {
     mockFindFirst.mockResolvedValueOnce({
       organizationId: "org-1",

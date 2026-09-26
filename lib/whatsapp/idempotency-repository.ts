@@ -135,6 +135,100 @@ export async function claimProcessedEvent(eventId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Acquires a short-lived "processing" claim on an arbitrary key (SET NX EX).
+ * Unlike `claimProcessedEvent`, the caller supplies the full key and TTL, so
+ * a single in-flight attempt can be claimed with a TTL shorter than a
+ * permanent idempotency marker — long enough to cover one attempt, short
+ * enough that a crashed process can't block a later retry forever.
+ */
+export async function acquireProcessingClaim(
+  key: string,
+  ttlSeconds: number
+): Promise<boolean> {
+  const redis = await getAvailableRedisClient()
+
+  if (!redis) {
+    if (fallbackEventIds.has(key)) return false
+    fallbackEventIds.set(key, Date.now())
+    return true
+  }
+
+  try {
+    const result = await redis.set(key, "1", "EX", ttlSeconds, "NX")
+    return result !== null
+  } catch (err) {
+    warnAndUseFallback("claim", err)
+    if (fallbackEventIds.has(key)) return false
+    fallbackEventIds.set(key, Date.now())
+    return true
+  }
+}
+
+/**
+ * Releases a claim taken by `acquireProcessingClaim`, so a failed attempt
+ * (one that threw before an outcome was delivered) can be retried instead
+ * of being blocked by its own stale claim.
+ */
+export async function releaseProcessingClaim(key: string): Promise<void> {
+  fallbackEventIds.delete(key)
+
+  const redis = await getAvailableRedisClient()
+  if (!redis) {
+    return
+  }
+
+  try {
+    await redis.del(key)
+  } catch (err) {
+    warnAndUseFallback("release", err)
+  }
+}
+
+/**
+ * Checks whether an arbitrary key marker (e.g. a "done" marker written by
+ * `markClaimDone`) is set.
+ */
+export async function hasClaimMarker(key: string): Promise<boolean> {
+  const redis = await getAvailableRedisClient()
+
+  if (!redis) {
+    return fallbackEventIds.has(key)
+  }
+
+  try {
+    const value = await redis.get(key)
+    return value !== null
+  } catch (err) {
+    warnAndUseFallback("get", err)
+    return fallbackEventIds.has(key)
+  }
+}
+
+/**
+ * Writes a "done" marker for an arbitrary key with a caller-chosen TTL,
+ * recording that an outcome was already delivered so a later retry of the
+ * same key can be recognized as a duplicate.
+ */
+export async function markClaimDone(
+  key: string,
+  ttlSeconds: number
+): Promise<void> {
+  const redis = await getAvailableRedisClient()
+
+  if (!redis) {
+    fallbackEventIds.set(key, Date.now())
+    return
+  }
+
+  try {
+    await redis.set(key, "1", "EX", ttlSeconds)
+  } catch (err) {
+    warnAndUseFallback("set", err)
+    fallbackEventIds.set(key, Date.now())
+  }
+}
+
 export async function resetIdempotencyStore(): Promise<void> {
   fallbackEventIds.clear()
 

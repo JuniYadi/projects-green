@@ -74,6 +74,18 @@ describe("ai-agent-guardrails", () => {
   })
 
   describe("inspectAgentPromptSafety", () => {
+    it("respects enableProfanityFilter: false", () => {
+      expect(
+        inspectAgentPromptSafety("Halo bot goblok", {
+          customBlockedWords: ["goblok"],
+          enableProfanityFilter: false,
+        }).ok
+      ).toBe(true)
+      expect(inspectAgentPromptSafety("Halo bot goblok").reason).toBe(
+        "PROFANITY"
+      )
+    })
+
     it("allows valid normal prompt within character limits", () => {
       const result = inspectAgentPromptSafety(
         "Halo, apakah sepatu lari ukuran 42 warna hitam masih ready stock?"
@@ -186,6 +198,30 @@ describe("ai-agent-guardrails", () => {
         },
       })
     })
+
+    it("forwards banScope through to recordStrikeAndEscalate", async () => {
+      mockFindMany.mockResolvedValueOnce([{ strikeCount: 2 }] as never)
+
+      await recordSafetyViolation({
+        sessionId: "sess_300",
+        organizationId: "org_99",
+        customerPhone: "+62812345678",
+        content: "toxic prompt",
+        reason: "PROFANITY",
+        enableStrikeEscalation: true,
+        banScope: "PHONE_ONLY",
+      })
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org_99",
+            customerPhone: "+62812345678",
+          }),
+        })
+      )
+      expect(mockCreate).not.toHaveBeenCalled()
+    })
   })
 
   describe("buildAgentSystemPrompt", () => {
@@ -204,7 +240,7 @@ describe("ai-agent-guardrails", () => {
       )
       expect(prompt).toContain("CRITICAL DOMAIN SCOPE DEFENSE:")
       expect(prompt).toContain(
-        'You MUST ONLY answer inquiries directly related to ' +
+        "You MUST ONLY answer inquiries directly related to " +
           '"Klinik Pratama Sehat"'
       )
       expect(prompt).toContain("SAFETY & INSTRUCTION INTEGRITY:")

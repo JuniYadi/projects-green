@@ -51,6 +51,10 @@ const {
   hasProcessedEvent,
   markEventProcessed,
   claimProcessedEvent,
+  acquireProcessingClaim,
+  releaseProcessingClaim,
+  hasClaimMarker,
+  markClaimDone,
   resetIdempotencyStore,
   __testing,
 } = await import("./idempotency-repository")
@@ -125,6 +129,69 @@ describe("whatsapp idempotency repository", () => {
 
     expect(claims.sort()).toEqual([false, true])
     warn.mockRestore()
+  })
+
+  it(
+    "acquires a processing claim with SET NX EX using a caller key/TTL",
+    async () => {
+      const acquired = await acquireProcessingClaim(
+        "wa:bot-reply:processing:1",
+        180
+      )
+
+      expect(acquired).toBe(true)
+      expect(mockRedisSet).toHaveBeenCalledWith(
+        "wa:bot-reply:processing:1",
+        "1",
+        "EX",
+        180,
+        "NX"
+      )
+      expect(redisStore.get("wa:bot-reply:processing:1")).toBe("1")
+    }
+  )
+
+  it(
+    "fails to acquire a processing claim already held by another attempt",
+    async () => {
+      redisStore.set("wa:bot-reply:processing:2", "1")
+
+      const acquired = await acquireProcessingClaim(
+        "wa:bot-reply:processing:2",
+        180
+      )
+
+      expect(acquired).toBe(false)
+    }
+  )
+
+  it(
+    "releases a processing claim so a later attempt can re-acquire it",
+    async () => {
+      redisStore.set("wa:bot-reply:processing:3", "1")
+
+      await releaseProcessingClaim("wa:bot-reply:processing:3")
+
+      expect(mockRedisDel).toHaveBeenCalledWith("wa:bot-reply:processing:3")
+      expect(redisStore.has("wa:bot-reply:processing:3")).toBe(false)
+      await expect(
+        acquireProcessingClaim("wa:bot-reply:processing:3", 180)
+      ).resolves.toBe(true)
+    }
+  )
+
+  it("reports a claim marker written by markClaimDone", async () => {
+    await expect(hasClaimMarker("wa:bot-reply:done:4")).resolves.toBe(false)
+
+    await markClaimDone("wa:bot-reply:done:4", 86_400)
+
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "wa:bot-reply:done:4",
+      "1",
+      "EX",
+      86_400
+    )
+    await expect(hasClaimMarker("wa:bot-reply:done:4")).resolves.toBe(true)
   })
 
   it("resets idempotency keys by scanning and deleting the prefix", async () => {

@@ -23,21 +23,32 @@ export type HybridSearchOptions = {
 export async function searchHybridKnowledge(
   options: HybridSearchOptions
 ): Promise<HybridSearchResult[]> {
-  const { organizationId, query, limit = 3 } = options
+  const { organizationId, agentProfileId, query, limit = 3 } = options
   const cleanQuery = query.trim()
 
   if (!cleanQuery) {
     return []
   }
 
+  // Agent-scoped: this org's agent docs, this org's org-level docs (agent
+  // null), and global docs (org null, agent null). No agentProfileId means
+  // today's org + global behaviour, unchanged.
+  const scope = agentProfileId
+    ? [
+        { organizationId: organizationId || null, agentProfileId },
+        { organizationId: organizationId || null, agentProfileId: null },
+        { organizationId: null, agentProfileId: null }, // Global system docs
+      ]
+    : [
+        { organizationId: organizationId || null },
+        { organizationId: null }, // Global system docs
+      ]
+
   // Query PostgreSQL for active documents
   const docs = await prisma.aiKnowledgeDocument.findMany({
     where: {
       status: "READY",
-      OR: [
-        { organizationId: organizationId || null },
-        { organizationId: null }, // Global system docs
-      ],
+      OR: scope,
     },
     take: 20,
     orderBy: { updatedAt: "desc" },

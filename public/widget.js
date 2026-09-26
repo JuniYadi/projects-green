@@ -249,6 +249,10 @@
                 accumulatedText += parsed.chunk;
                 assistantMsgEl.textContent = accumulatedText;
                 msgsBox.scrollTop = msgsBox.scrollHeight;
+              } else if (parsed.replace) {
+                // stream failed mid-answer: show only the fallback
+                accumulatedText = parsed.replace;
+                assistantMsgEl.textContent = accumulatedText;
               } else if (parsed.error) {
                 assistantMsgEl.textContent =
                   "Error: " + parsed.error;

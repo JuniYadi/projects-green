@@ -29,6 +29,7 @@ import {
   getEscalationLevel,
   checkActiveBan,
   recordStrikeAndEscalate,
+  recordSessionStrike,
 } from "./docs.guard"
 describe("docs.guard - inspectPromptSafety", () => {
   it("allows safe and clean inputs", () => {
@@ -80,6 +81,18 @@ describe("docs.guard - inspectPromptSafety", () => {
     const result = inspectPromptSafety("Check out competitorX now", customWords)
     expect(result.ok).toBe(false)
     expect(result.reason).toBe("PROFANITY")
+  })
+
+  it("skips profanity and blocked words when checkProfanity is false", () => {
+    const off = { checkProfanity: false }
+    expect(inspectPromptSafety("Halo bot goblok", [], off).ok).toBe(true)
+    expect(
+      inspectPromptSafety("Try competitorX", ["competitorX"], off).ok
+    ).toBe(true)
+    // injection is never toggled off
+    expect(
+      inspectPromptSafety("goblok <script>alert(1)</script>", [], off).reason
+    ).toBe("INJECTION")
   })
 
   it("detects script and injection attacks", () => {
@@ -196,6 +209,7 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
     mockUpdateMany.mockReset()
     mockCount.mockReset()
     mockCreate.mockReset()
+    mockFindManySessions.mockReset()
   })
 
   it("returns not banned when no ban record is active", async () => {
@@ -224,6 +238,95 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
     expect(result.isBanned).toBe(true)
     expect(result.offenseLevel).toBe(1)
     expect(result.banType).toBe("ORGANIZATION")
+  })
+
+  it("does not match a USER/PHONE ban created for a different organizationId", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+
+    const result = await checkActiveBan({
+      organizationId: "org-B",
+      customerPhone: "+62812000000",
+    })
+
+    expect(result.isBanned).toBe(false)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              OR: [{ organizationId: "org-B" }, { organizationId: null }],
+            }),
+          ]),
+        }),
+      })
+    )
+  })
+
+  it("still matches a platform-wide ban (organizationId null) regardless of the caller's organizationId", async () => {
+    const futureDate = new Date(Date.now() + 3600000)
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "ban_platform",
+        banType: "PHONE",
+        offenseLevel: 1,
+        isPermanent: false,
+        blockedUntil: futureDate,
+        reason: "Platform-wide abuse",
+      },
+    ] as never)
+
+    const result = await checkActiveBan({
+      organizationId: "org-B",
+      customerPhone: "+62812000000",
+    })
+
+    expect(result.isBanned).toBe(true)
+    expect(result.banType).toBe("PHONE")
+  })
+
+  it("still matches an ORGANIZATION ban for the same organizationId", async () => {
+    const futureDate = new Date(Date.now() + 3600000)
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "ban_org",
+        banType: "ORGANIZATION",
+        offenseLevel: 1,
+        isPermanent: false,
+        blockedUntil: futureDate,
+        reason: "Org abuse",
+      },
+    ] as never)
+
+    const result = await checkActiveBan({ organizationId: "org-A" })
+
+    expect(result.isBanned).toBe(true)
+    expect(result.banType).toBe("ORGANIZATION")
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({
+              OR: [{ organizationId: "org-A" }, { organizationId: null }],
+            }),
+          ]),
+        }),
+      })
+    )
+  })
+
+  it("only matches platform-wide bans when the caller passes no organizationId", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+
+    const result = await checkActiveBan({ userId: "user_1" })
+
+    expect(result.isBanned).toBe(false)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([{ organizationId: null }]),
+        }),
+      })
+    )
   })
 
   it("does not escalate before the third committed strike", async () => {
@@ -272,4 +375,139 @@ describe("docs.guard - checkActiveBan & recordStrikeAndEscalate", () => {
     expect(result.offenseLevel).toBe(5)
     expect(mockCreate).toHaveBeenCalledTimes(1)
   })
+
+  it(
+    "banScope PHONE_ONLY pools cumulative strikes only within the same " +
+      "organizationId + customerPhone, not the whole org",
+    async () => {
+      mockUpdateMany.mockResolvedValueOnce({ count: 1 })
+      mockFindManySessions.mockResolvedValueOnce([{ strikeCount: 1 }])
+
+      await recordStrikeAndEscalate({
+        sessionId: "sess_1",
+        organizationId: "org-A",
+        customerPhone: "+62812000000",
+        reason: "PROFANITY",
+        banScope: "PHONE_ONLY",
+      })
+
+      expect(mockFindManySessions).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org-A",
+            customerPhone: "+62812000000",
+          }),
+        })
+      )
+    }
+  )
+
+  it(
+    "banScope PHONE_ONLY creates only a PHONE ban stamped with " +
+      "organizationId, never ORGANIZATION/USER/IP",
+    async () => {
+      mockUpdateMany.mockResolvedValueOnce({ count: 1 })
+      mockFindManySessions.mockResolvedValueOnce([{ strikeCount: 3 }])
+      mockCreate.mockImplementationOnce((async (args: {
+        data?: { banType?: string; organizationId?: string | null }
+      }) => ({
+        id: "ban_phone_only",
+        banType: args?.data?.banType ?? "PHONE",
+        organizationId: args?.data?.organizationId ?? null,
+        offenseLevel: 1,
+        isPermanent: false,
+        blockedUntil: new Date(),
+        reason: "banned",
+      })) as never)
+
+      const result = await recordStrikeAndEscalate({
+        sessionId: "sess_1",
+        organizationId: "org-A",
+        userId: "user_1",
+        ipAddress: "1.2.3.4",
+        customerPhone: "+62812000000",
+        reason: "PROFANITY",
+        banScope: "PHONE_ONLY",
+      })
+
+      expect(mockCreate).toHaveBeenCalledTimes(1)
+      expect(mockCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            banType: "PHONE",
+            targetValue: "+62812000000",
+            organizationId: "org-A",
+          }),
+        })
+      )
+      expect(result.isBanned).toBe(true)
+      expect(result.banType).toBe("PHONE")
+    }
+  )
+
+  it("default (no banScope) behaviour is unchanged for the existing docs-chat caller", async () => {
+    mockUpdateMany.mockResolvedValueOnce({ count: 1 })
+    mockFindManySessions.mockResolvedValueOnce([{ strikeCount: 3 }])
+    mockCreate.mockImplementation((async (args: {
+      data?: { banType?: string }
+    }) => ({
+      id: "ban_default",
+      banType: args?.data?.banType ?? "ORGANIZATION",
+      offenseLevel: 1,
+      isPermanent: false,
+      blockedUntil: new Date(),
+      reason: "banned",
+    })) as never)
+
+    await recordStrikeAndEscalate({
+      sessionId: "sess_1",
+      organizationId: "org-A",
+      customerPhone: "+62812000000",
+      reason: "PROFANITY",
+    })
+
+    expect(mockFindManySessions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [{ organizationId: "org-A" }],
+        }),
+      })
+    )
+    expect(mockCreate).toHaveBeenCalledTimes(2)
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ banType: "ORGANIZATION" }),
+      })
+    )
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ banType: "PHONE" }),
+      })
+    )
+  })
+
+  it(
+    "recordSessionStrike sets isBlocked and increments strikeCount on " +
+      "the matching session only, and never creates an AiChatBan row",
+    async () => {
+      mockUpdateMany.mockResolvedValueOnce({ count: 1 })
+
+      const result = await recordSessionStrike(
+        "widget_agent-1_vis-1",
+        "PROFANITY"
+      )
+
+      expect(result).toEqual({ isBlocked: true })
+      expect(mockUpdateMany).toHaveBeenCalledWith({
+        where: { sessionId: "widget_agent-1_vis-1" },
+        data: {
+          strikeCount: { increment: 1 },
+          isBlocked: true,
+          blockReason: "PROFANITY",
+        },
+      })
+      expect(mockCreate).not.toHaveBeenCalled()
+      expect(mockFindManySessions).not.toHaveBeenCalled()
+    }
+  )
 })

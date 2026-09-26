@@ -113,7 +113,7 @@ model AiAgentProfile {
   maxCharLength        Int                    @default(800)
   enableProfanityFilter Boolean               @default(true)
   customBlockedWords   String[]               @default([])
-  enableIpProtection   Boolean                @default(true)
+  enableIpProtection   Boolean                @default(true) // reserved: phase-2 IP-based abuse protection
   strikeEscalation     Boolean                @default(true)
   allowInteractiveReplies Boolean             @default(true)
   allowedDomains       String[]               @default([])
@@ -187,7 +187,7 @@ model AiChannelBinding {
   isOverridden         Boolean          @default(false)
   customSystemPrompt   String?          @db.Text
   customDailyUserLimit Int?
-  customBlockedWords   String[]         @default([])
+  customBlockedWords   String[]         @default([]) // reserved: phase-2 per-binding blocked-word override
   isActive             Boolean          @default(true)
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt

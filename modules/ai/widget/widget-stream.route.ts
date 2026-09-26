@@ -1,7 +1,15 @@
 import { Elysia } from "elysia"
 import { streamText } from "ai"
 import { z } from "zod"
+import { logStageFailure } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
+import {
+  getAiBotLockTtlSeconds,
+  getAiBotTimeoutMs,
+} from "@/modules/ai/ai-bot-timeout"
+import { checkInboundAgentGuardrails } from "@/modules/ai/agents/ai-agent-inbound-guard"
+import { inspectAgentPromptSafety } from "@/modules/ai/agents/ai-agent-guardrails"
+import { recordSessionStrike } from "@/modules/docs/docs.guard"
 import {
   acquireSessionLock,
   getOrCreateSession,
@@ -27,6 +35,24 @@ const widgetStreamSchema = z.object({
 })
 
 export type WidgetStreamBody = z.infer<typeof widgetStreamSchema>
+
+const SSE_HEADERS = {
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache",
+  Connection: "keep-alive",
+  "X-Accel-Buffering": "no",
+}
+
+function sseChunk(text: string) {
+  return `data: ${JSON.stringify({ chunk: text })}\n\n`
+}
+
+// A one-chunk SSE reply (refusal or fallback) followed by [DONE].
+function sseTextResponse(text: string) {
+  return new Response(sseChunk(text) + "data: [DONE]\n\n", {
+    headers: SSE_HEADERS,
+  })
+}
 
 export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
   const runStreamText = deps.streamTextFn || streamText
@@ -98,8 +124,24 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         externalUserId: visitorId,
       })
 
+      // 3b. A visitor already escalated in an earlier request (AC-09) is
+      // blocked before the lock or the model — mirrors AC-07's pre-stream
+      // JSON envelope. No AiChatBan row is involved; this is a pure
+      // session-level block.
+      if (session.isBlocked) {
+        set.status = 403
+        return {
+          ok: false,
+          error: "CUSTOMER_BLOCKED",
+          message: agent.fallbackMessage || null,
+        }
+      }
+
       // 4. Concurrency lock
-      const lockToken = await acquireSessionLock(session.sessionId, 15)
+      const lockToken = await acquireSessionLock(
+        session.sessionId,
+        getAiBotLockTtlSeconds()
+      )
       if (!lockToken) {
         set.status = 429
         return {
@@ -110,26 +152,166 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         }
       }
 
-      // 5. Sliding window memory + build tools
-      const history = await getSlidingWindowMessages(session.id, 10)
-      const tools = await buildAgentTools({
-        organizationId: agent.organizationId || "",
-        agentProfileId: agent.id,
-        sessionId: session.sessionId,
+      const fallbackText =
+        agent.fallbackMessage ||
+        "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
+
+      // Any failure after the lock is held and before the stream starts
+      // (guard count, context load, provider resolution) gets the same treatment as a
+      // generation failure: stage log, fallback reply, lock released.
+      const failBeforeStream = async (stage: string, error: unknown) => {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId: session.sessionId,
+          channel: "WEB_LIVECHAT",
+          stage,
+          error,
+        })
+        try {
+          await recordMessage({
+            sessionId: session.sessionId,
+            role: "assistant",
+            content: fallbackText,
+          })
+        } catch {
+          // best-effort — the fallback still reaches the visitor
+        }
+        await releaseSessionLock(session.sessionId, lockToken)
+        return sseTextResponse(fallbackText)
+      }
+
+      // 4b. Widget safety parity (AC-07): the same char-limit / blocked-word
+      // / daily-limit checks WhatsApp enforces, via the shared
+      // modules/ai/agents/ai-agent-inbound-guard helper. The widget has no
+      // channel binding, so only agent.dailyUserLimit applies. A blocked
+      // message returns JSON before the stream is built and releases the
+      // lock it just acquired.
+      //
+      // The daily limit means "N customer messages in a day" (AC-07), so it is
+      // checked against this session's role="user" rows from the last 24h, not
+      // session.totalMessages — that column increments for both the user
+      // message and the assistant reply (recordMessage), which would let a
+      // visitor hit the limit after roughly half the allowed count.
+      // ponytail: rolling 24h, not a calendar day in the tenant's timezone.
+      let inboundMessageCount: number
+      try {
+        inboundMessageCount = await prisma.aiChatMessage.count({
+          where: {
+            sessionId: session.sessionId,
+            role: "user",
+            createdAt: { gte: new Date(Date.now() - 86_400_000) },
+          },
+        })
+      } catch (error) {
+        return failBeforeStream("DAILY_LIMIT_COUNT", error)
+      }
+      const guardResult = checkInboundAgentGuardrails({
+        text: message,
+        maxCharLength: agent.maxCharLength,
+        enableProfanityFilter: agent.enableProfanityFilter,
+        customBlockedWords: agent.customBlockedWords,
+        fallbackMessage: agent.fallbackMessage,
+        dailyUserLimit: agent.dailyUserLimit,
+        currentMessageCount: inboundMessageCount,
+      })
+      if (!guardResult.ok) {
+        await releaseSessionLock(session.sessionId, lockToken)
+        set.status = guardResult.reason === "DAILY_LIMIT_REACHED" ? 429 : 422
+        return {
+          ok: false,
+          error: guardResult.reason,
+          ...(guardResult.replyMessage
+            ? { message: guardResult.replyMessage }
+            : {}),
+        }
+      }
+
+      // AC-09 safety check (acted on in 6b); computed first so the user
+      // row below can be flagged.
+      const safetyCheck = inspectAgentPromptSafety(message, {
+        maxChars: agent.maxCharLength,
+        customBlockedWords: agent.customBlockedWords,
+        enableProfanityFilter: agent.enableProfanityFilter,
       })
 
+      // 5. Sliding window memory + build tools
       // 6. Record user message
-      await recordMessage({
-        sessionId: session.sessionId,
-        role: "user",
-        content: message,
-      })
+      let history: Awaited<ReturnType<typeof getSlidingWindowMessages>>
+      let tools: Awaited<ReturnType<typeof buildAgentTools>>
+      try {
+        history = await getSlidingWindowMessages(session.sessionId, 10)
+        tools = await buildAgentTools({
+          organizationId: agent.organizationId || "",
+          agentProfileId: agent.id,
+          sessionId: session.sessionId,
+        })
+        // Flagged like WhatsApp's recordSafetyViolation so the violation
+        // shows in the sessions review screen (AC-09 parity).
+        await recordMessage({
+          sessionId: session.sessionId,
+          role: "user",
+          content: message,
+          ...(safetyCheck.ok
+            ? {}
+            : { isFlagged: true, flagReason: safetyCheck.reason }),
+        })
+      } catch (error) {
+        return failBeforeStream("CONTEXT_LOAD", error)
+      }
+
+      // 6b. Agent prompt-safety check (injection/profanity/oversize) via the
+      // dedicated ai-agent-guardrails safety check (AC-09) — separate from
+      // AC-07's char-limit/blocked-word helper above. A violation skips the
+      // model call entirely and streams the refusal as a normal chunk, never
+      // a raw {error} event. Escalation is session-only: it flips
+      // session.isBlocked (checked at the top of the next request) and never
+      // creates an AiChatBan row, so no other visitor or WhatsApp customer of
+      // the org is ever affected.
+      if (!safetyCheck.ok) {
+        const refusalText =
+          safetyCheck.refusalMessage ||
+          "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
+
+        try {
+          await recordMessage({
+            sessionId: session.sessionId,
+            role: "assistant",
+            content: refusalText,
+          })
+
+          if (agent.strikeEscalation) {
+            await recordSessionStrike(
+              session.sessionId,
+              safetyCheck.reason ?? "PROFANITY"
+            )
+          }
+        } catch (error) {
+          // The refusal still goes out; only the bookkeeping failed.
+          logStageFailure({
+            agentProfileId: agent.id,
+            sessionId: session.sessionId,
+            channel: "WEB_LIVECHAT",
+            stage: "PERSIST_REPLY",
+            error,
+          })
+        }
+
+        await releaseSessionLock(session.sessionId, lockToken)
+
+        return sseTextResponse(refusalText)
+      }
 
       // 7. Resolve Language Model
-      const providerConfig = await resolveAiProviderConfig({
-        organizationId: agent.organizationId,
-      })
-      const model = createAiLanguageModel(providerConfig)
+      let providerConfig: Awaited<ReturnType<typeof resolveAiProviderConfig>>
+      let model: ReturnType<typeof createAiLanguageModel>
+      try {
+        providerConfig = await resolveAiProviderConfig({
+          organizationId: agent.organizationId,
+        })
+        model = createAiLanguageModel(providerConfig)
+      } catch (error) {
+        return failBeforeStream("PROVIDER_RESOLUTION", error)
+      }
 
       const systemPrompt = [
         agent.systemPrompt || "Anda adalah asisten AI toko resmi.",
@@ -156,32 +338,82 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
               system: systemPrompt,
               messages: conversationMessages,
               tools,
+              timeout: getAiBotTimeoutMs(),
             })
 
-            for await (const chunk of aiStream.textStream) {
-              fullAssistantText += chunk
-              const sseEvent = `data: ${JSON.stringify({ chunk })}\n\n`
-              controller.enqueue(encoder.encode(sseEvent))
+            // streamText never throws: provider errors and timeouts arrive
+            // as "error"/"abort" parts, which textStream silently drops.
+            // Read fullStream so they reach the fallback catch below.
+            for await (const part of aiStream.fullStream) {
+              if (part.type === "text-delta") {
+                fullAssistantText += part.text
+                controller.enqueue(encoder.encode(sseChunk(part.text)))
+              } else if (part.type === "error") {
+                throw part.error
+              } else if (part.type === "abort") {
+                const abortError = new Error(part.reason ?? "stream aborted")
+                abortError.name = "AbortError"
+                throw abortError
+              }
+            }
+            if (!fullAssistantText.trim()) {
+              throw new Error("model returned no text")
             }
 
             // End of stream marker
             controller.enqueue(encoder.encode("data: [DONE]\n\n"))
 
-            // Record assistant message tokens
-            await recordMessage({
-              sessionId: session.sessionId,
-              role: "assistant",
-              content: fullAssistantText,
-              modelName: providerConfig.defaultModel,
-            })
+            // The reply is already delivered; a persistence failure is only
+            // logged, never answered with a second (fallback) reply.
+            try {
+              await recordMessage({
+                sessionId: session.sessionId,
+                role: "assistant",
+                content: fullAssistantText,
+                modelName: providerConfig.defaultModel,
+              })
+            } catch (error) {
+              logStageFailure({
+                agentProfileId: agent.id,
+                sessionId: session.sessionId,
+                channel: "WEB_LIVECHAT",
+                stage: "PERSIST_REPLY",
+                error,
+              })
+            }
           } catch (err: unknown) {
-            const errorMessage =
-              err instanceof Error ? err.message : "Stream error"
+            // Never surface a raw {error} event to the visitor — stream the
+            // agent's fallback as a normal chunk instead (AC-03), whether
+            // this was a timeout (AC-02) or any other model/stream failure.
+            logStageFailure({
+              agentProfileId: agent.id,
+              sessionId: session.sessionId,
+              channel: "WEB_LIVECHAT",
+              stage: "GENERATION",
+              error: err,
+            })
+
+            try {
+              await recordMessage({
+                sessionId: session.sessionId,
+                role: "assistant",
+                content: fallbackText,
+              })
+            } catch {
+              // best-effort — the fallback chunk below still reaches the
+              // visitor even if persisting it fails
+            }
+
+            // If model text was already streamed, tell the client to replace
+            // it rather than append the fallback after a partial answer.
             controller.enqueue(
               encoder.encode(
-                `data: ${JSON.stringify({ error: errorMessage })}\n\n`
+                fullAssistantText
+                  ? `data: ${JSON.stringify({ replace: fallbackText })}\n\n`
+                  : sseChunk(fallbackText)
               )
             )
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"))
           } finally {
             await releaseSessionLock(session.sessionId, lockToken)
             controller.close()
@@ -189,14 +421,7 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         },
       })
 
-      return new Response(readableStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-          "X-Accel-Buffering": "no",
-        },
-      })
+      return new Response(readableStream, { headers: SSE_HEADERS })
     }
   )
 }
