@@ -1308,4 +1308,67 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       expect.objectContaining({ enableStrikeEscalation: false })
     )
   })
+  it("rethrows for a BullMQ retry when the blocked-word fallback is not delivered", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        enableProfanityFilter: true,
+        customBlockedWords: ["kasar"],
+        fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      },
+    } as never)
+    mockMessageService.sendMessage.mockRejectedValueOnce(new Error("API down"))
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Dasar kata kasar kamu!",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_blocked_fail_1",
+      })
+    ).rejects.toThrow("fallback not delivered")
+  })
+
+  it("rethrows before recording a strike when the safety refusal is not delivered", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        customBlockedWords: [],
+        strikeEscalation: true,
+        fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      },
+    } as never)
+    mockInspectAgentPromptSafety.mockReturnValueOnce({
+      ok: false,
+      reason: "PROFANITY",
+      refusalMessage: "Mohon gunakan bahasa yang sopan.",
+    } as never)
+    mockMessageService.sendMessage.mockRejectedValueOnce(new Error("API down"))
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812000003",
+        inboundMessageText: "kata kasar apapun",
+        conversationId: "conv_safety_fail",
+        inboundMessageId: "msg_safety_fail_1",
+      })
+    ).rejects.toThrow("fallback not delivered")
+
+    // retry will strike exactly once
+    expect(mockRecordSafetyViolation).not.toHaveBeenCalled()
+    expect(mockMarkClaimDone).not.toHaveBeenCalled()
+    expect(mockReleaseProcessingClaim).toHaveBeenCalled()
+  })
 })
