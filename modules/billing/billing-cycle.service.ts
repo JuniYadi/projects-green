@@ -21,6 +21,7 @@ import {
   GRACE_PERIOD_DAYS,
 } from "./billing-cycle.types"
 import { emitBillingAudit } from "@/modules/billing/audit/audit.service"
+import { resolveInvoiceBilledTo } from "@/modules/billing/email-recipients"
 
 const IDR_CURRENCY = "IDR"
 const ZERO = new Decimal(0)
@@ -366,8 +367,11 @@ export class BillingCycleService {
     // Subsequent cron runs skip already-PAID invoices, so retries rely on
     // the admin to manually re-send if needed.
     if (this.emailService && organizationId) {
-      this.resolveInvoiceRecipients(organizationId)
-        .then(async (recipients) => {
+      Promise.all([
+        this.resolveInvoiceRecipients(organizationId),
+        resolveInvoiceBilledTo(organizationId),
+      ])
+        .then(async ([recipients, billedTo]) => {
           try {
             const invoiceData = {
               id: result.invoiceId,
@@ -375,11 +379,7 @@ export class BillingCycleService {
               totalAmount: result.totalAmount,
               currency: IDR_CURRENCY,
               status: result.status.toLowerCase() as
-                | "draft"
-                | "open"
-                | "paid"
-                | "canceled"
-                | "uncollectible",
+                "draft" | "open" | "paid" | "canceled" | "uncollectible",
               periodStart: this.getPeriodStart(new Date()).toISOString(),
               periodEnd: this.getPeriodEnd(new Date()).toISOString(),
               issuedAt:
@@ -391,7 +391,12 @@ export class BillingCycleService {
 
             await Promise.allSettled(
               recipients.map((r) =>
-                this.emailService!.sendInvoiceCreated(invoiceData, r.email)
+                this.emailService!.sendInvoiceCreated(
+                  invoiceData,
+                  r.email,
+                  organizationId,
+                  billedTo
+                )
               )
             )
           } catch (err) {
@@ -535,6 +540,7 @@ export class BillingCycleService {
           const recipients = await this.resolveInvoiceRecipients(
             account.organizationId
           )
+          const billedTo = await resolveInvoiceBilledTo(account.organizationId)
 
           await Promise.allSettled(
             recipients.map((r) =>
@@ -550,7 +556,9 @@ export class BillingCycleService {
                   issuedAt: nowDate.toISOString(),
                   dueAt: null,
                 },
-                r.email
+                r.email,
+                account.organizationId,
+                billedTo
               )
             )
           )
