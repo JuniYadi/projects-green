@@ -258,7 +258,7 @@ export async function processWhatsappAiBotInbound(
     if (contentGuard.reason === "MAX_CHAR_EXCEEDED") {
       return { handled: false, reason: contentGuard.reason }
     }
-    await sendBestEffortFallback({
+    const delivered = await sendBestEffortFallback({
       organizationId,
       phoneNumber: contactPhone,
       deviceId,
@@ -267,6 +267,10 @@ export async function processWhatsappAiBotInbound(
       agentProfileId: agent.id,
       stage: contentGuard.reason,
     })
+    // No claim is held yet, so a throw simply lets BullMQ retry.
+    if (!delivered) {
+      throw new FallbackNotDeliveredError(contentGuard.reason)
+    }
     return {
       handled: true,
       reason: contentGuard.reason,
@@ -352,7 +356,7 @@ export async function processWhatsappAiBotInbound(
     })
     if (!safetyCheck.ok) {
       const safetyReason = safetyCheck.reason ?? "PROFANITY"
-      await sendBestEffortFallback({
+      const delivered = await sendBestEffortFallback({
         organizationId,
         phoneNumber: contactPhone,
         deviceId,
@@ -362,6 +366,10 @@ export async function processWhatsappAiBotInbound(
         sessionId,
         stage: `SAFETY_${safetyReason}`,
       })
+      // Thrown before the strike is recorded, so the retry strikes once.
+      if (!delivered) {
+        throw new FallbackNotDeliveredError(`SAFETY_${safetyReason}`)
+      }
       // Mark done right after the send: a failing strike write below must
       // not let a retry send the fallback twice.
       await markClaimDone(replyDoneKey, REPLY_DONE_TTL_SECONDS)
