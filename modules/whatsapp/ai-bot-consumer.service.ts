@@ -285,11 +285,10 @@ export async function processWhatsappAiBotInbound(
     getAiBotLockTtlSeconds()
   )
   if (!lockToken) {
-    return {
-      handled: false,
-      reason: "SESSION_LOCKED",
-      agentProfileId: agent.id,
-    }
+    // Another message of this conversation is mid-generation. Throw so the
+    // awaited webhook dispatch fails and BullMQ retries this one later,
+    // instead of dropping it with no reply (AC-01).
+    throw new Error(`AI bot session locked (session=${sessionId})`)
   }
 
   let ownsProcessingClaim = false
@@ -353,6 +352,7 @@ export async function processWhatsappAiBotInbound(
     const safetyCheck = inspectAgentPromptSafety(cleanText, {
       maxChars: agent.maxCharLength,
       customBlockedWords: agent.customBlockedWords,
+      enableProfanityFilter: agent.enableProfanityFilter,
     })
     if (!safetyCheck.ok) {
       const safetyReason = safetyCheck.reason ?? "PROFANITY"
