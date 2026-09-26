@@ -6134,6 +6134,14 @@ export type AppMessages = {
         saveChangesButton: string
         savingButton: string
         saveDraftButton: string
+        nameRequired: string
+        saveCanvasSuccess: string
+        saveSuccess: string
+        saveError: string
+        saveException: string
+        editSaveSuccess: string
+        editSaveError: string
+        editSaveException: string
       }
       tabs: {
         aiAssistant: string
@@ -6143,14 +6151,25 @@ export type AppMessages = {
         presetsLabel: string
         templatesButton: string
         presetTrackingLabel: string
+        presetTrackingPrompt: string
         presetRegistrationLabel: string
+        presetRegistrationPrompt: string
         presetGreetingLabel: string
+        presetGreetingPrompt: string
         promptLabel: string
         promptPlaceholder: string
         generatedStepsLabel: string
         simulatorTitle: string
         livePreview: string
         testInputPlaceholder: string
+        generateButton: string
+        generatingButton: string
+        defaultSummary: string
+        defaultStepDetail: string
+        generateSuccess: string
+        generateError: string
+        generateException: string
+        simulateFallbackReply: string
       }
       manual: {
         nameLabel: string
@@ -6204,6 +6223,17 @@ export type AppMessages = {
         connectedBadge: string
         availableBadge: string
         doneButton: string
+        connectButton: string
+        connectingButton: string
+        disconnectButton: string
+        disconnectingButton: string
+        connectSuccess: string
+        connectError: string
+        connectException: string
+        disconnectSuccess: string
+        disconnectError: string
+        disconnectException: string
+        loadDevicesError: string
       }
       actionIntents: {
         tabTitle: string
