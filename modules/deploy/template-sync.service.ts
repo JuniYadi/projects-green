@@ -113,11 +113,33 @@ export async function listTemplateInstallations(
       ? bp.runtime.args.join(" ")
       : ""
     const isArgsAligned = currentArgs === targetArgs
+    const currentImage =
+      typeof meta.imageRepository === "string" ? meta.imageRepository : ""
+    const targetImage = bp?.runtime?.image ?? ""
+    const isImageAligned = targetImage ? currentImage === targetImage : true
+    const isRunAsNonRootAligned =
+      bp?.runtime?.runAsNonRoot === undefined ||
+      (meta.runAsNonRoot ?? true) === bp.runtime.runAsNonRoot
+    const isRunAsUserAligned =
+      bp?.runtime?.runAsUser === undefined ||
+      (meta.runAsUser ?? null) === (bp.runtime.runAsUser ?? null)
+    const isRunAsGroupAligned =
+      bp?.runtime?.runAsGroup === undefined ||
+      (meta.runAsGroup ?? null) === (bp.runtime.runAsGroup ?? null)
+    const isReadOnlyRootFilesystemAligned =
+      bp?.runtime?.readOnlyRootFilesystem === undefined ||
+      (meta.readOnlyRootFilesystem ?? null) ===
+        (bp.runtime.readOnlyRootFilesystem ?? null)
     const isAligned =
       currentDeploymentType === targetDeploymentType &&
       installedVersion === latestVersion &&
       isCommandAligned &&
-      isArgsAligned
+      isArgsAligned &&
+      isImageAligned &&
+      isRunAsNonRootAligned &&
+      isRunAsUserAligned &&
+      isRunAsGroupAligned &&
+      isReadOnlyRootFilesystemAligned
     const latestDeployment = stack.deployments[0] ?? null
     return {
       id: stack.id,
@@ -238,8 +260,33 @@ export async function syncStackFromParentTemplate(params: {
     } else {
       updatedMetadata.healthCheckPath = null
     }
-    if (bp.runtime.image && !meta.imageRepository) {
+    if (bp.runtime.image) {
       updatedMetadata.imageRepository = bp.runtime.image
+    }
+    if (bp.runtime.runAsNonRoot !== undefined) {
+      updatedMetadata.runAsNonRoot = bp.runtime.runAsNonRoot
+    }
+    if (bp.runtime.runAsUser !== undefined) {
+      if (bp.runtime.runAsUser === null) {
+        delete updatedMetadata.runAsUser
+      } else {
+        updatedMetadata.runAsUser = bp.runtime.runAsUser
+      }
+    }
+    if (bp.runtime.runAsGroup !== undefined) {
+      if (bp.runtime.runAsGroup === null) {
+        delete updatedMetadata.runAsGroup
+      } else {
+        updatedMetadata.runAsGroup = bp.runtime.runAsGroup
+      }
+    }
+    if (bp.runtime.readOnlyRootFilesystem !== undefined) {
+      if (bp.runtime.readOnlyRootFilesystem === null) {
+        delete updatedMetadata.readOnlyRootFilesystem
+      } else {
+        updatedMetadata.readOnlyRootFilesystem =
+          bp.runtime.readOnlyRootFilesystem
+      }
     }
     if (bp.runtime.livenessProbe !== undefined) {
       updatedMetadata.livenessProbe = bp.runtime.livenessProbe

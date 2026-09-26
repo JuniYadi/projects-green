@@ -52,6 +52,10 @@ export type StackUpsertInput = {
   command?: string[] | null
   args?: string[] | null
   fsGroup?: number | null
+  runAsNonRoot?: boolean | null
+  runAsUser?: number | null
+  runAsGroup?: number | null
+  readOnlyRootFilesystem?: boolean | null
   healthCheckPath?: string | null
   templateId?: string | null
   templateSlug?: string | null
@@ -257,9 +261,30 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       buildMetadata.secondaryEngineVersion = input.secondaryEngineVersion
     buildMetadata.defaultPort = input.defaultPort ?? contract.containerPort
     buildMetadata.containerPort = input.defaultPort ?? contract.containerPort
-    buildMetadata.runAsUser = contract.runAsUser
-    buildMetadata.runAsGroup = contract.runAsGroup
-    buildMetadata.runAsNonRoot = contract.runAsNonRoot
+    buildMetadata.runAsNonRoot =
+      input.runAsNonRoot !== undefined && input.runAsNonRoot !== null
+        ? input.runAsNonRoot
+        : contract.runAsNonRoot
+    if (input.runAsUser !== undefined) {
+      if (input.runAsUser !== null) {
+        buildMetadata.runAsUser = input.runAsUser
+      }
+    } else if (contract.runAsUser !== null) {
+      buildMetadata.runAsUser = contract.runAsUser
+    }
+    if (input.runAsGroup !== undefined) {
+      if (input.runAsGroup !== null) {
+        buildMetadata.runAsGroup = input.runAsGroup
+      }
+    } else if (contract.runAsGroup !== null) {
+      buildMetadata.runAsGroup = contract.runAsGroup
+    }
+    if (
+      input.readOnlyRootFilesystem !== undefined &&
+      input.readOnlyRootFilesystem !== null
+    ) {
+      buildMetadata.readOnlyRootFilesystem = input.readOnlyRootFilesystem
+    }
     if (input.imageRepository != null)
       buildMetadata.imageRepository = input.imageRepository
     if (input.deploymentType != null)
@@ -284,7 +309,17 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
     const metadataJson = {
       ...existingJson,
       ...buildMetadata,
-    } as Prisma.InputJsonValue
+    }
+
+    if (input.runAsUser === null) {
+      delete metadataJson.runAsUser
+    }
+    if (input.runAsGroup === null) {
+      delete metadataJson.runAsGroup
+    }
+    if (input.readOnlyRootFilesystem === null) {
+      delete metadataJson.readOnlyRootFilesystem
+    }
 
     const data = {
       organizationId: input.organizationId,
@@ -313,8 +348,11 @@ export async function createOrUpdateStack(input: StackUpsertInput) {
       subdomain: input.subdomain ?? null,
       envVarsJson,
       metadataJson:
-        Object.keys(buildMetadata).length > 0
-          ? metadataJson
+        Object.keys(buildMetadata).length > 0 ||
+        input.runAsUser === null ||
+        input.runAsGroup === null ||
+        input.readOnlyRootFilesystem === null
+          ? (metadataJson as Prisma.InputJsonValue)
           : (existingJson as Prisma.InputJsonValue),
     }
 

@@ -366,4 +366,74 @@ describe("deploy-pipeline.service", () => {
     expect(callArgs?.secrets.APP_KEY).toBeDefined()
     expect(callArgs?.secrets.APP_KEY.startsWith("base64:")).toBe(true)
   })
+
+  it("createOrUpdateStack embeds custom securityContext overrides when provided", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "root-app",
+      slug: "root-app",
+      branchName: "main",
+      rootDirectory: "/",
+      dockerfileDetected: false,
+      envVars: [],
+      sourceType: "TEMPLATE",
+      runAsNonRoot: false,
+      runAsUser: 0,
+      runAsGroup: 0,
+      readOnlyRootFilesystem: true,
+    })
+
+    const createCall = (
+      mockPrisma.applicationStack.create.mock.calls as unknown as Array<
+        [{ data: { slug?: string; metadataJson: Record<string, unknown> } }]
+      >
+    ).find((c) => c[0]?.data?.slug === "root-app")?.[0]
+
+    expect(createCall?.data.metadataJson).toMatchObject({
+      runAsNonRoot: false,
+      runAsUser: 0,
+      runAsGroup: 0,
+      readOnlyRootFilesystem: true,
+    })
+  })
+
+  it("createOrUpdateStack clears runAsUser, runAsGroup, and readOnlyRootFilesystem when explicitly null", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce({
+      ...mockStack,
+      status: "IDLE",
+      metadataJson: {
+        runAsUser: 10001,
+        runAsGroup: 10001,
+        readOnlyRootFilesystem: true,
+        previousSetting: "retained",
+      },
+    } as never)
+
+    await createOrUpdateStack({
+      organizationId: "org-1",
+      name: "updated-root-app",
+      slug: "test-stack",
+      branchName: "main",
+      rootDirectory: "/",
+      dockerfileDetected: false,
+      envVars: [],
+      sourceType: "TEMPLATE",
+      runAsUser: null,
+      runAsGroup: null,
+      readOnlyRootFilesystem: null,
+    })
+
+    const updateCall = (
+      mockPrisma.applicationStack.update.mock.calls as unknown as Array<
+        [{ data: { metadataJson: Record<string, unknown> } }]
+      >
+    ).find((c) => c[0]?.data?.metadataJson)?.[0]
+
+    expect(updateCall?.data.metadataJson.runAsUser).toBeUndefined()
+    expect(updateCall?.data.metadataJson.runAsGroup).toBeUndefined()
+    expect(updateCall?.data.metadataJson.readOnlyRootFilesystem).toBeUndefined()
+    expect(updateCall?.data.metadataJson.previousSetting).toBe("retained")
+  })
 })
