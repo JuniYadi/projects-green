@@ -186,6 +186,30 @@ describe("ai-agent-guardrails", () => {
         },
       })
     })
+
+    it("forwards banScope through to recordStrikeAndEscalate", async () => {
+      mockFindMany.mockResolvedValueOnce([{ strikeCount: 2 }] as never)
+
+      await recordSafetyViolation({
+        sessionId: "sess_300",
+        organizationId: "org_99",
+        customerPhone: "+62812345678",
+        content: "toxic prompt",
+        reason: "PROFANITY",
+        enableStrikeEscalation: true,
+        banScope: "PHONE_ONLY",
+      })
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: "org_99",
+            customerPhone: "+62812345678",
+          }),
+        })
+      )
+      expect(mockCreate).not.toHaveBeenCalled()
+    })
   })
 
   describe("buildAgentSystemPrompt", () => {
@@ -204,7 +228,7 @@ describe("ai-agent-guardrails", () => {
       )
       expect(prompt).toContain("CRITICAL DOMAIN SCOPE DEFENSE:")
       expect(prompt).toContain(
-        'You MUST ONLY answer inquiries directly related to ' +
+        "You MUST ONLY answer inquiries directly related to " +
           '"Klinik Pratama Sehat"'
       )
       expect(prompt).toContain("SAFETY & INSTRUCTION INTEGRITY:")
