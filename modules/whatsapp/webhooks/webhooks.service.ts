@@ -102,23 +102,29 @@ export async function processInboundMessage(
     })
   }
 
-  // Create the inbound message record
-  const whatsappMessage = await prisma.whatsappMessage.create({
-    data: {
-      conversationId: conversation.id,
-      direction: "INBOX",
-      messageType,
-      body: body ?? undefined,
-      mediaUrl: mediaUrl ?? undefined,
-      waMessageId: payload.id,
-      metadata: {
-        rawPayload: payload.rawPayload ?? payload,
-        deviceId,
-        organizationId,
-        profileName: payload.profileName,
-      } as Prisma.InputJsonValue,
-    },
+  // Find-or-create the inbound message record by waMessageId so a BullMQ
+  // retry of the same Meta event doesn't crash on the unique index.
+  const existingMessage = await prisma.whatsappMessage.findFirst({
+    where: { waMessageId: payload.id },
   })
+  const whatsappMessage =
+    existingMessage ??
+    (await prisma.whatsappMessage.create({
+      data: {
+        conversationId: conversation.id,
+        direction: "INBOX",
+        messageType,
+        body: body ?? undefined,
+        mediaUrl: mediaUrl ?? undefined,
+        waMessageId: payload.id,
+        metadata: {
+          rawPayload: payload.rawPayload ?? payload,
+          deviceId,
+          organizationId,
+          profileName: payload.profileName,
+        } as Prisma.InputJsonValue,
+      },
+    }))
 
   // Upsert contact from this inbound message — mark isWhatsapp: true and update name if profileName is present
   await upsertWhatsappContactFromMessage({
@@ -254,8 +260,10 @@ export async function processInboundMessage(
         })
     : Promise.resolve(null)
 
-  // Fire-and-forget: Automated bot evaluation
-  // (Workflow Engine first -> AI Bot fallback)
+  // Awaited: Automated bot evaluation (Workflow Engine first -> AI Bot
+  // fallback). Awaiting lets a mid-pipeline failure reach
+  // WebhookRetryJob.handle's catch and use its existing BullMQ retries,
+  // instead of being swallowed here.
   // DEBT: Inbound bot pipeline uses async dynamic imports | Fix when:
   // Unified bot event dispatcher queue is extracted
   if (body || payload.interactive || mediaUrl || mediaId) {
@@ -267,45 +275,36 @@ export async function processInboundMessage(
       interactiveObj?.list_reply?.id ||
       undefined
 
-    import("@/modules/whatsapp/workflow/workflow-runner")
-      .then(async ({ processWhatsappWorkflowInbound }) => {
-        const wfResult = await processWhatsappWorkflowInbound({
-          organizationId,
-          deviceId,
-          contactPhone: normalizedPhone,
-          inboundMessageText: body || "",
-          buttonPayload,
-        })
+    const { processWhatsappWorkflowInbound } =
+      await import("@/modules/whatsapp/workflow/workflow-runner")
+    const wfResult = await processWhatsappWorkflowInbound({
+      organizationId,
+      deviceId,
+      contactPhone: normalizedPhone,
+      inboundMessageText: body || "",
+      buttonPayload,
+    })
 
-        // Only fallback to AI Agent if Workflow didn't handle the message
-        if (!wfResult.handled && (body || mediaUrl || mediaId)) {
-          // If media was downloaded, use the resolved CDN/stored URL
-          const mediaResult = await mediaDownloadPromise
-          const effectiveMediaUrl =
-            mediaResult?.targetMediaUrl || mediaUrl || undefined
+    // Only fallback to AI Agent if Workflow didn't handle the message
+    if (!wfResult.handled && (body || mediaUrl || mediaId)) {
+      // If media was downloaded, use the resolved CDN/stored URL
+      const mediaResult = await mediaDownloadPromise
+      const effectiveMediaUrl =
+        mediaResult?.targetMediaUrl || mediaUrl || undefined
 
-          const { processWhatsappAiBotInbound } =
-            await import("@/modules/whatsapp/ai-bot-consumer.service")
-          await processWhatsappAiBotInbound({
-            organizationId,
-            deviceId,
-            contactPhone: normalizedPhone,
-            inboundMessageText: body || "",
-            conversationId: conversation.id,
-            inboundMessageId:
-              whatsappMessage.waMessageId || whatsappMessage.id,
-            mediaUrl: effectiveMediaUrl,
-            mediaType: mediaType ?? undefined,
-          })
-        }
+      const { processWhatsappAiBotInbound } =
+        await import("@/modules/whatsapp/ai-bot-consumer.service")
+      await processWhatsappAiBotInbound({
+        organizationId,
+        deviceId,
+        contactPhone: normalizedPhone,
+        inboundMessageText: body || "",
+        conversationId: conversation.id,
+        inboundMessageId: whatsappMessage.waMessageId || whatsappMessage.id,
+        mediaUrl: effectiveMediaUrl,
+        mediaType: mediaType ?? undefined,
       })
-      .catch((err: unknown) =>
-        console.error(
-          `[webhooks] bot dispatch error device=${deviceId} ` +
-            `org=${organizationId}`,
-          err
-        )
-      )
+    }
   }
 
   return {
@@ -362,15 +361,13 @@ export function extractMessageBody(
       typeof interactive.button_reply === "object"
     ) {
       const reply = interactive.button_reply as Record<string, unknown>
-      const title =
-        typeof reply.title === "string" ? reply.title.trim() : ""
+      const title = typeof reply.title === "string" ? reply.title.trim() : ""
       const id = typeof reply.id === "string" ? reply.id.trim() : ""
       return title || id || ""
     }
     if (interactive.list_reply && typeof interactive.list_reply === "object") {
       const reply = interactive.list_reply as Record<string, unknown>
-      const title =
-        typeof reply.title === "string" ? reply.title.trim() : ""
+      const title = typeof reply.title === "string" ? reply.title.trim() : ""
       const id = typeof reply.id === "string" ? reply.id.trim() : ""
       return title || id || ""
     }
