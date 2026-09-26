@@ -86,6 +86,7 @@ describe("Console AI Agents Route", () => {
             isActive: true,
           },
         ],
+        _count: { knowledgeDocuments: 3, actionIntents: 2 },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -106,12 +107,16 @@ describe("Console AI Agents Route", () => {
         widgetColor: string
         widgetPosition: string
         welcomeMessage: string
+        knowledgeCount: number
+        actionCount: number
       }[]
     }
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
     expect(json.data[0].activeChannelsCount).toBe(1)
     expect(json.data[0].operationalStatus).toBe("ACTIVE")
+    expect(json.data[0].knowledgeCount).toBe(3)
+    expect(json.data[0].actionCount).toBe(2)
     expect(json.data[0]).not.toHaveProperty("systemPrompt")
   })
 
