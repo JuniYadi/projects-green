@@ -148,14 +148,11 @@ export class DailyOperationsService {
         name: "failedDeployments",
         delegate: this.prisma.applicationDeployment,
         definition: {
-          key: "failed-or-building-deployments",
-          label: "Deployment gagal atau sedang dibangun",
+          key: "failed-deployments",
+          label: "Deployment gagal",
           priority: "HIGH",
           href: "/portal/app/deployments?status=FAILED",
-          where: {
-            status: { in: ["FAILED", "BUILDING"] },
-            stack: { status: { in: ["FAILED", "BUILDING"] } },
-          },
+          where: { status: "FAILED" },
           activeMessage: "{count} deployment perlu ditindaklanjuti",
           cleanMessage: "Antrean bersih",
           unavailableMessage: "Antrean tidak dapat dimuat",

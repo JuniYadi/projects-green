@@ -33,8 +33,8 @@ const overview: DailyOperationsDTO = {
       message: "2 pembayaran menunggu konfirmasi",
     }),
     metric({
-      key: "failed-or-building-deployments",
-      label: "Deployment gagal atau sedang dibangun",
+      key: "failed-deployments",
+      label: "Deployment gagal",
       href: "/portal/app/deployments?status=FAILED",
     }),
     metric({
@@ -91,8 +91,7 @@ describe("DailyOperationsView", () => {
         localizedHrefs={{
           "payments-awaiting-confirmation":
             "/id/portal/billing/payments?status=PENDING",
-          "failed-or-building-deployments":
-            "/id/portal/app/deployments?status=FAILED",
+          "failed-deployments": "/id/portal/app/deployments?status=FAILED",
           "support-tickets-needing-response":
             "/id/portal/support-tickets?status=OPEN",
           "overdue-or-open-invoices":
@@ -115,9 +114,7 @@ describe("DailyOperationsView", () => {
     expect(getByText("2 pembayaran menunggu konfirmasi")).toBeInTheDocument()
     expect(getAllByText("1 jam lalu").length).toBeGreaterThan(0)
     expect(
-      getByText(
-        "Antrean bersih — tidak ada deployment gagal atau sedang dibangun"
-      )
+      getByText("Antrean bersih — tidak ada deployment gagal")
     ).toBeInTheDocument()
     expect(getByText("Antrean ini tidak dapat dimuat")).toBeInTheDocument()
 

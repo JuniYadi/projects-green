@@ -44,6 +44,12 @@ describe("DailyOperationsService", () => {
       "HIGH",
     ])
     expect(result.paymentsAwaitingConfirmation.count).toBe(2)
+    expect(result.failedDeployments.count).toBe(1)
+    expect(result.failedDeployments.key).toBe("failed-deployments")
+    expect(result.failedDeployments.href).toBe(
+      "/portal/app/deployments?status=FAILED"
+    )
+    expect(count.mock.calls[1][0]).toEqual({ where: { status: "FAILED" } })
     expect(result.overdueInvoices.count).toBe(4)
     expect(result.newOrders.count).toBe(5)
     expect(result.newInvoices.count).toBe(6)
