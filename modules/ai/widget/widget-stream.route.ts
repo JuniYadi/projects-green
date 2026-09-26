@@ -152,53 +152,12 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         }
       }
 
-      // 4b. Widget safety parity (AC-07): the same char-limit / blocked-word
-      // / daily-limit checks WhatsApp enforces, via the shared
-      // modules/ai/agents/ai-agent-inbound-guard helper. The widget has no
-      // channel binding, so only agent.dailyUserLimit applies. A blocked
-      // message returns JSON before the stream is built and releases the
-      // lock it just acquired.
-      //
-      // The daily limit means "N customer messages in a day" (AC-07), so it is
-      // checked against this session's role="user" rows from the last 24h, not
-      // session.totalMessages — that column increments for both the user
-      // message and the assistant reply (recordMessage), which would let a
-      // visitor hit the limit after roughly half the allowed count.
-      // ponytail: rolling 24h, not a calendar day in the tenant's timezone.
-      const inboundMessageCount = await prisma.aiChatMessage.count({
-        where: {
-          sessionId: session.sessionId,
-          role: "user",
-          createdAt: { gte: new Date(Date.now() - 86_400_000) },
-        },
-      })
-      const guardResult = checkInboundAgentGuardrails({
-        text: message,
-        maxCharLength: agent.maxCharLength,
-        enableProfanityFilter: agent.enableProfanityFilter,
-        customBlockedWords: agent.customBlockedWords,
-        fallbackMessage: agent.fallbackMessage,
-        dailyUserLimit: agent.dailyUserLimit,
-        currentMessageCount: inboundMessageCount,
-      })
-      if (!guardResult.ok) {
-        await releaseSessionLock(session.sessionId, lockToken)
-        set.status = guardResult.reason === "DAILY_LIMIT_REACHED" ? 429 : 422
-        return {
-          ok: false,
-          error: guardResult.reason,
-          ...(guardResult.replyMessage
-            ? { message: guardResult.replyMessage }
-            : {}),
-        }
-      }
-
       const fallbackText =
         agent.fallbackMessage ||
         "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
 
       // Any failure after the lock is held and before the stream starts
-      // (context load, provider resolution) gets the same treatment as a
+      // (guard count, context load, provider resolution) gets the same treatment as a
       // generation failure: stage log, fallback reply, lock released.
       const failBeforeStream = async (stage: string, error: unknown) => {
         logStageFailure({
@@ -221,11 +180,58 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         return sseTextResponse(fallbackText)
       }
 
+      // 4b. Widget safety parity (AC-07): the same char-limit / blocked-word
+      // / daily-limit checks WhatsApp enforces, via the shared
+      // modules/ai/agents/ai-agent-inbound-guard helper. The widget has no
+      // channel binding, so only agent.dailyUserLimit applies. A blocked
+      // message returns JSON before the stream is built and releases the
+      // lock it just acquired.
+      //
+      // The daily limit means "N customer messages in a day" (AC-07), so it is
+      // checked against this session's role="user" rows from the last 24h, not
+      // session.totalMessages — that column increments for both the user
+      // message and the assistant reply (recordMessage), which would let a
+      // visitor hit the limit after roughly half the allowed count.
+      // ponytail: rolling 24h, not a calendar day in the tenant's timezone.
+      let inboundMessageCount: number
+      try {
+        inboundMessageCount = await prisma.aiChatMessage.count({
+          where: {
+            sessionId: session.sessionId,
+            role: "user",
+            createdAt: { gte: new Date(Date.now() - 86_400_000) },
+          },
+        })
+      } catch (error) {
+        return failBeforeStream("DAILY_LIMIT_COUNT", error)
+      }
+      const guardResult = checkInboundAgentGuardrails({
+        text: message,
+        maxCharLength: agent.maxCharLength,
+        enableProfanityFilter: agent.enableProfanityFilter,
+        customBlockedWords: agent.customBlockedWords,
+        fallbackMessage: agent.fallbackMessage,
+        dailyUserLimit: agent.dailyUserLimit,
+        currentMessageCount: inboundMessageCount,
+      })
+      if (!guardResult.ok) {
+        await releaseSessionLock(session.sessionId, lockToken)
+        set.status = guardResult.reason === "DAILY_LIMIT_REACHED" ? 429 : 422
+        return {
+          ok: false,
+          error: guardResult.reason,
+          ...(guardResult.replyMessage
+            ? { message: guardResult.replyMessage }
+            : {}),
+        }
+      }
+
       // AC-09 safety check (acted on in 6b); computed first so the user
       // row below can be flagged.
       const safetyCheck = inspectAgentPromptSafety(message, {
         maxChars: agent.maxCharLength,
         customBlockedWords: agent.customBlockedWords,
+        enableProfanityFilter: agent.enableProfanityFilter,
       })
 
       // 5. Sliding window memory + build tools
