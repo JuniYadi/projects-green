@@ -159,13 +159,18 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
       // message returns JSON before the stream is built and releases the
       // lock it just acquired.
       //
-      // The daily limit means "N customer messages" (AC-07), so it is
-      // checked against a count of this session's role="user" rows, not
+      // The daily limit means "N customer messages in a day" (AC-07), so it is
+      // checked against this session's role="user" rows from the last 24h, not
       // session.totalMessages — that column increments for both the user
       // message and the assistant reply (recordMessage), which would let a
       // visitor hit the limit after roughly half the allowed count.
+      // ponytail: rolling 24h, not a calendar day in the tenant's timezone.
       const inboundMessageCount = await prisma.aiChatMessage.count({
-        where: { sessionId: session.sessionId, role: "user" },
+        where: {
+          sessionId: session.sessionId,
+          role: "user",
+          createdAt: { gte: new Date(Date.now() - 86_400_000) },
+        },
       })
       const guardResult = checkInboundAgentGuardrails({
         text: message,
@@ -221,7 +226,7 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
       let history: Awaited<ReturnType<typeof getSlidingWindowMessages>>
       let tools: Awaited<ReturnType<typeof buildAgentTools>>
       try {
-        history = await getSlidingWindowMessages(session.id, 10)
+        history = await getSlidingWindowMessages(session.sessionId, 10)
         tools = await buildAgentTools({
           organizationId: agent.organizationId || "",
           agentProfileId: agent.id,
