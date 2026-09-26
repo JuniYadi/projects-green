@@ -138,65 +138,71 @@ export async function processInboundMessage(
     markChecked: true,
   })
 
-  // Increment daily + monthly inbox counters
-  const now = new Date()
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  )
-  const year = now.getUTCFullYear()
-  const month = now.getUTCMonth() + 1
+  // Counters and the customer webhook run once per Meta message: a BullMQ
+  // retry of an already-stored message (the AI bot now throws for retries)
+  // must not double-count it or re-notify the customer.
+  // ponytail: media is re-downloaded on a retry (idempotent overwrite).
+  if (!existingMessage) {
+    // Increment daily + monthly inbox counters
+    const now = new Date()
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    )
+    const year = now.getUTCFullYear()
+    const month = now.getUTCMonth() + 1
 
-  await Promise.all([
-    prisma.whatsappDailyCount.upsert({
-      where: {
-        organizationId_date_whatsappDeviceId: {
+    await Promise.all([
+      prisma.whatsappDailyCount.upsert({
+        where: {
+          organizationId_date_whatsappDeviceId: {
+            organizationId,
+            date: today,
+            whatsappDeviceId: deviceId,
+          },
+        },
+        update: { messageInboxCount: { increment: 1 } },
+        create: {
           organizationId,
           date: today,
           whatsappDeviceId: deviceId,
+          messageInboxCount: 1,
         },
-      },
-      update: { messageInboxCount: { increment: 1 } },
-      create: {
-        organizationId,
-        date: today,
-        whatsappDeviceId: deviceId,
-        messageInboxCount: 1,
-      },
-    }),
-    prisma.whatsappMonthlyCount.upsert({
-      where: {
-        organizationId_year_month_whatsappDeviceId: {
+      }),
+      prisma.whatsappMonthlyCount.upsert({
+        where: {
+          organizationId_year_month_whatsappDeviceId: {
+            organizationId,
+            year,
+            month,
+            whatsappDeviceId: deviceId,
+          },
+        },
+        update: { messageInboxCount: { increment: 1 } },
+        create: {
           organizationId,
           year,
           month,
           whatsappDeviceId: deviceId,
+          messageInboxCount: 1,
         },
-      },
-      update: { messageInboxCount: { increment: 1 } },
-      create: {
-        organizationId,
-        year,
-        month,
-        whatsappDeviceId: deviceId,
-        messageInboxCount: 1,
-      },
-    }),
-  ])
+      }),
+    ])
 
-  // Fire-and-forget: dispatch webhook to customer-configured URLs
-  webhookDispatcher
-    .dispatchForDevice(
-      deviceId,
-      "inbound_message",
-      { message: whatsappMessage, conversation },
-      whatsappMessage.id
-    )
-    .catch((err: unknown) =>
-      console.error(
-        `[webhooks] dispatch failed for inbound_message device=${deviceId}`,
-        err
+    // Fire-and-forget: dispatch webhook to customer-configured URLs
+    webhookDispatcher
+      .dispatchForDevice(
+        deviceId,
+        "inbound_message",
+        { message: whatsappMessage, conversation },
+        whatsappMessage.id
       )
-    )
+      .catch((err: unknown) =>
+        console.error(
+          `[webhooks] dispatch failed for inbound_message device=${deviceId}`,
+          err
+        )
+      )
+  }
 
   // Fire-and-forget: download media from Meta if this is a media message
   // ponytail: background download, don't block the webhook response
