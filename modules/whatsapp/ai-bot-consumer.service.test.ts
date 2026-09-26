@@ -66,7 +66,10 @@ const mockGenerateText = mock(async () => ({
   usage: { totalTokens: 42, promptTokens: 10, completionTokens: 32 },
 }))
 
-const mockClaimProcessedEvent = mock(async () => true)
+const mockHasClaimMarker = mock(async () => false)
+const mockAcquireProcessingClaim = mock(async () => true)
+const mockMarkClaimDone = mock(async () => undefined as void)
+const mockReleaseProcessingClaim = mock(async () => undefined as void)
 const mockLogStageFailure = mock(() => {})
 const mockCheckActiveBan = mock(async () => ({ isBanned: false }) as never)
 const mockInspectAgentPromptSafety = mock(() => ({ ok: true }) as never)
@@ -81,7 +84,10 @@ mock.module("@/lib/redis", () => ({
 }))
 
 mock.module("@/lib/whatsapp/idempotency-repository", () => ({
-  claimProcessedEvent: mockClaimProcessedEvent,
+  hasClaimMarker: mockHasClaimMarker,
+  acquireProcessingClaim: mockAcquireProcessingClaim,
+  markClaimDone: mockMarkClaimDone,
+  releaseProcessingClaim: mockReleaseProcessingClaim,
 }))
 
 mock.module("@/lib/logger", () => ({
@@ -147,7 +153,10 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     mockMessageService.sendMessage.mockClear()
     mockSearchHybridKnowledge.mockClear()
     mockGenerateText.mockClear()
-    mockClaimProcessedEvent.mockClear()
+    mockHasClaimMarker.mockClear()
+    mockAcquireProcessingClaim.mockClear()
+    mockMarkClaimDone.mockClear()
+    mockReleaseProcessingClaim.mockClear()
     mockLogStageFailure.mockClear()
     mockCheckActiveBan.mockClear()
     mockInspectAgentPromptSafety.mockClear()
@@ -161,7 +170,10 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       jobId: "job_1",
       messageId: "msg_sent_1",
     })
-    mockClaimProcessedEvent.mockResolvedValue(true)
+    mockHasClaimMarker.mockResolvedValue(false)
+    mockAcquireProcessingClaim.mockResolvedValue(true)
+    mockMarkClaimDone.mockResolvedValue(undefined as never)
+    mockReleaseProcessingClaim.mockResolvedValue(undefined as never)
     mockCheckActiveBan.mockResolvedValue({ isBanned: false } as never)
     mockInspectAgentPromptSafety.mockReturnValue({ ok: true } as never)
     mockRecordSafetyViolation.mockResolvedValue(undefined as never)
@@ -679,7 +691,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
-  it("skips LLM and send when a reply claim already exists for inboundMessageId", async () => {
+  it("does not send again when the done marker exists", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -692,7 +704,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       },
     } as never)
 
-    mockClaimProcessedEvent.mockResolvedValueOnce(false)
+    mockHasClaimMarker.mockResolvedValueOnce(true)
 
     const res = await processWhatsappAiBotInbound({
       organizationId: "org_1",
@@ -705,13 +717,148 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
 
     expect(res.handled).toBe(true)
     expect(res.reason).toBe("DUPLICATE_REPLY_CLAIMED")
-    expect(mockClaimProcessedEvent).toHaveBeenCalledWith(
-      "wa:bot-reply:msg_retry_1"
+    expect(mockHasClaimMarker).toHaveBeenCalledWith(
+      "wa:bot-reply:done:msg_retry_1"
     )
+    expect(mockAcquireProcessingClaim).not.toHaveBeenCalled()
     expect(mockPrisma.aiChatSession.findUnique).not.toHaveBeenCalled()
     expect(mockGenerateText).not.toHaveBeenCalled()
     expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
     expect(mockRedis.eval).toHaveBeenCalled() // lock still released
+  })
+
+  it("throws so BullMQ retries when a live processing claim exists", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        enableProfanityFilter: false,
+        customBlockedWords: [],
+      },
+    } as never)
+
+    mockHasClaimMarker.mockResolvedValueOnce(false)
+    mockAcquireProcessingClaim.mockResolvedValueOnce(false)
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Halo admin toko",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_in_progress_1",
+      })
+    ).rejects.toThrow("REPLY_IN_PROGRESS")
+    expect(mockAcquireProcessingClaim).toHaveBeenCalledWith(
+      "wa:bot-reply:processing:msg_in_progress_1",
+      expect.any(Number)
+    )
+    expect(mockPrisma.aiChatSession.findUnique).not.toHaveBeenCalled()
+    expect(mockGenerateText).not.toHaveBeenCalled()
+    expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
+    expect(mockMarkClaimDone).not.toHaveBeenCalled()
+    expect(mockReleaseProcessingClaim).not.toHaveBeenCalled()
+  })
+
+  it(
+    "releases the claim and rethrows when session setup / provider / " +
+      "retrieval throws so the retry can process",
+    async () => {
+      mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+        id: "bind_1",
+        isActive: true,
+        agentProfile: {
+          id: "agent_1",
+          isActive: true,
+          maxCharLength: 500,
+          enableProfanityFilter: false,
+          customBlockedWords: [],
+        },
+      } as never)
+
+      const dbError = new Error("session lookup failed")
+      mockPrisma.aiChatSession.findUnique.mockRejectedValueOnce(dbError)
+
+      await expect(
+        processWhatsappAiBotInbound({
+          organizationId: "org_1",
+          deviceId: "dev_1",
+          contactPhone: "+62812345678",
+          inboundMessageText: "Halo admin toko",
+          conversationId: "conv_1",
+          inboundMessageId: "msg_crash_1",
+        })
+      ).rejects.toThrow("session lookup failed")
+
+      expect(mockReleaseProcessingClaim).toHaveBeenCalledWith(
+        "wa:bot-reply:processing:msg_crash_1"
+      )
+      expect(mockMarkClaimDone).not.toHaveBeenCalled()
+      expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
+      expect(mockRedis.eval).toHaveBeenCalled() // session lock still released
+    }
+  )
+
+  it("retry after a released claim sends exactly one reply", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValue({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+      },
+    } as never)
+
+    // First attempt crashes before any outcome is delivered.
+    const dbError = new Error("session lookup failed")
+    mockPrisma.aiChatSession.findUnique.mockRejectedValueOnce(dbError)
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Halo admin toko",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_retry_after_release_1",
+      })
+    ).rejects.toThrow("session lookup failed")
+
+    expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
+    expect(mockReleaseProcessingClaim).toHaveBeenCalledWith(
+      "wa:bot-reply:processing:msg_retry_after_release_1"
+    )
+
+    // BullMQ retry: same inboundMessageId, session lookup now succeeds and
+    // the processing claim can be re-acquired since it was released.
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      sessionId: "wa_conv_1",
+      totalMessages: 0,
+    } as never)
+
+    const retryRes = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_retry_after_release_1",
+    })
+
+    expect(retryRes.handled).toBe(true)
+    expect(mockMessageService.sendMessage).toHaveBeenCalledTimes(1)
+    expect(mockMarkClaimDone).toHaveBeenCalledWith(
+      "wa:bot-reply:done:msg_retry_after_release_1",
+      expect.any(Number)
+    )
   })
 
   it("sends fallbackMessage and tags the outcome as a timeout when generateText aborts", async () => {
