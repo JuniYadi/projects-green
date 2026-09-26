@@ -90,6 +90,10 @@ export default function AiAgentsPage() {
   >("all")
   const [search, setSearch] = useState("")
   const [agentToDelete, setAgentToDelete] = useState<AgentProfile | null>(null)
+  const [forceDeleteAgent, setForceDeleteAgent] = useState<{
+    agent: AgentProfile
+    activeBindings: number
+  } | null>(null)
   const [selectedAgentForActions, setSelectedAgentForActions] = useState<
     string | null
   >(null)
@@ -545,10 +549,32 @@ export default function AiAgentsPage() {
 
   const handleDelete = async () => {
     if (!agentToDelete) return
-    const res = await eden.api.console.ai.agents[agentToDelete.id].delete()
+    const res = await eden.api.console.ai.agents[agentToDelete.id].delete({
+      $query: {},
+    })
     if (res.data?.ok) {
       toast.success(messages.lifecycle.deleted)
       setAgentToDelete(null)
+      await loadAgents()
+    } else if (res.data?.error === "AGENT_HAS_ACTIVE_BINDINGS") {
+      setForceDeleteAgent({
+        agent: agentToDelete,
+        activeBindings: res.data.activeBindings ?? 0,
+      })
+      setAgentToDelete(null)
+    } else {
+      toast.error(messages.lifecycle.deleteError)
+    }
+  }
+
+  const handleForceDelete = async () => {
+    if (!forceDeleteAgent) return
+    const res = await eden.api.console.ai.agents[
+      forceDeleteAgent.agent.id
+    ].delete({ $query: { force: "true" } })
+    if (res.data?.ok) {
+      toast.success(messages.lifecycle.deleted)
+      setForceDeleteAgent(null)
       await loadAgents()
     } else {
       toast.error(messages.lifecycle.deleteError)
@@ -1234,6 +1260,32 @@ export default function AiAgentsPage() {
                 </AlertDialogCancel>
                 <AlertDialogAction onClick={() => void handleDelete()}>
                   {messages.dashboard.actions.delete}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog
+            open={Boolean(forceDeleteAgent)}
+            onOpenChange={(open) => !open && setForceDeleteAgent(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {messages.lifecycle.forceDeleteTitle}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {messages.lifecycle.forceDeleteDescription.replace(
+                    "{count}",
+                    String(forceDeleteAgent?.activeBindings ?? 0)
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>
+                  {messages.dialog.cancelButton}
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={() => void handleForceDelete()}>
+                  {messages.lifecycle.forceDeleteButton}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
