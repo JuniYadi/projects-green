@@ -359,10 +359,7 @@ describe("toInvoicePaymentAllocationDTO", () => {
         source: "GATEWAY_DUITKU",
         status: "COMPLETED",
         referenceId: "duitku-ref-1",
-        idempotencyKey: null,
-        metadataJson: null,
         createdAt: new Date("2026-06-01T10:00:00Z"),
-        updatedAt: new Date("2026-06-01T10:00:00Z"),
         completedAt: new Date("2026-06-01T10:05:00Z"),
       }
 
@@ -393,10 +390,7 @@ describe("toInvoicePaymentAllocationDTO", () => {
         source: "BALANCE",
         status: "PENDING",
         referenceId: null,
-        idempotencyKey: null,
-        metadataJson: null,
         createdAt: new Date("2026-06-01T10:00:00Z"),
-        updatedAt: new Date("2026-06-01T10:00:00Z"),
         completedAt: null,
       }
 

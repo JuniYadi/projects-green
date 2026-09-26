@@ -290,6 +290,7 @@ describe("InvoiceAllocationService", () => {
           {
             id: "alloc-pending",
             status: "PENDING",
+            amount: new Decimal(60000),
             referenceId: "duitku_ref_1",
           },
         ],
@@ -319,6 +320,61 @@ describe("InvoiceAllocationService", () => {
       expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
     })
 
+    it("rejects callback when pending allocation does not exist", async () => {
+      mockFindUniqueInvoice.mockResolvedValueOnce({
+        id: "inv-1",
+        totalAmount: new Decimal(100000),
+        currency: "IDR",
+        billingAccountId: "acc-1",
+        billingAccount: { organizationId: "org-1" },
+        allocations: [],
+      })
+
+      const result = await service.processGatewayCallback({
+        merchantOrderId: "inv-1",
+        reference: "unknown_ref",
+        amount: 60000,
+      })
+
+      expect(result.ok).toBe(false)
+      expect((result as { error?: string }).error).toBe(
+        "PENDING_ALLOCATION_NOT_FOUND"
+      )
+      expect(mockUpdateAllocation).not.toHaveBeenCalled()
+      expect(mockUpdateInvoice).not.toHaveBeenCalled()
+      expect(mockSettleOrders).not.toHaveBeenCalled()
+    })
+
+    it("rejects callback when callback amount mismatches pending allocation amount", async () => {
+      mockFindUniqueInvoice.mockResolvedValueOnce({
+        id: "inv-1",
+        totalAmount: new Decimal(100000),
+        currency: "IDR",
+        billingAccountId: "acc-1",
+        billingAccount: { organizationId: "org-1" },
+        allocations: [
+          {
+            id: "alloc-pending",
+            status: "PENDING",
+            amount: new Decimal(60000),
+            referenceId: "duitku_ref_1",
+          },
+        ],
+      })
+
+      const result = await service.processGatewayCallback({
+        merchantOrderId: "inv-1",
+        reference: "duitku_ref_1",
+        amount: 10000, // significantly less than 60000
+      })
+
+      expect(result.ok).toBe(false)
+      expect((result as { error?: string }).error).toBe("AMOUNT_MISMATCH")
+      expect(mockUpdateAllocation).not.toHaveBeenCalled()
+      expect(mockUpdateInvoice).not.toHaveBeenCalled()
+      expect(mockSettleOrders).not.toHaveBeenCalled()
+    })
+
     it("handles multiple sequential callbacks for different attempts on same invoice", async () => {
       // First attempt callback arrives: only partial payment
       mockFindUniqueInvoice.mockResolvedValueOnce({
@@ -331,11 +387,13 @@ describe("InvoiceAllocationService", () => {
           {
             id: "alloc-attempt-1",
             status: "PENDING",
+            amount: new Decimal(50000),
             referenceId: "ref-attempt-1",
           },
           {
             id: "alloc-attempt-2",
             status: "PENDING",
+            amount: new Decimal(50000),
             referenceId: "ref-attempt-2",
           },
         ],
@@ -373,11 +431,13 @@ describe("InvoiceAllocationService", () => {
           {
             id: "alloc-attempt-1",
             status: "COMPLETED",
+            amount: new Decimal(50000),
             referenceId: "ref-attempt-1",
           },
           {
             id: "alloc-attempt-2",
             status: "PENDING",
+            amount: new Decimal(50000),
             referenceId: "ref-attempt-2",
           },
         ],

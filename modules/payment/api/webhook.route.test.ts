@@ -151,6 +151,41 @@ describe("Webhook Route - Duitku Callback", () => {
     })
   })
 
+  it("processes a successful attempt after a previously failed attempt for the same invoice", async () => {
+    // 1. First attempt fails (resultCode "01")
+    mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
+    const failedRes = await postCallback({
+      ...DEFAULT_BODY,
+      reference: "REF-FAILED-1",
+      resultCode: "01",
+    })
+    expect(failedRes.status).toBe(200)
+    expect(mockCreditBalance).not.toHaveBeenCalled()
+    expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
+      where: {
+        entityId: "inv-123:REF-FAILED-1",
+        action: "DUITKU_CALLBACK_RECEIVED",
+      },
+    })
+
+    // 2. Later attempt succeeds (resultCode "00") with new reference
+    mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
+    const successRes = await postCallback({
+      ...DEFAULT_BODY,
+      reference: "REF-SUCCESS-2",
+      resultCode: "00",
+    })
+    expect(successRes.status).toBe(200)
+    expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
+      where: {
+        entityId: "inv-123:REF-SUCCESS-2",
+        action: "DUITKU_CALLBACK_RECEIVED",
+      },
+    })
+    expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
+    expect(mockMarkInvoiceAsPaid).toHaveBeenCalledWith("inv-123")
+  })
+
   it("does not credit balance when resultCode is not 00", async () => {
     const res = await postCallback({ ...DEFAULT_BODY, resultCode: "01" })
     const body = await res.json()

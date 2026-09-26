@@ -340,38 +340,41 @@ export class InvoiceAllocationService {
       return { ok: false }
     }
 
-    // Find pending allocation with matching reference or invoiceId
+    // Find pending allocation with matching reference or fallback to single pending allocation
     const pendingAllocation = invoice.allocations.find(
       (a) =>
         a.status === "PENDING" &&
         (reference ? a.referenceId === reference : true)
     )
 
-    if (pendingAllocation) {
-      await prisma.billingInvoicePaymentAllocation.update({
-        where: { id: pendingAllocation.id },
-        data: {
-          status: "COMPLETED",
-          amount: new Prisma.Decimal(amount),
-          completedAt: new Date(),
-          referenceId: reference ?? pendingAllocation.referenceId,
-        },
-      })
-    } else {
-      // Create new completed allocation if no pending record was found
-      await prisma.billingInvoicePaymentAllocation.create({
-        data: {
-          invoiceId: merchantOrderId,
-          billingAccountId: invoice.billingAccountId,
-          amount: new Prisma.Decimal(amount),
-          currency: invoice.currency,
-          source: "GATEWAY_DUITKU",
-          status: "COMPLETED",
-          referenceId: reference ?? null,
-          completedAt: new Date(),
-        },
-      })
+    if (!pendingAllocation) {
+      console.error(
+        `[InvoiceAllocation] Pending allocation not found for invoice ${merchantOrderId} (ref: ${reference ?? "none"})`
+      )
+      return { ok: false, error: "PENDING_ALLOCATION_NOT_FOUND" }
     }
+
+    // Validate callback amount against the requested pending allocation amount
+    const pendingAmount = pendingAllocation.amount.toNumber()
+    const amountDifference = Math.abs(pendingAmount - amount)
+
+    // Allow rounding tolerance up to 1 currency unit if gateway rounded decimal to integer
+    if (amountDifference > 1.0) {
+      console.error(
+        `[InvoiceAllocation] Amount mismatch for invoice ${merchantOrderId} (ref: ${reference}): expected ${pendingAmount}, received ${amount}`
+      )
+      return { ok: false, error: "AMOUNT_MISMATCH" }
+    }
+
+    await prisma.billingInvoicePaymentAllocation.update({
+      where: { id: pendingAllocation.id },
+      data: {
+        status: "COMPLETED",
+        amount: new Prisma.Decimal(amount),
+        completedAt: new Date(),
+        referenceId: reference ?? pendingAllocation.referenceId,
+      },
+    })
 
     // Re-query all completed allocations
     const completedAllocations =
