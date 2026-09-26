@@ -17,6 +17,7 @@ mock.module("@workos-inc/node", () => ({
 const mockFindMany = mock()
 const mockUpdate = mock()
 const mockSendPaymentReminder = mock()
+const mockResolveInvoiceBilledTo = mock()
 
 const mockBillingAccountFindUnique = mock()
 
@@ -38,6 +39,10 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrismaClient,
 }))
 
+mock.module("@/modules/billing/email-recipients", () => ({
+  resolveInvoiceBilledTo: mockResolveInvoiceBilledTo,
+}))
+
 import { InvoiceStatusManager } from "./invoice-status.service"
 
 describe("InvoiceStatusManager", () => {
@@ -51,6 +56,10 @@ describe("InvoiceStatusManager", () => {
       id: "ba_default",
       organizationId: "org-default",
       contacts: [],
+    })
+    mockResolveInvoiceBilledTo.mockResolvedValue({
+      organizationName: "Acme Corp",
+      billedToEmail: "billing@acme.com",
     })
 
     manager = new InvoiceStatusManager(
@@ -424,6 +433,49 @@ describe("InvoiceStatusManager", () => {
 
       expect(result.sent).toBe(0)
       expect(mockUpdate).not.toHaveBeenCalled()
+    })
+
+    it("passes billed-to options resolved via resolveInvoiceBilledTo", async () => {
+      const now = new Date()
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + 3)
+
+      mockFindMany.mockResolvedValueOnce([
+        {
+          id: "inv-billed-to",
+          invoiceNumber: "INV-BILLED-TO",
+          totalAmount: { toNumber: () => 400 },
+          currency: "USD",
+          status: "ISSUED",
+          periodStart: now,
+          periodEnd: now,
+          issuedAt: now,
+          dueAt: dueDate,
+          billingAccount: { organizationId: "org-billed-to" },
+          metadataJson: null,
+        },
+      ])
+      mockUpdate.mockResolvedValue({})
+      mockSendPaymentReminder.mockResolvedValue(undefined)
+      mockBillingAccountFindUnique.mockResolvedValueOnce({
+        id: "ba-billed-to",
+        organizationId: "org-billed-to",
+        contacts: [{ email: "contact@acme.com" }],
+      })
+      mockResolveInvoiceBilledTo.mockResolvedValueOnce({
+        organizationName: "Acme Corp",
+        billedToEmail: "billing@acme.com",
+      })
+
+      await manager.sendPaymentReminders()
+
+      expect(mockResolveInvoiceBilledTo).toHaveBeenCalledWith("org-billed-to")
+      expect(mockSendPaymentReminder).toHaveBeenCalledWith(
+        expect.objectContaining({ invoiceNumber: "INV-BILLED-TO" }),
+        expect.any(String),
+        "org-billed-to",
+        { organizationName: "Acme Corp", billedToEmail: "billing@acme.com" }
+      )
     })
 
     it("handles sendPaymentReminders gracefully when no admin email resolved", async () => {
