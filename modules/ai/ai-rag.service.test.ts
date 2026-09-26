@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 
 import { searchHybridKnowledge } from "./ai-rag.service"
 
+type AnyFn = (...args: unknown[]) => Promise<unknown>
+
 // Mock Prisma
-const mockFindMany = mock(async () => [])
+const mockFindMany = mock<AnyFn>(async () => [])
 
 mock.module("@/lib/prisma", () => ({
   prisma: {
@@ -77,5 +79,87 @@ describe("aiRagService", () => {
     })
 
     expect(results).toEqual([])
+  })
+
+  it("excludes another agent's docs and includes own plus org-level docs", async () => {
+    mockFindMany.mockResolvedValueOnce([
+      {
+        id: "doc_a",
+        title: "Katalog Agent A",
+        category: "Produk",
+        contentMarkdown: "Katalog khusus agent A.",
+        searchText: "katalog agent a produk",
+        status: "READY",
+        organizationId: "org_1",
+        agentProfileId: "agent_a",
+        updatedAt: new Date(),
+      },
+      {
+        id: "doc_org",
+        title: "Kebijakan Umum Toko",
+        category: "SOP",
+        contentMarkdown: "Kebijakan berlaku untuk semua agent di org ini.",
+        searchText: "kebijakan umum toko org",
+        status: "READY",
+        organizationId: "org_1",
+        agentProfileId: null,
+        updatedAt: new Date(),
+      },
+    ] as never)
+
+    const results = await searchHybridKnowledge({
+      organizationId: "org_1",
+      agentProfileId: "agent_a",
+      query: "kebijakan katalog",
+      limit: 3,
+    })
+
+    const where = (mockFindMany.mock.calls[0]?.[0] as Record<string, unknown>)
+      ?.where
+    expect(where).toEqual({
+      status: "READY",
+      OR: [
+        { organizationId: "org_1", agentProfileId: "agent_a" },
+        { organizationId: "org_1", agentProfileId: null },
+        { organizationId: null, agentProfileId: null },
+      ],
+    })
+
+    const ids = results.map((doc) => doc.id)
+    expect(ids).toContain("doc_a")
+    expect(ids).toContain("doc_org")
+    expect(ids).not.toContain("doc_b")
+  })
+
+  it("falls back to org and global docs when agentProfileId is not provided", async () => {
+    mockFindMany.mockResolvedValueOnce([])
+
+    await searchHybridKnowledge({
+      organizationId: "org_1",
+      query: "jam operasional",
+    })
+
+    const where = (mockFindMany.mock.calls[0]?.[0] as Record<string, unknown>)
+      ?.where
+    expect(where).toEqual({
+      status: "READY",
+      OR: [{ organizationId: "org_1" }, { organizationId: null }],
+    })
+
+    mockFindMany.mockResolvedValueOnce([])
+
+    await searchHybridKnowledge({
+      organizationId: "org_1",
+      agentProfileId: null,
+      query: "jam operasional",
+    })
+
+    const whereWithNullAgent = (
+      mockFindMany.mock.calls[1]?.[0] as Record<string, unknown>
+    )?.where
+    expect(whereWithNullAgent).toEqual({
+      status: "READY",
+      OR: [{ organizationId: "org_1" }, { organizationId: null }],
+    })
   })
 })
