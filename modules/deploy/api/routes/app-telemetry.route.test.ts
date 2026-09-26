@@ -25,6 +25,7 @@ const mockFetchNamespaceTelemetry = mock(async () => ({
 
 mock.module("@/modules/deploy/prometheus-telemetry.service", () => ({
   fetchNamespaceTelemetry: mockFetchNamespaceTelemetry,
+  formatTenantNamespace: (orgId: string) => `tenant-${orgId}`,
 }))
 
 const mockFindFirst = mock(
