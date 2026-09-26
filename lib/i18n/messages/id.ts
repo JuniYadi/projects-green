@@ -6802,7 +6802,7 @@ export const idMessages: AppMessages = {
         templatesButton: "Lihat template",
         presetTrackingLabel: "📦 Cek Status Resi",
         presetTrackingPrompt:
-          "Bikinin bot untuk cek nomor resi & status pengiriman " + "paket",
+          "Bikinin bot untuk cek nomor resi & status pengiriman paket",
         presetRegistrationLabel: "📝 Formulir Pendaftaran",
         presetRegistrationPrompt:
           "Formulir pendaftaran dan tanya kebutuhan prospek baru",
