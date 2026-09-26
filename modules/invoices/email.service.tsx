@@ -204,11 +204,18 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
       />
     )
     const subject = `Top-up received - ${data.organizationName}`
-    let log: { id: string }
+    const eventKey = `topup-admin:${data.invoiceId}`
+    // BullMQ 5.81 rejects ':' in custom job ids, so the queue key must be
+    // colon-free even though the DB dedup key (eventKey) keeps the colon.
+    const jobId = `topup-admin_${data.invoiceId}`
+
+    // Claim the send first (unique eventKey), then enqueue — never the
+    // other way around, or the worker can run before this row exists.
+    let emailLogId: string
     try {
-      log = await prisma.emailLog.create({
+      const log = await prisma.emailLog.create({
         data: {
-          eventKey: `topup-admin:${data.invoiceId}`,
+          eventKey,
           recipientEmail,
           type: "TOPUP_RECEIVED_ADMIN_NOTICE",
           subject,
@@ -219,23 +226,31 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
           status: "QUEUED",
         },
       })
+      emailLogId = log.id
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === "P2002"
       ) {
-        return
+        const existing = await prisma.emailLog.findUnique({
+          where: { eventKey },
+        })
+        if (!existing || existing.status === "SENT") return
+        emailLogId = existing.id
+      } else {
+        throw error
       }
-      throw error
     }
+
     try {
-      await sendEmail({ to: recipientEmail, subject, html, emailLogId: log.id })
+      await sendEmail(
+        { to: recipientEmail, subject, html, emailLogId },
+        { jobId }
+      )
     } catch (error) {
       await prisma.emailLog
-        .delete({ where: { id: log.id } })
-        .catch((cleanup) => {
-          console.error("Failed to release top-up admin notice claim:", cleanup)
-        })
+        .update({ where: { id: emailLogId }, data: { status: "FAILED" } })
+        .catch(() => {})
       throw error
     }
   },
