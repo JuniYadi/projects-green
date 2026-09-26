@@ -16,11 +16,33 @@ const mockEmailLogFindUnique = mock(
   async (_args?: unknown): Promise<{ status: string } | null> => null
 )
 const mockEmailLogUpdate = mock(async (_args?: unknown) => ({}))
+let noticeStatus = "QUEUED"
+let noticeAttempt = 0
+const mockEmailLogUpdateMany = mock(
+  async (args: {
+    where: { attempts: number; status: string | { in: string[] } }
+    data: { status: string }
+  }) => {
+    const statuses =
+      typeof args.where.status === "string"
+        ? [args.where.status]
+        : args.where.status.in
+    if (
+      args.where.attempts !== noticeAttempt ||
+      !statuses.includes(noticeStatus)
+    ) {
+      return { count: 0 }
+    }
+    noticeStatus = args.data.status
+    return { count: 1 }
+  }
+)
 mock.module("@/lib/prisma", () => ({
   prisma: {
     emailLog: {
       findUnique: mockEmailLogFindUnique,
       update: mockEmailLogUpdate,
+      updateMany: mockEmailLogUpdateMany,
     },
   },
 }))
@@ -30,6 +52,9 @@ describe("EmailJob", () => {
     mockSendMail.mockClear()
     mockEmailLogFindUnique.mockClear()
     mockEmailLogUpdate.mockClear()
+    mockEmailLogUpdateMany.mockClear()
+    noticeStatus = "QUEUED"
+    noticeAttempt = 0
     mockEmailLogFindUnique.mockImplementation(async () => null)
     mockEmailLogUpdate.mockImplementation(async () => ({}))
     process.env.SMTP_HOST = "smtp.test.com"
@@ -140,6 +165,64 @@ describe("EmailJob", () => {
       where: { id: "log-2" },
       data: expect.objectContaining({ status: "SENT" }),
     })
+  })
+
+  it("allows only one concurrent notice worker to send", async () => {
+    const { EmailJob } = await import("@/lib/queue/email")
+    const job = {
+      data: {
+        to: "admin@test.com",
+        subject: "Top-up received",
+        html: "<p>Paid</p>",
+        emailLogId: "log-1",
+        noticeAttempt: 0,
+      },
+    }
+
+    await Promise.all([EmailJob.handle(job), EmailJob.handle(job)])
+
+    expect(mockSendMail).toHaveBeenCalledTimes(1)
+    expect(noticeStatus).toBe("SENT")
+    expect(mockEmailLogUpdateMany).toHaveBeenCalledWith({
+      where: { id: "log-1", attempts: 0, status: "PROCESSING" },
+      data: expect.objectContaining({ status: "SENT" }),
+    })
+  })
+
+  it("does not send an obsolete attempt after a recovery claim", async () => {
+    noticeAttempt = 1
+    const { EmailJob } = await import("@/lib/queue/email")
+    await EmailJob.handle({
+      data: {
+        to: "admin@test.com",
+        subject: "Top-up received",
+        html: "<p>Paid</p>",
+        emailLogId: "log-1",
+        noticeAttempt: 0,
+      },
+    })
+
+    expect(mockSendMail).not.toHaveBeenCalled()
+  })
+
+  it("allows a BullMQ retry after an SMTP failure", async () => {
+    mockSendMail.mockRejectedValueOnce(new Error("SMTP down"))
+    const { EmailJob } = await import("@/lib/queue/email")
+    const job = {
+      data: {
+        to: "admin@test.com",
+        subject: "Top-up received",
+        html: "<p>Paid</p>",
+        emailLogId: "log-1",
+        noticeAttempt: 0,
+      },
+    }
+
+    await expect(EmailJob.handle(job)).rejects.toThrow("SMTP down")
+    expect(noticeStatus).toBe("FAILED")
+    await EmailJob.handle(job)
+    expect(noticeStatus).toBe("SENT")
+    expect(mockSendMail).toHaveBeenCalledTimes(2)
   })
 })
 

@@ -17,7 +17,7 @@ import { sendEmail } from "@/lib/queue/email"
 const EVENT_KEY_PREFIX = "topup-admin:"
 const STALE_AFTER_MS = 10 * 60 * 1000
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
-// Counts every SMTP try, not every sweep: 3 initial job attempts + 3 sweeps x 3 retries each = 12.
+// Caps recovery claims; BullMQ retries within a claim keep the same number.
 const MAX_ATTEMPTS = 12
 const BATCH_SIZE = 50
 // Bumped onto a row's `attempts` once it has been logged as abandoned, so
@@ -25,7 +25,7 @@ const BATCH_SIZE = 50
 // per row instead of every 10 minutes forever.
 const ABANDONED_ATTEMPTS_MARKER = 1_000
 
-const STRANDED_STATUSES: EmailLogStatus[] = ["QUEUED", "FAILED"]
+const STRANDED_STATUSES: EmailLogStatus[] = ["QUEUED", "FAILED", "PROCESSING"]
 
 export type SweepStrandedTopupAdminNoticesResult = {
   found: number
@@ -57,13 +57,19 @@ export async function sweepStrandedTopupAdminNotices(
 
   for (const row of stranded) {
     try {
-      // Increment attempts first and use the returned value for the job
-      // id suffix, so a crash between these two steps still leaves the
-      // row's attempts count accurate for the next sweep.
-      const updated = await prisma.emailLog.update({
-        where: { id: row.id },
-        data: { attempts: { increment: 1 } },
+      // Compare the snapshot as well as the staleness deadline: another
+      // sweep or worker may have claimed this row after findMany returned.
+      const claim = await prisma.emailLog.updateMany({
+        where: {
+          id: row.id,
+          status: { in: STRANDED_STATUSES },
+          updatedAt: { lt: staleBefore },
+          createdAt: { gt: createdAfter },
+          attempts: row.attempts,
+        },
+        data: { status: "QUEUED", attempts: { increment: 1 } },
       })
+      if (claim.count === 0) continue
 
       await sendEmail(
         {
@@ -71,8 +77,9 @@ export async function sweepStrandedTopupAdminNotices(
           subject: row.subject,
           html: row.bodyHtml ?? "",
           emailLogId: row.id,
+          noticeAttempt: row.attempts + 1,
         },
-        { jobId: `topup-admin_${row.relatedEntityId}_r${updated.attempts}` }
+        { jobId: `topup-admin_${row.relatedEntityId}_r${row.attempts + 1}` }
       )
       reenqueued += 1
     } catch (error) {
@@ -124,7 +131,20 @@ async function abandonExhaustedNotices(
     take: BATCH_SIZE,
   })
 
+  let abandoned = 0
   for (const row of candidates) {
+    const claimed = await prisma.emailLog.updateMany({
+      where: {
+        id: row.id,
+        status: { in: STRANDED_STATUSES },
+        updatedAt: { lt: staleBefore },
+        attempts: row.attempts,
+      },
+      data: { attempts: ABANDONED_ATTEMPTS_MARKER },
+    })
+    if (claimed.count === 0) continue
+    abandoned += 1
+
     console.error(
       {
         event: "topup_admin_notice.abandoned",
@@ -135,14 +155,7 @@ async function abandonExhaustedNotices(
       },
       `[topup-admin-notice-sweep] abandoning emailLogId=${row.id} after ${row.attempts} attempts`
     )
-
-    await prisma.emailLog
-      .update({
-        where: { id: row.id },
-        data: { attempts: ABANDONED_ATTEMPTS_MARKER },
-      })
-      .catch(() => {})
   }
 
-  return candidates.length
+  return abandoned
 }

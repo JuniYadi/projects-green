@@ -1,0 +1,1 @@
+ALTER TYPE "EmailLogStatus" ADD VALUE 'PROCESSING';

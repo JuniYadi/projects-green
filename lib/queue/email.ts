@@ -21,6 +21,7 @@ export type EmailJobData = {
   html: string
   from?: string
   emailLogId?: string
+  noticeAttempt?: number
 }
 
 export class EmailJob extends BaseJob {
@@ -32,11 +33,21 @@ export class EmailJob extends BaseJob {
   static async handle(job: { data: EmailJobData }): Promise<void> {
     const { to, subject, html, from } = job.data
     const emailLogId = job.data.emailLogId
+    const noticeAttempt = job.data.noticeAttempt
 
-    // The sweeper may re-enqueue a row whose original job is still queued
-    // behind a worker backlog. If that original job already sent, this one
-    // is a no-op — bounds duplicate sends to at most one per row.
-    if (emailLogId) {
+    // A recovery job can coexist with the original BullMQ job. Only one
+    // worker may move its generation into PROCESSING before calling SMTP.
+    if (emailLogId && noticeAttempt !== undefined) {
+      const claim = await prisma.emailLog.updateMany({
+        where: {
+          id: emailLogId,
+          attempts: noticeAttempt,
+          status: { in: ["QUEUED", "FAILED"] },
+        },
+        data: { status: "PROCESSING" },
+      })
+      if (claim.count === 0) return
+    } else if (emailLogId) {
       const existing = await prisma.emailLog.findUnique({
         where: { id: emailLogId },
         select: { status: true },
@@ -68,39 +79,54 @@ export class EmailJob extends BaseJob {
 
       // Update email log status on success
       if (emailLogId) {
-        await prisma.emailLog
-          .update({
-            where: { id: emailLogId },
-            data: {
-              status: "SENT",
-              sentAt: new Date(),
-              providerMessageId:
-                typeof info.messageId === "string" ? info.messageId : null,
-              attempts: {
-                increment: 1,
-              },
-            },
-          })
-          .catch((err) => {
-            console.error("[EmailJob] Failed to update email log:", err)
-          })
+        const data = {
+          status: "SENT" as const,
+          sentAt: new Date(),
+          providerMessageId:
+            typeof info.messageId === "string" ? info.messageId : null,
+        }
+        await (
+          noticeAttempt !== undefined
+            ? prisma.emailLog.updateMany({
+                where: {
+                  id: emailLogId,
+                  attempts: noticeAttempt,
+                  status: "PROCESSING",
+                },
+                data,
+              })
+            : prisma.emailLog.update({
+                where: { id: emailLogId },
+                data: { ...data, attempts: { increment: 1 } },
+              })
+        ).catch((err) => {
+          console.error("[EmailJob] Failed to update email log:", err)
+        })
       }
     } catch (error) {
       // Update email log status on failure
       if (emailLogId) {
-        await prisma.emailLog
-          .update({
-            where: { id: emailLogId },
-            data: {
-              status: "FAILED",
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-              attempts: { increment: 1 },
-            },
-          })
-          .catch((err) => {
-            console.error("[EmailJob] Failed to update email log:", err)
-          })
+        const data = {
+          status: "FAILED" as const,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        }
+        await (
+          noticeAttempt !== undefined
+            ? prisma.emailLog.updateMany({
+                where: {
+                  id: emailLogId,
+                  attempts: noticeAttempt,
+                  status: "PROCESSING",
+                },
+                data,
+              })
+            : prisma.emailLog.update({
+                where: { id: emailLogId },
+                data: { ...data, attempts: { increment: 1 } },
+              })
+        ).catch((err) => {
+          console.error("[EmailJob] Failed to update email log:", err)
+        })
       }
       throw error
     }

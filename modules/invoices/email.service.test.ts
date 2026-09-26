@@ -467,6 +467,7 @@ describe("invoiceEmailService", () => {
           to: "admin@org.com",
           html: "<html>Test Email</html>",
           emailLogId: "notice-log-1",
+          noticeAttempt: 0,
         }),
         { jobId: "topup-admin_inv-123" }
       )

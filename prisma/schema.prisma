@@ -3203,6 +3203,7 @@ enum EmailLogType {
 
 enum EmailLogStatus {
   QUEUED
+  PROCESSING
   SENT
   FAILED
   BOUNCED

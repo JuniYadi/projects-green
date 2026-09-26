@@ -245,7 +245,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
 
     try {
       await sendEmail(
-        { to: recipientEmail, subject, html, emailLogId },
+        { to: recipientEmail, subject, html, emailLogId, noticeAttempt: 0 },
         { jobId }
       )
     } catch (error) {

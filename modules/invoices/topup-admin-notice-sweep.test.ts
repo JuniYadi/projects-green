@@ -8,9 +8,13 @@ const attemptsById = new Map<string, number>()
 const mockEmailLogFindMany = mock(
   async (_args?: unknown): Promise<unknown[]> => []
 )
-const mockEmailLogUpdate = mock(
-  async (args: { where: { id: string }; data: Record<string, unknown> }) => {
+const mockEmailLogUpdateMany = mock(
+  async (args: {
+    where: { id: string; attempts: number }
+    data: Record<string, unknown>
+  }) => {
     const current = attemptsById.get(args.where.id) ?? 0
+    if (current !== args.where.attempts) return { count: 0 }
     const attemptsPatch = args.data.attempts as
       number | { increment: number } | undefined
     const next =
@@ -18,7 +22,7 @@ const mockEmailLogUpdate = mock(
         ? attemptsPatch
         : current + (attemptsPatch?.increment ?? 0)
     attemptsById.set(args.where.id, next)
-    return { id: args.where.id, attempts: next }
+    return { count: 1 }
   }
 )
 
@@ -26,7 +30,7 @@ mock.module("@/lib/prisma", () => ({
   prisma: {
     emailLog: {
       findMany: mockEmailLogFindMany,
-      update: mockEmailLogUpdate,
+      updateMany: mockEmailLogUpdateMany,
     },
   },
 }))
@@ -65,7 +69,7 @@ describe("sweepStrandedTopupAdminNotices", () => {
   beforeEach(async () => {
     mockConsoleError.mockClear()
     mockEmailLogFindMany.mockClear()
-    mockEmailLogUpdate.mockClear()
+    mockEmailLogUpdateMany.mockClear()
     mockSendEmail.mockClear()
     mockSendEmail.mockImplementation(async () => null)
     attemptsById.clear()
@@ -86,9 +90,13 @@ describe("sweepStrandedTopupAdminNotices", () => {
 
     const result = await sweepStrandedTopupAdminNotices(NOW)
 
-    expect(mockEmailLogUpdate).toHaveBeenCalledWith({
-      where: { id: "log-1" },
-      data: { attempts: { increment: 1 } },
+    expect(mockEmailLogUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "log-1",
+        attempts: 0,
+        updatedAt: { lt: new Date(NOW.getTime() - 10 * 60 * 1000) },
+      }),
+      data: { status: "QUEUED", attempts: { increment: 1 } },
     })
     expect(mockSendEmail).toHaveBeenCalledWith(
       {
@@ -96,11 +104,12 @@ describe("sweepStrandedTopupAdminNotices", () => {
         subject: "Top-up received - Acme",
         html: "<p>raw html, no secrets</p>",
         emailLogId: "log-1",
+        noticeAttempt: 1,
       },
       { jobId: "topup-admin_inv-1_r1" }
     )
 
-    const updateOrder = mockEmailLogUpdate.mock.invocationCallOrder[0]
+    const updateOrder = mockEmailLogUpdateMany.mock.invocationCallOrder[0]
     const sendOrder = mockSendEmail.mock.invocationCallOrder[0]
     expect(updateOrder).toBeLessThan(sendOrder)
 
@@ -141,7 +150,7 @@ describe("sweepStrandedTopupAdminNotices", () => {
     expect(mockEmailLogFindMany).toHaveBeenNthCalledWith(1, {
       where: {
         eventKey: { startsWith: "topup-admin:" },
-        status: { in: ["QUEUED", "FAILED"] },
+        status: { in: ["QUEUED", "FAILED", "PROCESSING"] },
         updatedAt: { lt: staleBefore },
         createdAt: { gt: createdAfter },
         attempts: { lt: 12 },
@@ -185,6 +194,34 @@ describe("sweepStrandedTopupAdminNotices", () => {
     expect(result.failed).toBe(1)
   })
 
+  it("enqueues only once when two sweeps read the same stale row", async () => {
+    const row = makeRow()
+    mockEmailLogFindMany.mockImplementation(async () => [row])
+
+    const [first, second] = await Promise.all([
+      sweepStrandedTopupAdminNotices(NOW),
+      sweepStrandedTopupAdminNotices(NOW),
+    ])
+
+    expect(first.reenqueued + second.reenqueued).toBe(1)
+    expect(mockSendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not enqueue when a worker changed the row after the sweep read it", async () => {
+    const row = makeRow()
+    mockEmailLogFindMany
+      .mockImplementationOnce(async () => {
+        attemptsById.set(row.id, 1)
+        return [row]
+      })
+      .mockImplementationOnce(async () => [])
+
+    const result = await sweepStrandedTopupAdminNotices(NOW)
+
+    expect(result.reenqueued).toBe(0)
+    expect(mockSendEmail).not.toHaveBeenCalled()
+  })
+
   it("logs abandonment once per row and bumps attempts past the cap", async () => {
     const abandoned = makeRow({
       id: "log-cap",
@@ -202,8 +239,8 @@ describe("sweepStrandedTopupAdminNotices", () => {
       event: "topup_admin_notice.abandoned",
       emailLogId: "log-cap",
     })
-    expect(mockEmailLogUpdate).toHaveBeenCalledWith({
-      where: { id: "log-cap" },
+    expect(mockEmailLogUpdateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "log-cap", attempts: 12 }),
       data: { attempts: 1000 },
     })
     expect(result.abandoned).toBe(1)
@@ -222,7 +259,7 @@ describe("sweepStrandedTopupAdminNotices", () => {
     expect(mockEmailLogFindMany).toHaveBeenNthCalledWith(2, {
       where: {
         eventKey: { startsWith: "topup-admin:" },
-        status: { in: ["QUEUED", "FAILED"] },
+        status: { in: ["QUEUED", "FAILED", "PROCESSING"] },
         attempts: { lt: 1000 },
         updatedAt: { lt: staleBefore },
         OR: [{ attempts: { gte: 12 } }, { createdAt: { lte: createdAfter } }],
