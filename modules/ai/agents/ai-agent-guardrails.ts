@@ -86,6 +86,7 @@ export interface RecordSafetyViolationParams {
   content: string
   reason: SafetyCheckReason
   enableStrikeEscalation?: boolean
+  banScope?: "PHONE_ONLY"
 }
 
 /**
@@ -111,6 +112,7 @@ export async function recordSafetyViolation(
       ipAddress: params.ipAddress,
       customerPhone: params.customerPhone,
       reason: `SAFETY_VIOLATION_${params.reason}`,
+      banScope: params.banScope,
     })
   }
 }
