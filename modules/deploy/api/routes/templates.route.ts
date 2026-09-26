@@ -14,12 +14,12 @@ export const slugify = (value: string): string => {
 }
 
 export const appTemplateRoutes = new Elysia({ prefix: "/templates" })
-  // GET /api/templates - Public & official templates only
+  // GET /api/templates - Public templates only
   .get(
     "/",
     async ({ query }) => {
       const where: Prisma.AppTemplateWhereInput = {
-        OR: [{ visibility: "PUBLIC" }, { isOfficial: true }],
+        visibility: "PUBLIC",
       }
 
       if (query.category) {
@@ -104,13 +104,14 @@ export const appTemplateRoutes = new Elysia({ prefix: "/templates" })
         return { error: "NOT_FOUND", message: "Template not found." }
       }
 
-      const isPublicOrOfficial =
-        template.visibility === "PUBLIC" || template.isOfficial
+      const isPublicOrUnlisted =
+        template.visibility === "PUBLIC" || template.visibility === "UNLISTED"
       const isOwner =
         Boolean(auth.organizationId) &&
+        Boolean(template.organizationId) &&
         template.organizationId === auth.organizationId
 
-      if (!isPublicOrOfficial && !isOwner) {
+      if (!isPublicOrUnlisted && !isOwner) {
         set.status = 404
         return { error: "NOT_FOUND", message: "Template not found." }
       }

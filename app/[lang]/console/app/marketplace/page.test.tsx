@@ -2,15 +2,48 @@ import { afterEach, describe, expect, it, mock } from "bun:test"
 import { cleanup, render } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import React from "react"
-import ConsoleMarketplacePage from "./page"
-import { MarketplaceShowcase } from "./_components/marketplace-showcase"
-import { TemplateCard } from "./_components/template-card"
 import { OFFICIAL_APP_TEMPLATES } from "@/modules/deploy/app-template.seed"
 
 const mockPush = mock(() => {})
 mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en" }),
   useRouter: () => ({ push: mockPush }),
+}))
+
+mock.module("@/lib/billing-client", () => ({
+  getCatalogProduct: mock(async () => ({
+    ok: true,
+    product: {
+      code: "APP_HOSTING",
+      name: "App Hosting",
+      plans: [
+        {
+          id: "plan_starter",
+          code: "STARTER",
+          name: "Starter",
+          resources: { provisioning: { storage: 10 } },
+          offers: [
+            {
+              id: "off_1",
+              billingPeriod: "MONTHLY",
+              periodPrice: "15000",
+              currency: "IDR",
+            },
+          ],
+        },
+      ],
+    },
+  })),
+  getAccount: mock(async () => ({
+    ok: true,
+    currency: "IDR",
+    balanceIdr: "500000",
+    formattedBalance: "Rp 500.000",
+    isAboveWarn: true,
+    isPositive: true,
+  })),
+  getInvoice: mock(async () => ({ ok: true })),
+  formatBillingMoney: (amt: number | string, curr: string) => `${curr} ${amt}`,
 }))
 
 mock.module("@/lib/eden", () => ({
@@ -44,30 +77,9 @@ mock.module("@/lib/eden", () => ({
   },
 }))
 
-mock.module("@/lib/billing-client", () => ({
-  getCatalogProduct: mock(async () => ({
-    ok: true,
-    product: {
-      code: "APP_HOSTING",
-      name: "App Hosting",
-      plans: [
-        {
-          id: "plan_starter",
-          code: "STARTER",
-          name: "Starter",
-          offers: [
-            {
-              id: "off_1",
-              billingPeriod: "MONTHLY",
-              periodPrice: "15000",
-              currency: "IDR",
-            },
-          ],
-        },
-      ],
-    },
-  })),
-}))
+import ConsoleMarketplacePage from "./page"
+import { MarketplaceShowcase } from "./_components/marketplace-showcase"
+import { TemplateCard } from "./_components/template-card"
 
 describe("Console Marketplace Hub & Template Cards", () => {
   afterEach(() => {

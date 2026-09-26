@@ -40,6 +40,7 @@ const mockPrisma = {
       }: {
         where?: {
           OR?: Array<{ visibility?: string; isOfficial?: boolean }>
+          visibility?: string
           organizationId?: string
           category?: AppTemplateCategory
           isFeatured?: boolean
@@ -67,6 +68,10 @@ const mockPrisma = {
               return false
             })
           )
+        }
+
+        if (where?.visibility) {
+          filtered = filtered.filter((t) => t.visibility === where.visibility)
         }
 
         if (where?.organizationId) {
@@ -261,12 +266,25 @@ describe("appTemplateRoutes", () => {
         isFeatured: false,
         organizationId: "org-2",
         blueprintJson: validBlueprint,
+      },
+      {
+        id: "tpl-unlisted",
+        slug: "unlisted-tool",
+        name: "Unlisted Tool",
+        tagline: "Official but unlisted template",
+        description: "Not visible in marketplace list",
+        category: "UTILITIES",
+        visibility: "UNLISTED",
+        isOfficial: true,
+        isFeatured: false,
+        organizationId: null,
+        blueprintJson: validBlueprint,
       }
     )
   })
 
   describe("GET /templates", () => {
-    it("returns only public and official templates", async () => {
+    it("returns only public templates, excluding unlisted official templates", async () => {
       const response = await appTemplateRoutes.handle(
         new Request("http://localhost/templates")
       )
@@ -275,6 +293,7 @@ describe("appTemplateRoutes", () => {
       expect(Array.isArray(data)).toBe(true)
       expect(data).toHaveLength(2)
       expect(data.map((t) => t.slug)).toEqual(["ghost-blog", "n8n-automation"])
+      expect(data.some((t) => t.slug === "unlisted-tool")).toBe(false)
     })
 
     it("filters public templates by category", async () => {
@@ -356,6 +375,15 @@ describe("appTemplateRoutes", () => {
       expect(res2.status).toBe(200)
       const data2 = (await res2.json()) as MockTemplate
       expect(data2.slug).toBe("n8n-automation")
+    })
+
+    it("allows direct access to unlisted templates via slug", async () => {
+      const response = await appTemplateRoutes.handle(
+        new Request("http://localhost/templates/unlisted-tool")
+      )
+      expect(response.status).toBe(200)
+      const data = (await response.json()) as MockTemplate
+      expect(data.slug).toBe("unlisted-tool")
     })
 
     it("allows access to owned private template", async () => {
