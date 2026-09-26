@@ -115,11 +115,16 @@ describe("AiAgentsPage with Simulator tab", () => {
     expect(queryByRole("tab", { name: /Simulator & Inspector/i })).toBeNull()
   })
 
-  it("shows one primary action on an active agent", async () => {
+  it("opens the agent canvas via a stretched card link on an active agent, with no leftover CTA button", async () => {
     const { findByText, findByTestId } = render(<AiAgentsPage />)
     await findByText("Asisten Alpha")
     const card = await findByTestId("agent-card-agent-alpha")
-    expect(card.textContent).toContain("Buka Agent")
+    expect(card.textContent).not.toContain("Buka Agent")
+    const canvasLink = card.querySelector(
+      'a[href="/id/console/ai/agents/agent-alpha/canvas?' +
+        'agentProfileId=agent-alpha&agentProfileName=Asisten%20Alpha"]'
+    )
+    expect(canvasLink).not.toBeNull()
     expect(card.querySelectorAll("button").length).toBe(2)
   })
 })
