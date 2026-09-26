@@ -6075,6 +6075,7 @@ export type AppMessages = {
       dashboard: {
         noDescription: string
         noChannel: string
+        activeOn: string
         updated: string
         searchPlaceholder: string
         filters: Record<
