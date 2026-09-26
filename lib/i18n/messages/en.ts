@@ -6702,7 +6702,10 @@ export const enMessages: AppMessages = {
           "Agent cannot be deleted. Disconnect active channels first.",
         deleteTitle: "Permanently delete this agent?",
         deleteDescription:
-          "Related knowledge, sessions, actions, and bindings may also be deleted. This action cannot be undone.",
+          "This also deletes {knowledge} knowledge document(s) and " +
+          "{actions} action(s) that belong to this agent. Chat history " +
+          "is kept. This can't be undone.",
+        deleteDescriptionEmpty: "Chat history is kept. This can't be undone.",
         forceDeleteTitle: "Agent is still connected",
         forceDeleteDescription:
           "This agent is connected to {count} channel(s). Deleting it will disconnect them. This action cannot be undone.",
