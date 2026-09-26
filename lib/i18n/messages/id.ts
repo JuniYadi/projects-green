@@ -10991,6 +10991,17 @@ export const idMessages: AppMessages = {
       empty: "Tidak ada organisasi",
       selectPlaceholder: "Pilih organisasi",
     },
+    orgFilterCombobox: {
+      allLabel: "Semua Organisasi",
+      placeholder: "Pilih organisasi",
+      searchPlaceholder: "Cari organisasi...",
+      searchAriaLabel: "Cari organisasi",
+      clearFilterAriaLabel: "Hapus filter",
+      clearSearchAriaLabel: "Hapus pencarian",
+      listAriaLabel: "Daftar organisasi",
+      loading: "Memuat organisasi...",
+      empty: "Organisasi tidak ditemukan.",
+    },
     errorBoundary: {
       message: "Terjadi kesalahan. Silakan coba lagi.",
       retry: "Coba lagi",

@@ -10894,6 +10894,17 @@ export const enMessages: AppMessages = {
       empty: "No organizations",
       selectPlaceholder: "Select organization",
     },
+    orgFilterCombobox: {
+      allLabel: "All Organizations",
+      placeholder: "Select organization",
+      searchPlaceholder: "Search organization...",
+      searchAriaLabel: "Search organization",
+      clearFilterAriaLabel: "Clear filter",
+      clearSearchAriaLabel: "Clear search",
+      listAriaLabel: "Organizations",
+      loading: "Loading organizations...",
+      empty: "No organizations found.",
+    },
     errorBoundary: {
       message: "Something went wrong. Please try again.",
       retry: "Try again",

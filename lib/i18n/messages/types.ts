@@ -9976,6 +9976,17 @@ export type AppMessages = {
       empty: string
       selectPlaceholder: string
     }
+    orgFilterCombobox: {
+      allLabel: string
+      placeholder: string
+      searchPlaceholder: string
+      searchAriaLabel: string
+      clearFilterAriaLabel: string
+      clearSearchAriaLabel: string
+      listAriaLabel: string
+      loading: string
+      empty: string
+    }
     errorBoundary: {
       message: string
       retry: string
