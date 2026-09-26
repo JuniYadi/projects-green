@@ -9897,6 +9897,10 @@ export type AppMessages = {
       description: string
       goBack: string
       returnTo: string
+      home: string
+      docs: string
+      statusBadge: string
+      subDescription: string
     }
     memberBillingTable: {
       activeSuffix: string
@@ -9928,6 +9932,11 @@ export type AppMessages = {
     errorBoundary: {
       message: string
       retry: string
+      title: string
+      description: string
+      goHome: string
+      statusBadge: string
+      digestLabel: string
     }
     breadcrumb: {
       ariaLabel: string

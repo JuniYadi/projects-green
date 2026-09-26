@@ -68,6 +68,8 @@ export {
   GlobeIcon,
   HandCoinsIcon,
   HardDrive,
+  House,
+  House as HouseIcon,
   InfoIcon,
   Key,
   LifebuoyIcon,

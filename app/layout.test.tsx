@@ -14,8 +14,19 @@ mock.module("next/headers", () => ({
   })),
 }))
 
+const authKitPropsCapture: { onSessionExpired?: unknown } = {}
+
 mock.module("@workos-inc/authkit-nextjs/components", () => ({
-  AuthKitProvider: ({ children }: { children: React.ReactNode }) => children,
+  AuthKitProvider: ({
+    children,
+    onSessionExpired,
+  }: {
+    children: React.ReactNode
+    onSessionExpired?: unknown
+  }) => {
+    authKitPropsCapture.onSessionExpired = onSessionExpired
+    return children
+  },
 }))
 
 mock.module("@/components/theme-provider", () => ({
@@ -45,6 +56,7 @@ describe("RootLayout", () => {
     const view = render(LayoutComponent)
     expect(view.getByTestId("root-child")).toHaveTextContent("Test Content")
     expect(view.getByTestId("toaster")).toBeInTheDocument()
+    expect(authKitPropsCapture.onSessionExpired).toBe(false)
   })
 
   it("renders head script that strips next.js version from window.next", async () => {
