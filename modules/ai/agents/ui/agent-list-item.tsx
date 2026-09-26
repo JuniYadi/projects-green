@@ -1,8 +1,8 @@
+import type { KeyboardEvent, MouseEvent } from "react"
 import Link from "next/link"
-import { DotsThree, WhatsappLogo } from "@phosphor-icons/react"
-import { Badge } from "@/components/ui/badge"
+import { DotsThree, Trash, WhatsappLogo } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 import type {
   AiAgentListItemDTO,
   AiAgentOperationalStatus,
@@ -18,6 +19,7 @@ import type {
 type Copy = {
   noDescription: string
   noChannel: string
+  activeOn: string
   updated: string
   statuses: Record<AiAgentOperationalStatus, string>
   actions: {
@@ -56,11 +58,55 @@ type Props = {
   onDelete: (agent: AiAgentListItemDTO) => void
 }
 
-const warningStatuses = new Set<AiAgentOperationalStatus>([
+const actionNeededStatuses = new Set<AiAgentOperationalStatus>([
   "DRAFT",
   "NEEDS_ATTENTION",
+  "PAUSED",
   "READY_TO_CONNECT",
 ])
+
+// Static class lists so Tailwind's scanner can find them at build time.
+const avatarTones = [
+  "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+  "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+]
+
+const statusRingClass: Record<AiAgentOperationalStatus, string> = {
+  ACTIVE: "border-emerald-500 motion-safe:animate-pulse",
+  READY_TO_CONNECT: "border-dashed border-muted-foreground/40",
+  DRAFT: "border-dashed border-muted-foreground/40",
+  NEEDS_ATTENTION: "border-amber-500",
+  PAUSED: "border-muted-foreground/30",
+  ARCHIVED: "border-muted-foreground/30",
+}
+
+const statusDotClass: Record<AiAgentOperationalStatus, string> = {
+  ACTIVE: "bg-emerald-500",
+  READY_TO_CONNECT: "bg-muted-foreground/50",
+  DRAFT: "bg-muted-foreground/50",
+  NEEDS_ATTENTION: "bg-amber-500",
+  PAUSED: "bg-muted-foreground/40",
+  ARCHIVED: "bg-muted-foreground/40",
+}
+
+function hashToIndex(input: string, modulo: number) {
+  let hash = 0
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash) % modulo
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
 
 function primaryLabel(agent: AiAgentListItemDTO, copy: Copy) {
   switch (agent.operationalStatus) {
@@ -79,6 +125,18 @@ function primaryLabel(agent: AiAgentListItemDTO, copy: Copy) {
   }
 }
 
+function statusLine(agent: AiAgentListItemDTO, copy: Copy) {
+  const channel = agent.channelBindings[0]
+  if (!channel) return copy.noChannel
+  if (agent.operationalStatus === "ACTIVE") {
+    return copy.activeOn.replace(
+      "{target}",
+      channel.targetName || channel.targetId || ""
+    )
+  }
+  return copy.statuses[agent.operationalStatus]
+}
+
 export function AgentListItem({
   agent,
   lang,
@@ -89,110 +147,174 @@ export function AgentListItem({
   onStatusChange,
   onDelete,
 }: Props) {
-  const firstChannel = agent.channelBindings[0]
   const archived = agent.status === "ARCHIVED"
+  const toneClass = avatarTones[hashToIndex(agent.name, avatarTones.length)]
+
+  function stop(event: MouseEvent) {
+    event.stopPropagation()
+  }
+
+  function openAgent() {
+    onPrimaryAction(agent)
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      openAgent()
+    }
+  }
 
   return (
-    <Card data-testid={`agent-card-${agent.id}`} className="border-border">
-      <CardHeader className="flex-row items-start justify-between gap-4">
-        <div className="min-w-0 space-y-2">
-          <CardTitle className="truncate text-base">{agent.name}</CardTitle>
-          <p className="line-clamp-2 text-sm text-muted-foreground">
-            {agent.description || copy.noDescription}
-          </p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label={copy.actions.more}>
-              <DotsThree size={20} weight="bold" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem onSelect={() => onEdit(agent)}>
-              {copy.actions.edit}
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link
-                href={
-                  `/${lang}/console/ai/agents/${agent.id}/canvas?` +
-                  `agentProfileId=${agent.id}&agentProfileName=` +
-                  encodeURIComponent(agent.name)
-                }
-              >
-                {copy.actions.canvas}
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => onAdvancedAction(agent, "simulator")}
-            >
-              {copy.actions.simulator}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onAdvancedAction(agent, "embed")}>
-              {copy.actions.embed}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => onAdvancedAction(agent, "tools")}>
-              {copy.actions.tools}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {archived ? (
-              <DropdownMenuItem onSelect={() => onStatusChange(agent, "DRAFT")}>
-                {copy.actions.restore}
-              </DropdownMenuItem>
-            ) : (
-              <>
-                {agent.status === "ACTIVE" ? (
-                  <DropdownMenuItem
-                    onSelect={() => onStatusChange(agent, "PAUSED")}
-                  >
-                    {copy.actions.pause}
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem
-                  onSelect={() => onStatusChange(agent, "ARCHIVED")}
-                >
-                  {copy.actions.archive}
-                </DropdownMenuItem>
-              </>
+    <Card
+      data-testid={`agent-card-${agent.id}`}
+      role="button"
+      tabIndex={0}
+      onClick={openAgent}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        "cursor-pointer border-border focus-visible:outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring"
+      )}
+    >
+      <CardHeader className="flex-row items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={cn(
+              "inline-flex shrink-0 rounded-full border-2 p-0.5",
+              statusRingClass[agent.operationalStatus]
             )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => onDelete(agent)}
-            >
-              {copy.actions.delete}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant={
-              agent.operationalStatus === "ACTIVE" ? "secondary" : "outline"
-            }
-            className={
-              agent.operationalStatus === "ACTIVE"
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                : warningStatuses.has(agent.operationalStatus)
-                  ? "border-amber-500/30 text-amber-700 dark:text-amber-400"
-                  : "text-muted-foreground"
-            }
           >
-            {copy.statuses[agent.operationalStatus]}
-          </Badge>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <WhatsappLogo size={15} />
-            {firstChannel?.targetName ||
-              firstChannel?.targetId ||
-              copy.noChannel}
+            <span
+              className={cn(
+                "flex size-9 items-center justify-center rounded-full",
+                "text-xs font-semibold",
+                toneClass
+              )}
+            >
+              {initials(agent.name)}
+            </span>
           </span>
+          <div className="min-w-0 space-y-1 pt-0.5">
+            <p className="truncate text-base font-medium">{agent.name}</p>
+            {agent.description ? (
+              <p className="line-clamp-2 text-sm text-muted-foreground">
+                &ldquo;{agent.description}&rdquo;
+              </p>
+            ) : null}
+          </div>
         </div>
-        <div className="flex items-center justify-between gap-3 border-t pt-4">
-          <span className="text-xs text-muted-foreground">
-            {copy.updated} {new Date(agent.updatedAt).toLocaleDateString(lang)}
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={copy.actions.delete}
+            className="text-muted-foreground hover:text-destructive"
+            onClick={(event) => {
+              stop(event)
+              onDelete(agent)
+            }}
+          >
+            <Trash size={18} />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={copy.actions.more}
+                onClick={stop}
+              >
+                <DotsThree size={20} weight="bold" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-52"
+              onClick={stop}
+            >
+              <DropdownMenuItem onSelect={() => onEdit(agent)}>
+                {copy.actions.edit}
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={
+                    `/${lang}/console/ai/agents/${agent.id}/canvas?` +
+                    `agentProfileId=${agent.id}&agentProfileName=` +
+                    encodeURIComponent(agent.name)
+                  }
+                >
+                  {copy.actions.canvas}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onAdvancedAction(agent, "simulator")}
+              >
+                {copy.actions.simulator}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onAdvancedAction(agent, "embed")}
+              >
+                {copy.actions.embed}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => onAdvancedAction(agent, "tools")}
+              >
+                {copy.actions.tools}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {archived ? (
+                <DropdownMenuItem
+                  onSelect={() => onStatusChange(agent, "DRAFT")}
+                >
+                  {copy.actions.restore}
+                </DropdownMenuItem>
+              ) : (
+                <>
+                  {agent.status === "ACTIVE" ? (
+                    <DropdownMenuItem
+                      onSelect={() => onStatusChange(agent, "PAUSED")}
+                    >
+                      {copy.actions.pause}
+                    </DropdownMenuItem>
+                  ) : null}
+                  <DropdownMenuItem
+                    onSelect={() => onStatusChange(agent, "ARCHIVED")}
+                  >
+                    {copy.actions.archive}
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <span
+            className={cn(
+              "flex min-w-0 items-center gap-1.5 text-xs",
+              "text-muted-foreground"
+            )}
+          >
+            <span
+              className={cn(
+                "size-1.5 shrink-0 rounded-full",
+                statusDotClass[agent.operationalStatus]
+              )}
+            />
+            <WhatsappLogo size={14} className="shrink-0" />
+            <span className="truncate">{statusLine(agent, copy)}</span>
           </span>
-          {!archived ? (
-            <Button size="sm" onClick={() => onPrimaryAction(agent)}>
+          {actionNeededStatuses.has(agent.operationalStatus) ? (
+            <Button
+              size="sm"
+              onClick={(event) => {
+                stop(event)
+                onPrimaryAction(agent)
+              }}
+            >
               {primaryLabel(agent, copy)}
             </Button>
           ) : null}
