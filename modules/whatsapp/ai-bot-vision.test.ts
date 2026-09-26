@@ -27,6 +27,10 @@ const mockPrisma = {
   aiChatMessage: {
     findMany: mock(async () => [] as unknown[]),
     create: mock(async () => ({})),
+    count: mock(async () => 0),
+  },
+  aiChatBan: {
+    findMany: mock(async () => [] as unknown[]),
   },
   aiKnowledgeDocument: {
     findMany: mock(async () => []),
@@ -73,6 +77,15 @@ mock.module("@/lib/prisma", () => ({
 
 mock.module("@/lib/redis", () => ({
   redis: mockRedis,
+}))
+
+// The real repository opens its own Redis connection; left unmocked, the
+// first run's 24h "done" markers make every later run short-circuit.
+mock.module("@/lib/whatsapp/idempotency-repository", () => ({
+  hasClaimMarker: mock(async () => false),
+  acquireProcessingClaim: mock(async () => true),
+  markClaimDone: mock(async () => undefined),
+  releaseProcessingClaim: mock(async () => undefined),
 }))
 
 mock.module("@/modules/whatsapp/messages/messages.service", () => ({
@@ -141,9 +154,7 @@ describe("modules/whatsapp/ai-bot-vision", () => {
     expect(isVisionSupportedModel("")).toBe(false)
   })
 
-  it(
-    "constructs multimodal message content with image URL for vision model",
-    async () => {
+  it("constructs multimodal message content with image URL for vision model", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_vis",
       agentProfile: {
@@ -188,9 +199,7 @@ describe("modules/whatsapp/ai-bot-vision", () => {
     ])
   })
 
-  it(
-    "falls back gracefully with interactive CS button on text-only model",
-    async () => {
+  it("falls back gracefully with interactive CS button on text-only model", async () => {
     mockResolvedModel = "deepseek-chat"
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_txt",
@@ -242,9 +251,7 @@ describe("modules/whatsapp/ai-bot-vision", () => {
     )
   })
 
-  it(
-    "handles image without text caption using default user prompt",
-    async () => {
+  it("handles image without text caption using default user prompt", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_vis2",
       agentProfile: {
@@ -289,9 +296,7 @@ describe("modules/whatsapp/ai-bot-vision", () => {
     ])
   })
 
-  it(
-    "includes out-of-stock guidance and fallback recommendation prompt",
-    async () => {
+  it("includes out-of-stock guidance and fallback recommendation prompt", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_vis3",
       agentProfile: {
