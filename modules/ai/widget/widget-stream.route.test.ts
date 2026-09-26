@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 mock.module("server-only", () => ({}))
 
 const mockFindUniqueAgent = mock()
+const mockCountInboundMessages = mock()
 const mockGetOrCreateSession = mock()
 const mockAcquireSessionLock = mock()
 const mockReleaseSessionLock = mock()
@@ -25,6 +26,9 @@ const mockInspectAgentPromptSafety = mock(
 const mockPrisma = {
   aiAgentProfile: {
     findUnique: mockFindUniqueAgent,
+  },
+  aiChatMessage: {
+    count: mockCountInboundMessages,
   },
   aiChatBan: {
     create: mockCreateBan,
@@ -83,6 +87,7 @@ describe("widget-stream.route", () => {
 
   beforeEach(() => {
     mockFindUniqueAgent.mockReset()
+    mockCountInboundMessages.mockReset()
     mockGetOrCreateSession.mockReset()
     mockAcquireSessionLock.mockReset()
     mockReleaseSessionLock.mockReset()
@@ -97,6 +102,7 @@ describe("widget-stream.route", () => {
 
     mockRecordSessionStrike.mockResolvedValue({ isBlocked: true })
     mockInspectAgentPromptSafety.mockReturnValue({ ok: true })
+    mockCountInboundMessages.mockResolvedValue(0)
     mockGetSlidingWindowMessages.mockResolvedValue([])
     mockBuildAgentTools.mockResolvedValue({})
     mockResolveAiProviderConfig.mockResolvedValue({
@@ -450,8 +456,8 @@ describe("widget-stream.route", () => {
     mockGetOrCreateSession.mockResolvedValue({
       id: "sess-db-1",
       sessionId: "widget_agent-1_vis-1",
-      totalMessages: 1,
     })
+    mockCountInboundMessages.mockResolvedValue(1)
 
     const res = await app.handle(
       new Request("http://localhost/ai/widget/stream", {
@@ -469,6 +475,100 @@ describe("widget-stream.route", () => {
     const json = (await res.json()) as { error: string; message?: string }
     expect(json.error).toBe("DAILY_LIMIT_REACHED")
     expect(json.message).toBe("Batas chat harian Anda telah habis.")
+    expect(mockCountInboundMessages).toHaveBeenCalledWith({
+      where: { sessionId: "widget_agent-1_vis-1", role: "user" },
+    })
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
+  })
+
+  it(
+    "allows N user messages with assistant replies in between, " +
+      "without blocking early",
+    async () => {
+      mockFindUniqueAgent.mockResolvedValue({
+        id: "agent-1",
+        isActive: true,
+        allowedDomains: [],
+        organizationId: "org-1",
+        dailyUserLimit: 2,
+        fallbackMessage: "Batas chat harian Anda telah habis.",
+      })
+      mockGetOrCreateSession.mockResolvedValue({
+        id: "sess-db-1",
+        sessionId: "widget_agent-1_vis-1",
+      })
+
+      // 1st user message: 0 prior user rows recorded yet, even though an
+      // assistant reply may already exist from a previous exchange — the
+      // count only ever reflects role="user" rows.
+      mockCountInboundMessages.mockResolvedValueOnce(0)
+      const first = await app.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Pesan pertama",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+      expect(first.status).toBe(200)
+
+      // 2nd user message: 1 prior user row (the assistant reply to the
+      // first message does not count towards the limit).
+      mockCountInboundMessages.mockResolvedValueOnce(1)
+      const second = await app.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Pesan kedua",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+      expect(second.status).toBe(200)
+    }
+  )
+
+  it("blocks the (N+1)th user message once the limit is reached", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      dailyUserLimit: 2,
+      fallbackMessage: "Batas chat harian Anda telah habis.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+
+    // 2 prior user rows already recorded — the 3rd user message must be
+    // blocked even though totalMessages (user + assistant rows) would be 4.
+    mockCountInboundMessages.mockResolvedValue(2)
+
+    const res = await app.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Pesan ketiga",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(429)
+    const json = (await res.json()) as { error: string; message?: string }
+    expect(json.error).toBe("DAILY_LIMIT_REACHED")
     expect(mockReleaseSessionLock).toHaveBeenCalledWith(
       "widget_agent-1_vis-1",
       "lock-token-123"
