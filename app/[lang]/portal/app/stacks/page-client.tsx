@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import {
   type ColumnDef,
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { PortalOrgFilterCombobox } from "@/components/portal/portal-org-filter-combobox"
 import {
   Table,
   TableBody,
@@ -99,6 +101,24 @@ const STATUS_FILTERS = [
   "STOPPED",
   "TERMINATED",
 ] as const
+
+export function formatCpu(cpu: number | null): string | null {
+  if (!cpu) return null
+  if (cpu >= 1000) {
+    const vCpu = cpu / 1000
+    return `${Number(vCpu.toFixed(2))} vCPU`
+  }
+  return `${cpu}m CPU`
+}
+
+export function formatMemory(mem: number | null): string | null {
+  if (!mem) return null
+  if (mem >= 1024) {
+    const gb = mem / 1024
+    return `${Number(gb.toFixed(2))} GB RAM`
+  }
+  return `${mem} MB RAM`
+}
 
 export default function AdminStacksPage() {
   const params = useParams<{ lang?: string }>()
@@ -349,30 +369,16 @@ export default function AdminStacksPage() {
           return (
             <div className="text-xs">
               {stack.organizationName ? (
-                <div>
-                  <div
-                    className="max-w-[170px] truncate font-medium text-foreground"
-                    title={stack.organizationName}
-                  >
-                    {stack.organizationName}
-                  </div>
-                  <div
-                    className="max-w-[140px] truncate font-mono text-[10px] text-muted-foreground"
-                    title={stack.organizationId}
-                  >
-                    {stack.organizationId.length > 16
-                      ? `${stack.organizationId.slice(0, 14)}…`
-                      : stack.organizationId}
-                  </div>
-                </div>
-              ) : (
-                <span
-                  className="font-mono text-muted-foreground"
-                  title={stack.organizationId}
+                <Link
+                  href={`/${locale}/portal/admin/organizations/${stack.organizationId}`}
+                  className="max-w-[200px] truncate font-medium text-foreground hover:underline"
+                  title={stack.organizationName}
                 >
-                  {stack.organizationId.length > 16
-                    ? `${stack.organizationId.slice(0, 14)}…`
-                    : stack.organizationId}
+                  {stack.organizationName}
+                </Link>
+              ) : (
+                <span className="font-mono text-muted-foreground">
+                  {stack.organizationId}
                 </span>
               )}
             </div>
@@ -442,7 +448,7 @@ export default function AdminStacksPage() {
               >
                 {stack.status}
               </Badge>
-              {stack.suspended && (
+              {stack.suspended && stack.status !== "TERMINATED" && (
                 <div className="mt-0.5 text-[10px] font-semibold text-amber-500">
                   {messages.suspendedLabel}
                 </div>
@@ -463,8 +469,10 @@ export default function AdminStacksPage() {
         cell: ({ row }) => {
           const stack = row.original
           const hasCluster = Boolean(stack.clusterName || stack.clusterCode)
+          const formattedCpu = formatCpu(stack.cpu)
+          const formattedMemory = formatMemory(stack.memory)
           const hasSpecs = Boolean(
-            stack.cpu || stack.memory || stack.replicas !== null
+            formattedCpu || formattedMemory || stack.replicas !== null
           )
 
           if (!hasCluster && !hasSpecs) {
@@ -490,9 +498,9 @@ export default function AdminStacksPage() {
               )}
               {hasSpecs && (
                 <div className="flex flex-wrap items-center gap-1 font-mono text-[11px] text-muted-foreground">
-                  {stack.cpu && <span>{stack.cpu}m CPU</span>}
-                  {stack.cpu && stack.memory && <span>•</span>}
-                  {stack.memory && <span>{stack.memory}Mi RAM</span>}
+                  {formattedCpu && <span>{formattedCpu}</span>}
+                  {formattedCpu && formattedMemory && <span>•</span>}
+                  {formattedMemory && <span>{formattedMemory}</span>}
                   {stack.replicas !== null && (
                     <span className="text-[10px]">
                       ({stack.replicas} {messages.replicas})
@@ -532,7 +540,10 @@ export default function AdminStacksPage() {
         enableHiding: true,
         cell: ({ row }) => {
           const stack = row.original
-          const hasSpecs = stack.cpu || stack.memory || stack.replicas !== null
+          const formattedCpu = formatCpu(stack.cpu)
+          const formattedMemory = formatMemory(stack.memory)
+          const hasSpecs =
+            formattedCpu || formattedMemory || stack.replicas !== null
           if (!hasSpecs) {
             return <span className="text-xs text-muted-foreground">—</span>
           }
@@ -548,9 +559,9 @@ export default function AdminStacksPage() {
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
-                {stack.cpu && <span>{stack.cpu}m CPU</span>}
-                {stack.cpu && stack.memory && <span>•</span>}
-                {stack.memory && <span>{stack.memory}Mi RAM</span>}
+                {formattedCpu && <span>{formattedCpu}</span>}
+                {formattedCpu && formattedMemory && <span>•</span>}
+                {formattedMemory && <span>{formattedMemory}</span>}
               </div>
             </div>
           )
@@ -778,17 +789,24 @@ export default function AdminStacksPage() {
           >
             {messages.organizationId}
           </label>
-          <Input
-            id="filter-org"
-            placeholder={messages.organizationPlaceholder}
-            value={orgInput}
-            onChange={(e) => setOrgInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter")
-                applyFilters(orgInput, queryInput, activeStatus)
-            }}
-            className="mt-1 h-9"
-          />
+          <div className="mt-1">
+            <PortalOrgFilterCombobox
+              id="filter-org"
+              value={orgInput}
+              onChange={(val) => {
+                const newOrg = val ?? ""
+                setOrgInput(newOrg)
+                applyFilters(newOrg, queryInput, activeStatus)
+              }}
+              allLabel={
+                locale === "id" ? "Semua Organisasi" : "All Organizations"
+              }
+              placeholder={
+                locale === "id" ? "Pilih organisasi…" : "Select organization…"
+              }
+              className="h-9 w-full"
+            />
+          </div>
         </div>
         <div className="min-w-[240px] flex-[2]">
           <label

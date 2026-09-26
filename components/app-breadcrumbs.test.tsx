@@ -168,6 +168,17 @@ describe("buildAppBreadcrumbItems", () => {
   it("maps platform route to Platforms label and platforms list href", () => {
     expect(
       buildAppBreadcrumbItems({
+        pathname: "/en/portal/app/stacks",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "App", href: "/en/portal/app" },
+      { label: "Platforms", href: undefined },
+    ])
+
+    expect(
+      buildAppBreadcrumbItems({
         pathname: "/en/console/app/platform/sample-app",
         rootSegment: "console",
       })

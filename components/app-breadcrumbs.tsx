@@ -83,7 +83,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   servers: "Servers",
   settings: "Settings",
   "ssh-keys": "SSH Keys",
-  stacks: "Stacks",
+  stacks: "Platforms",
   storage: "Storage Audit",
   subscriptions: "Subscriptions",
   "support-tickets": "Support Tickets",
