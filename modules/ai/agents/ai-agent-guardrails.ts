@@ -8,6 +8,7 @@ import { recordMessage } from "./ai-agent-session.service"
 export interface AgentSafetyInspectionOptions {
   maxChars?: number
   customBlockedWords?: string[]
+  enableProfanityFilter?: boolean
   tenantName?: string
 }
 
@@ -62,7 +63,9 @@ export function inspectAgentPromptSafety(
     }
   }
 
-  const check = inspectPromptSafety(trimmed, customBlocked)
+  const check = inspectPromptSafety(trimmed, customBlocked, {
+    checkProfanity: options?.enableProfanityFilter !== false,
+  })
   if (!check.ok) {
     const reason = check.reason ?? "PROFANITY"
     return {
