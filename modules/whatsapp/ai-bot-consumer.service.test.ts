@@ -24,6 +24,7 @@ const mockPrisma = {
   aiChatMessage: {
     findMany: mock(async () => [] as unknown[]),
     create: mock(async () => ({})),
+    count: mock(async () => 0),
   },
   aiKnowledgeDocument: {
     findMany: mock(async () => []),
@@ -140,6 +141,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     mockPrisma.aiChatSession.update.mockClear()
     mockPrisma.aiChatMessage.findMany.mockClear()
     mockPrisma.aiChatMessage.create.mockClear()
+    mockPrisma.aiChatMessage.count.mockClear()
     mockPrisma.aiIntegrationConnection.findMany.mockClear()
     mockPrisma.aiUsageAudit.create.mockClear()
 
@@ -165,6 +167,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     mockRedis.set.mockResolvedValue("OK")
     mockRedis.eval.mockResolvedValue(1)
     mockPrisma.aiChatMessage.findMany.mockResolvedValue([])
+    mockPrisma.aiChatMessage.count.mockResolvedValue(0)
     mockPrisma.aiIntegrationConnection.findMany.mockResolvedValue([])
     mockMessageService.sendMessage.mockResolvedValue({
       jobId: "job_1",
@@ -362,7 +365,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockRedis.eval).not.toHaveBeenCalled()
   })
 
-  it("enforces daily limit and rolls back message counter", async () => {
+  it("enforces the daily limit on customer messages from the last 24h", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -379,13 +382,10 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
 
     mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
       id: "sess_limit",
-      totalMessages: 5,
+      sessionId: "wa_conv_1",
+      totalMessages: 500, // lifetime stat, not the daily count
     } as never)
-
-    mockPrisma.aiChatSession.update.mockResolvedValueOnce({
-      id: "sess_limit",
-      totalMessages: 6,
-    } as never)
+    mockPrisma.aiChatMessage.count.mockResolvedValueOnce(1)
 
     const res = await processWhatsappAiBotInbound({
       organizationId: "org_1",
@@ -404,6 +404,18 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       })
     )
     expect(mockRedis.eval).toHaveBeenCalled()
+    const where = (
+      mockPrisma.aiChatMessage.count.mock.calls[0] as unknown as [
+        {
+          where: { sessionId: string; role: string; createdAt: { gte: Date } }
+        },
+      ]
+    )[0].where
+    expect(where.sessionId).toBe("wa_conv_1")
+    expect(where.role).toBe("user")
+    const windowMs = Date.now() - where.createdAt.gte.getTime()
+    expect(windowMs).toBeGreaterThanOrEqual(86_400_000)
+    expect(windowMs).toBeLessThan(86_400_000 + 5_000)
   })
 
   it("executes autonomous multi-step reasoning with tools", async () => {
@@ -1006,44 +1018,6 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
-  it("counts one customer message per turn towards the daily limit", async () => {
-    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
-      id: "bind_1",
-      isActive: true,
-      agentProfile: {
-        id: "agent_1",
-        isActive: true,
-        systemPrompt: "Anda adalah CS toko.",
-        maxCharLength: 500,
-        dailyUserLimit: 20,
-      },
-    } as never)
-
-    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
-      id: "sess_1",
-      sessionId: "wa_conv_1",
-      totalMessages: 0,
-    } as never)
-
-    const res = await processWhatsappAiBotInbound({
-      organizationId: "org_1",
-      deviceId: "dev_1",
-      contactPhone: "+62812345678",
-      inboundMessageText: "Halo admin toko",
-      conversationId: "conv_1",
-      inboundMessageId: "msg_count_once_1",
-    })
-
-    expect(res.responseMessageId).toBeDefined()
-    // user + assistant rows are logged, but only one counter increment
-    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalledTimes(2)
-    const counterUpdates = mockPrisma.aiChatSession.update.mock.calls.filter(
-      ([args]) => args.data?.totalMessages
-    )
-    expect(counterUpdates).toHaveLength(1)
-    expect(counterUpdates[0]?.[0].data.totalMessages).toEqual({ increment: 1 })
-  })
-
   it("does not send a fallback when bookkeeping fails after the reply was sent", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
@@ -1089,9 +1063,13 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockLogStageFailure).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "PERSIST_REPLY" })
     )
+    // AiChatMessage.sessionId is an FK to AiChatSession.sessionId, not .id
+    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ sessionId: "wa_conv_1", role: "user" }),
+    })
   })
 
-  it("does not throw when both the reply send and the fallback send fail", async () => {
+  it("rethrows for a BullMQ retry when both the reply and the fallback send fail", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
       isActive: true,
@@ -1115,22 +1093,68 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
       new Error("WhatsApp API is down")
     )
 
-    const res = await processWhatsappAiBotInbound({
-      organizationId: "org_1",
-      deviceId: "dev_1",
-      contactPhone: "+62812345678",
-      inboundMessageText: "Halo admin toko",
-      conversationId: "conv_1",
-      inboundMessageId: "msg_send_fail_2",
-    })
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Halo admin toko",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_send_fail_2",
+      })
+    ).rejects.toThrow("fallback not delivered")
 
-    expect(res.handled).toBe(true)
-    expect(res.reason).toBe("SEND_FAILED")
+    // Nothing reached the customer: claim released, never marked done,
+    // and no GENERATION fallback piled on top of the SEND one.
+    expect(mockMarkClaimDone).not.toHaveBeenCalled()
+    expect(mockReleaseProcessingClaim).toHaveBeenCalled()
+    expect(mockMessageService.sendMessage).toHaveBeenCalledTimes(2)
     expect(mockLogStageFailure).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "SEND" })
     )
     expect(mockLogStageFailure).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "SEND_FALLBACK" })
+    )
+  })
+
+  it("rethrows for a BullMQ retry when provider resolution and its fallback both fail", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+        fallbackMessage: "Mohon coba lagi nanti.",
+      },
+    } as never)
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      sessionId: "wa_conv_1",
+      totalMessages: 0,
+    } as never)
+    mockResolveAiProviderConfig.mockRejectedValueOnce(new Error("no provider"))
+    mockMessageService.sendMessage.mockRejectedValueOnce(
+      new Error("WhatsApp API is down")
+    )
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Halo admin toko",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_provider_fail_1",
+      })
+    ).rejects.toThrow("fallback not delivered")
+
+    expect(mockMarkClaimDone).not.toHaveBeenCalled()
+    expect(mockReleaseProcessingClaim).toHaveBeenCalled()
+    expect(mockLogStageFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "PROVIDER_RESOLUTION_FALLBACK" })
     )
   })
 
