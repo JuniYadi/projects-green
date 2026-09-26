@@ -837,6 +837,36 @@ describe("widget-stream.route", () => {
       )
     })
 
+    it("a daily-limit count failure streams the fallback and releases the lock", async () => {
+      mockCountInboundMessages.mockRejectedValue(new Error("db down"))
+
+      const res = await post()
+
+      expect(res.status).toBe(200)
+      expect(await res.text()).toContain(agent.fallbackMessage)
+      expect(mockLogStageFailure).toHaveBeenCalledWith(
+        expect.objectContaining({ stage: "DAILY_LIMIT_COUNT" })
+      )
+      expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+        "widget_agent-1_vis-1",
+        "lock-token-123"
+      )
+    })
+
+    it("passes the agent's enableProfanityFilter to the safety inspector", async () => {
+      mockFindUniqueAgent.mockResolvedValue({
+        ...agent,
+        enableProfanityFilter: false,
+      })
+
+      await (await post()).text()
+
+      expect(mockInspectAgentPromptSafety).toHaveBeenCalledWith(
+        "Halo",
+        expect.objectContaining({ enableProfanityFilter: false })
+      )
+    })
+
     it("a context load failure streams the fallback and releases the lock", async () => {
       mockGetSlidingWindowMessages.mockRejectedValue(new Error("db down"))
 
