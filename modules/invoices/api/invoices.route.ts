@@ -28,7 +28,9 @@ import {
 } from "@/modules/invoices/email.service"
 import {
   resolveInvoiceEmailRecipients,
+  resolveInvoiceBilledTo,
   type BillingEmailRecipient,
+  type InvoiceBilledTo,
 } from "@/modules/billing/email-recipients"
 import {
   getPlatformRoleForUser,
@@ -37,6 +39,7 @@ import {
 import { fieldErrorMapFromIssues } from "@/lib/validation"
 
 import { BankAccountService } from "@/modules/payment/services/bank-account.service"
+import { PaymentService } from "@/modules/payment/services/payment.service"
 import { prisma } from "@/lib/prisma"
 import { getTenantOrganizationById } from "@/modules/tenants/services/tenant-workos.service"
 import { getCachedOrganizations } from "@/lib/workos-directory"
@@ -101,6 +104,14 @@ type InvoiceRouteDependencies = {
   resolveInvoiceRecipients?: (
     organizationId: string
   ) => Promise<BillingEmailRecipient[]>
+  resolveInvoiceBilledTo?: (
+    organizationId: string,
+    fallbackEmail?: string | null
+  ) => Promise<InvoiceBilledTo>
+  sendTopupInvoicePaidEmail?: (
+    invoiceId: string,
+    organizationId: string
+  ) => Promise<void>
 }
 
 const createDefaultDependencies = (): InvoiceRouteDependencies => ({
@@ -117,6 +128,17 @@ const createDefaultDependencies = (): InvoiceRouteDependencies => ({
   },
   resolveOrganizations: (orgIds) => getCachedOrganizations(orgIds),
   resolveInvoiceRecipients: resolveInvoiceEmailRecipients,
+  resolveInvoiceBilledTo,
+  sendTopupInvoicePaidEmail: async (invoiceId, organizationId) => {
+    const paymentInvoice = await prisma.billingInvoice.findUnique({
+      where: { id: invoiceId },
+    })
+    if (!paymentInvoice) return
+    await new PaymentService().sendInvoicePaidEmail(
+      paymentInvoice,
+      organizationId
+    )
+  },
 })
 
 const toUnauthorized = (set: RouteSet) => {
@@ -201,6 +223,14 @@ const toActorRoles = async ({
 
 const isCancelableStatus = (status: InvoiceStatus) => {
   return status !== "paid" && status !== "canceled"
+}
+
+async function getBilledToOptions(
+  dependencies: InvoiceRouteDependencies,
+  organizationId?: string | null
+): Promise<InvoiceBilledTo> {
+  if (!organizationId || !dependencies.resolveInvoiceBilledTo) return {}
+  return dependencies.resolveInvoiceBilledTo(organizationId)
 }
 
 async function notifyInvoiceRecipients(input: {
@@ -530,6 +560,11 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         notifyInvoiceRecipients({
           dependencies,
           invoice,
@@ -538,7 +573,9 @@ export const createInvoicesRoutes = (
             dependencies.emailService.sendInvoiceCancelled(
               invoice,
               recipient.email,
-              auth.organizationId ?? undefined
+              undefined,
+              auth.organizationId ?? undefined,
+              options
             ),
         }).catch((err) => {
           console.error(
@@ -616,8 +653,18 @@ export const createInvoicesRoutes = (
           organizationId: auth.organizationId,
           invoiceId: parsedParams.data.invoiceId,
         })
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         dependencies.emailService
-          .sendInvoiceCreated(invoice, recipientEmail, auth.organizationId)
+          .sendInvoiceCreated(
+            invoice,
+            recipientEmail,
+            auth.organizationId,
+            options
+          )
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send invoice created email:",
@@ -691,8 +738,18 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         dependencies.emailService
-          .sendInvoicePaid(invoice, recipientEmail, auth.organizationId)
+          .sendInvoicePaid(
+            invoice,
+            recipientEmail,
+            auth.organizationId,
+            options
+          )
           .catch((err) => {
             console.error("[Invoices] Failed to send invoice paid email:", err)
           })
@@ -763,8 +820,18 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         dependencies.emailService
-          .sendPaymentReminder(invoice, recipientEmail, auth.organizationId)
+          .sendPaymentReminder(
+            invoice,
+            recipientEmail,
+            auth.organizationId,
+            options
+          )
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send payment reminder email:",
@@ -838,8 +905,18 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         dependencies.emailService
-          .sendInvoiceOverdue(invoice, recipientEmail, auth.organizationId)
+          .sendInvoiceOverdue(
+            invoice,
+            recipientEmail,
+            auth.organizationId,
+            options
+          )
           .catch((err) => {
             console.error(
               "[Invoices] Failed to send invoice overdue email:",
@@ -914,12 +991,18 @@ export const createInvoicesRoutes = (
           invoiceId: parsedParams.data.invoiceId,
         })
 
+        const options = await getBilledToOptions(
+          dependencies,
+          invoice.organizationId
+        )
+
         dependencies.emailService
           .sendInvoiceCancelled(
             invoice,
             recipientEmail,
             reason,
-            auth.organizationId
+            auth.organizationId,
+            options
           )
           .catch((err) => {
             console.error(
@@ -983,19 +1066,34 @@ export const createInvoicesRoutes = (
           notes: parsedBody.data.notes,
         })
 
-        notifyInvoiceRecipients({
-          dependencies,
-          invoice,
-          fallbackEmail: auth.user.email,
-          send: (recipient) =>
-            dependencies.emailService.sendInvoicePaid(
-              invoice,
-              recipient.email,
-              auth.organizationId ?? undefined
-            ),
-        }).catch((err) => {
-          console.error("[Invoices] Failed to send invoice paid email:", err)
-        })
+        const isTopUp = invoice.type === "TOP_UP" || invoice.type === "TOPUP"
+        if (isTopUp && invoice.organizationId) {
+          dependencies
+            .sendTopupInvoicePaidEmail?.(invoice.id, invoice.organizationId)
+            .catch((err) => {
+              console.error("[Invoices] Failed to send top-up paid email:", err)
+            })
+        } else {
+          const options = await getBilledToOptions(
+            dependencies,
+            invoice.organizationId
+          )
+
+          notifyInvoiceRecipients({
+            dependencies,
+            invoice,
+            fallbackEmail: auth.user.email,
+            send: (recipient) =>
+              dependencies.emailService.sendInvoicePaid(
+                invoice,
+                recipient.email,
+                auth.organizationId ?? undefined,
+                options
+              ),
+          }).catch((err) => {
+            console.error("[Invoices] Failed to send invoice paid email:", err)
+          })
+        }
 
         return {
           ok: true as const,
