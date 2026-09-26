@@ -20,10 +20,22 @@ const SUPPORTED_EXTENSIONS = new Set([
 
 const KNOWN_LABELS: Record<string, string> = {
   "9router": "9router",
+  bun: "Bun",
+  go: "Go",
   hermes: "Hermes Agent",
+  laravel: "Laravel",
   n8n: "n8n Automation",
+  nextjs: "Next.js",
+  nodejs: "Node.js",
+  omniroute: "OmniRoute",
   openclaw: "OpenClaw",
+  php: "PHP",
+  python: "Python",
+  rust: "Rust",
   umami: "Umami Analytics",
+  "uptime-kuma": "Uptime Kuma",
+  uv: "uv",
+  vaultwarden: "Vaultwarden",
   wordpress: "WordPress",
 }
 

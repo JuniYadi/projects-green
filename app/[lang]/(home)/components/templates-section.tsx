@@ -46,14 +46,14 @@ const apps = [
   {
     id: "omniroute",
     name: "OmniRoute",
-    icon: null,
+    icon: "/app-hosting/icons/omniroute.svg",
     description: { id: "Routing model AI", en: "AI model routing" },
     available: false,
   },
   {
     id: "wordpress",
     name: "WordPress",
-    icon: null,
+    icon: "/app-hosting/icons/wordpress.svg",
     description: { id: "Situs web dan konten", en: "Websites and content" },
     available: false,
   },

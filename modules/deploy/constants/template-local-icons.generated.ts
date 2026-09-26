@@ -16,10 +16,28 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/9router.svg"
   },
   {
+    "slug": "bun",
+    "name": "Bun",
+    "fileName": "bun.svg",
+    "path": "/app-hosting/icons/bun.svg"
+  },
+  {
+    "slug": "go",
+    "name": "Go",
+    "fileName": "go.svg",
+    "path": "/app-hosting/icons/go.svg"
+  },
+  {
     "slug": "hermes",
     "name": "Hermes Agent",
     "fileName": "hermes.svg",
     "path": "/app-hosting/icons/hermes.svg"
+  },
+  {
+    "slug": "laravel",
+    "name": "Laravel",
+    "fileName": "laravel.svg",
+    "path": "/app-hosting/icons/laravel.svg"
   },
   {
     "slug": "n8n",
@@ -28,10 +46,70 @@ export const TEMPLATE_LOCAL_ICONS: readonly TemplateLocalIcon[] = [
     "path": "/app-hosting/icons/n8n.svg"
   },
   {
+    "slug": "nextjs",
+    "name": "Next.js",
+    "fileName": "nextjs.svg",
+    "path": "/app-hosting/icons/nextjs.svg"
+  },
+  {
+    "slug": "nodejs",
+    "name": "Node.js",
+    "fileName": "nodejs.svg",
+    "path": "/app-hosting/icons/nodejs.svg"
+  },
+  {
+    "slug": "omniroute",
+    "name": "OmniRoute",
+    "fileName": "omniroute.svg",
+    "path": "/app-hosting/icons/omniroute.svg"
+  },
+  {
     "slug": "openclaw",
     "name": "OpenClaw",
     "fileName": "openclaw.svg",
     "path": "/app-hosting/icons/openclaw.svg"
+  },
+  {
+    "slug": "php",
+    "name": "PHP",
+    "fileName": "php.svg",
+    "path": "/app-hosting/icons/php.svg"
+  },
+  {
+    "slug": "python",
+    "name": "Python",
+    "fileName": "python.svg",
+    "path": "/app-hosting/icons/python.svg"
+  },
+  {
+    "slug": "rust",
+    "name": "Rust",
+    "fileName": "rust.svg",
+    "path": "/app-hosting/icons/rust.svg"
+  },
+  {
+    "slug": "uptime-kuma",
+    "name": "Uptime Kuma",
+    "fileName": "uptime-kuma.svg",
+    "path": "/app-hosting/icons/uptime-kuma.svg"
+  },
+  {
+    "slug": "uv",
+    "name": "uv",
+    "fileName": "uv.svg",
+    "path": "/app-hosting/icons/uv.svg"
+  },
+  {
+    "slug": "vaultwarden",
+    "name": "Vaultwarden",
+    "fileName": "vaultwarden.svg",
+    "path": "/app-hosting/icons/vaultwarden.svg"
+  },
+  {
+    "slug": "wordpress",
+    "name": "WordPress",
+    "fileName": "wordpress.svg",
+    "path": "/app-hosting/icons/wordpress.svg"
   }
 ] as const
 

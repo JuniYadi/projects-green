@@ -518,7 +518,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       "WordPress is web publishing software you can use to create a beautiful website, blog, or community with thousands of plugins and themes.",
     readmeMarkdown:
       "# WordPress\n\nExtensible CMS and publishing system powered by PHP and MySQL.",
-    iconUrl: "https://assets.pfnapp.com/templates/wordpress.svg",
+    iconUrl: "/app-hosting/icons/wordpress.svg",
     category: "CMS",
     visibility: "PUBLIC",
     version: "1.0.0",
