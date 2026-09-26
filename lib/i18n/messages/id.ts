@@ -6759,6 +6759,10 @@ export const idMessages: AppMessages = {
         deleteTitle: "Hapus agent secara permanen?",
         deleteDescription:
           "Knowledge, sesi, action, dan binding terkait dapat ikut terhapus. Tindakan ini tidak dapat dibatalkan.",
+        forceDeleteTitle: "Agent masih terhubung",
+        forceDeleteDescription:
+          "Agent ini terhubung ke {count} channel. Menghapusnya akan memutuskan hubungan tersebut. Tindakan ini tidak dapat dibatalkan.",
+        forceDeleteButton: "Putuskan & hapus",
         detailError: "Pengaturan agent gagal dimuat.",
       },
       dialog: {
