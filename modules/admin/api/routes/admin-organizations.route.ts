@@ -29,18 +29,23 @@ export const createAdminOrganizationsRoutes = (deps = {}) => {
 
         try {
           const { limit, before, after, search } = query
+          const fetchLimit = search ? Math.max(100, limit ?? 10) : limit
           const result = await listAdminOrganizations({
-            limit,
+            limit: fetchLimit,
             before,
             after,
           })
 
           let organizations = result.organizations
           if (search) {
-            const searchLower = search.toLowerCase()
-            organizations = organizations.filter((org) =>
-              org.name.toLowerCase().includes(searchLower)
-            )
+            const searchLower = search.trim().toLowerCase()
+            organizations = organizations
+              .filter(
+                (org) =>
+                  org.name.toLowerCase().includes(searchLower) ||
+                  org.id.toLowerCase().includes(searchLower)
+              )
+              .slice(0, limit ?? 10)
           }
 
           return {

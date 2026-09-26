@@ -345,4 +345,163 @@ describe("PortalOrgFilterCombobox", () => {
     })
     expect(view.getByText("No organizations found.")).toBeInTheDocument()
   })
+
+  it("requests organizations with limit: 15 on initial load", async () => {
+    let capturedUrl = ""
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = typeof url === "string" ? url : url.toString()
+      return jsonResponse({
+        ok: true,
+        data: { organizations: [] },
+      })
+    }) as unknown as typeof fetch
+
+    render(<PortalOrgFilterCombobox />)
+
+    await waitFor(() => {
+      expect(capturedUrl).toContain("limit=15")
+    })
+  })
+
+  it("triggers server-side debounced search when user types in search input", async () => {
+    const urls: string[] = []
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url.toString()
+      urls.push(urlStr)
+      if (urlStr.includes("search=Acme")) {
+        return jsonResponse({
+          ok: true,
+          data: {
+            organizations: [
+              { id: "org-acme-remote", name: "Acme Remote Corp" },
+            ],
+          },
+        })
+      }
+      return jsonResponse({
+        ok: true,
+        data: {
+          organizations: [{ id: "org-1", name: "Initial Org" }],
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const view = render(<PortalOrgFilterCombobox />)
+    const trigger = view.getByRole("combobox")
+
+    await waitFor(() => {
+      expect(trigger.getAttribute("aria-busy")).toBe("false")
+    })
+
+    await act(async () => {
+      fireEvent.click(trigger)
+    })
+
+    const searchInput = view.getByPlaceholderText("Search organization...")
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: "Acme" } })
+    })
+
+    await waitFor(
+      () => {
+        expect(urls.some((u) => u.includes("search=Acme"))).toBe(true)
+        expect(view.getByText("Acme Remote Corp")).toBeInTheDocument()
+      },
+      { timeout: 1500 }
+    )
+  })
+
+  it("resolves organization name when value is not in initial batch", async () => {
+    const urls: string[] = []
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url.toString()
+      urls.push(urlStr)
+      if (urlStr.includes("limit=1") && urlStr.includes("search=org-outside")) {
+        return jsonResponse({
+          ok: true,
+          data: {
+            organizations: [{ id: "org-outside", name: "Outside Batch Corp" }],
+          },
+        })
+      }
+      return jsonResponse({
+        ok: true,
+        data: {
+          organizations: [
+            { id: "org-1", name: "Alpha Corp" },
+            { id: "org-2", name: "Beta Corp" },
+          ],
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const view = render(<PortalOrgFilterCombobox value="org-outside" />)
+
+    await waitFor(() => {
+      expect(
+        urls.some(
+          (u) => u.includes("limit=1") && u.includes("search=org-outside")
+        )
+      ).toBe(true)
+    })
+
+    await waitFor(() => {
+      expect(view.getByText("Outside Batch Corp")).toBeInTheDocument()
+    })
+  })
+
+  it("displays subtle loading spinner while search is in progress", async () => {
+    let resolveSearch: (val: Response) => void
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      const urlStr = typeof url === "string" ? url : url.toString()
+      if (urlStr.includes("search=Acme")) {
+        return new Promise<Response>((resolve) => {
+          resolveSearch = resolve
+        })
+      }
+      return jsonResponse({
+        ok: true,
+        data: {
+          organizations: [{ id: "org-1", name: "Alpha Corp" }],
+        },
+      })
+    }) as unknown as typeof fetch
+
+    const view = render(<PortalOrgFilterCombobox />)
+    const trigger = view.getByRole("combobox")
+
+    await waitFor(() => {
+      expect(trigger.getAttribute("aria-busy")).toBe("false")
+    })
+
+    await act(async () => {
+      fireEvent.click(trigger)
+    })
+
+    const searchInput = view.getByPlaceholderText("Search organization...")
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: "Acme" } })
+    })
+
+    await waitFor(() => {
+      expect(view.getByTestId("search-spinner")).toBeInTheDocument()
+      expect(resolveSearch).toBeDefined()
+    })
+
+    await act(async () => {
+      resolveSearch!(
+        jsonResponse({
+          ok: true,
+          data: {
+            organizations: [{ id: "org-acme", name: "Acme Corp" }],
+          },
+        })
+      )
+    })
+
+    await waitFor(() => {
+      expect(view.queryByTestId("search-spinner")).toBeNull()
+      expect(view.getByText("Acme Corp")).toBeInTheDocument()
+    })
+  })
 })

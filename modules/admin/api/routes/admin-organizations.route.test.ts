@@ -310,13 +310,14 @@ describe("Admin Organizations Routes", () => {
   })
 
   describe("GET /admin/organizations — search filter", () => {
-    it("filters organizations by search query", async () => {
+    it("filters organizations by name", async () => {
       const allowedGuard = mock<
         () => Promise<{ userId: string; platformRole: "super_admin" }>
       >(async () => ({
         userId: "admin-1",
         platformRole: "super_admin" as const,
       }))
+      mockListOrganizations.mockClear()
 
       const app = new Elysia().use(
         createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
@@ -331,6 +332,56 @@ describe("Admin Organizations Routes", () => {
       // Only Acme Corp should match "acme"
       expect(body.data.organizations).toHaveLength(1)
       expect(body.data.organizations[0].id).toBe("org_1")
+      expect(mockListOrganizations).toHaveBeenCalledWith({
+        limit: 100,
+        before: undefined,
+        after: undefined,
+      })
+    })
+
+    it("filters organizations by org ID", async () => {
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
+        userId: "admin-1",
+        platformRole: "super_admin" as const,
+      }))
+
+      const app = new Elysia().use(
+        createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
+      )
+      const res = await app.handle(
+        new Request(`${BASE}/?search=org_2`, { method: "GET" })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.organizations).toHaveLength(1)
+      expect(body.data.organizations[0].id).toBe("org_2")
+      expect(body.data.organizations[0].name).toBe("Globex Inc")
+    })
+
+    it("respects limit when slicing search results", async () => {
+      const allowedGuard = mock<
+        () => Promise<{ userId: string; platformRole: "super_admin" }>
+      >(async () => ({
+        userId: "admin-1",
+        platformRole: "super_admin" as const,
+      }))
+
+      const app = new Elysia().use(
+        createAdminOrganizationsRoutes({ requireSuperAdmin: allowedGuard })
+      )
+      // Both org_1 and org_2 contain "org", but limit=1 should slice to 1
+      const res = await app.handle(
+        new Request(`${BASE}/?search=org&limit=1`, { method: "GET" })
+      )
+
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.ok).toBe(true)
+      expect(body.data.organizations).toHaveLength(1)
     })
 
     it("returns WorkOS error when listAdminOrganizations throws", async () => {
