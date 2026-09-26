@@ -67,15 +67,30 @@ describe("invoice email links use APP_URL", () => {
   })
 
   it("renders the same billed-to identity for every delivery address", () => {
-    const html = render(
+    const contactCopyHtml = render(
       <InvoicePaidEmail
         {...baseProps}
         organizationName="Acme"
         billedToEmail="payer@org.com"
       />
     )
-    expect(html).toContain("payer@org.com")
-    expect(html).not.toContain("admin@org.com")
+    const adminCopyHtml = render(
+      <InvoicePaidEmail
+        {...baseProps}
+        organizationName="Acme"
+        billedToEmail="payer@org.com"
+      />
+    )
+
+    const billedToLine = (html: string) => {
+      const match = html.match(/Billed To[\s\S]*?payer@org\.com/)
+      return match?.[0]
+    }
+
+    expect(billedToLine(contactCopyHtml)).toBeDefined()
+    expect(billedToLine(contactCopyHtml)).toBe(billedToLine(adminCopyHtml))
+    expect(contactCopyHtml).not.toContain("admin@org.com")
+    expect(adminCopyHtml).not.toContain("contact@org.com")
   })
 
   it("renders an admin notice without invoice details", () => {
