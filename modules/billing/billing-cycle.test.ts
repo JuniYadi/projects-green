@@ -8,6 +8,7 @@ import { Prisma, PrismaClient } from "@prisma/client"
 import Decimal = Prisma.Decimal
 
 import { UsageLedgerService } from "./usage-ledger.service"
+import type { InvoiceEmailService } from "@/modules/invoices/email.service"
 
 // ─── Mock WorkOS before billing-cycle import ────────────────────────────────
 const mockListOrgMemberships = mock()
@@ -29,6 +30,16 @@ mock.module("@workos-inc/authkit-nextjs", () => ({
       getUser: mockGetUser,
     },
   }),
+}))
+
+// ─── Mock resolveInvoiceBilledTo (leaf infra) before billing-cycle import ──
+const mockResolveInvoiceBilledTo = mock(async () => ({
+  organizationName: "Test Org",
+  billedToEmail: "billing-contact@example.com",
+}))
+
+mock.module("@/modules/billing/email-recipients", () => ({
+  resolveInvoiceBilledTo: mockResolveInvoiceBilledTo,
 }))
 
 // Module under test
@@ -109,6 +120,11 @@ describe("BillingCycleService", () => {
   beforeEach(() => {
     mockPrisma = createMockPrisma()
     mockUsageLedger.generateRatedUsage.mockImplementation(async () => [])
+    mockResolveInvoiceBilledTo.mockClear()
+    mockResolveInvoiceBilledTo.mockImplementation(async () => ({
+      organizationName: "Test Org",
+      billedToEmail: "billing-contact@example.com",
+    }))
   })
 
   describe("finalizeServiceInvoices", () => {
@@ -447,7 +463,9 @@ describe("BillingCycleService", () => {
       mockGetUser.mockResolvedValueOnce({ email: "admin@example.com" })
 
       const mockEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
+        sendInvoiceCreated: mock<InvoiceEmailService["sendInvoiceCreated"]>(
+          async () => {}
+        ),
       }
 
       const service = new BillingCycleService(
@@ -467,6 +485,15 @@ describe("BillingCycleService", () => {
         statuses: ["active"],
       })
       expect(mockGetUser).toHaveBeenCalledWith("user-admin-1")
+      expect(mockResolveInvoiceBilledTo).toHaveBeenCalledWith("tenant-1")
+      const [, recipientEmail, organizationId, options] =
+        mockEmailService.sendInvoiceCreated.mock.calls[0]
+      expect(organizationId).toBe("tenant-1")
+      expect(options).toEqual({
+        organizationName: "Test Org",
+        billedToEmail: "billing-contact@example.com",
+      })
+      expect(options!.billedToEmail).not.toBe(recipientEmail)
     })
 
     it("skips email when admin not found in org memberships", async () => {
@@ -599,7 +626,9 @@ describe("BillingCycleService", () => {
       mockGetUser.mockResolvedValueOnce({ email: "admin@example.com" })
 
       const mockEmailService = {
-        sendInvoiceCreated: mock(async () => {}),
+        sendInvoiceCreated: mock<InvoiceEmailService["sendInvoiceCreated"]>(
+          async () => {}
+        ),
       }
 
       const service = new BillingCycleService(
@@ -611,6 +640,15 @@ describe("BillingCycleService", () => {
 
       expect(result.finalized).toBe(1)
       expect(mockEmailService.sendInvoiceCreated).toHaveBeenCalledTimes(1)
+      expect(mockResolveInvoiceBilledTo).toHaveBeenCalledWith("tenant-1")
+      const [, recipientEmail, organizationId, options] =
+        mockEmailService.sendInvoiceCreated.mock.calls[0]
+      expect(organizationId).toBe("tenant-1")
+      expect(options).toEqual({
+        organizationName: "Test Org",
+        billedToEmail: "billing-contact@example.com",
+      })
+      expect(options!.billedToEmail).not.toBe(recipientEmail)
     })
   })
 })
