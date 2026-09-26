@@ -369,6 +369,7 @@ export const createAdminInvoiceRoutes = (
           })
 
           // Update billing account balance for PAID invoices
+          let balanceCreditFailed = false
           if (targetStatus === "PAID" && invoice.billingAccountId) {
             try {
               await prisma.billingAccount.update({
@@ -376,6 +377,7 @@ export const createAdminInvoiceRoutes = (
                 data: { balance: { increment: invoice.totalAmount } },
               })
             } catch (balErr) {
+              balanceCreditFailed = true
               console.error(
                 "[AdminInvoiceUpdate] Failed to update balance:",
                 balErr
@@ -417,7 +419,16 @@ export const createAdminInvoiceRoutes = (
           const isTopUpInvoice =
             updatedInvoice.type === "TOP_UP" || updatedInvoice.type === "TOPUP"
 
-          if (targetStatus === "PAID" && isTopUpInvoice) {
+          if (
+            targetStatus === "PAID" &&
+            isTopUpInvoice &&
+            balanceCreditFailed
+          ) {
+            console.error(
+              "[AdminInvoiceUpdate] Skipped top-up paid notice: balance credit failed",
+              { invoiceId: updatedInvoice.id }
+            )
+          } else if (targetStatus === "PAID" && isTopUpInvoice) {
             notifyTopupInvoicePaid({
               deps: routeDeps,
               invoice: updatedInvoice,
