@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, mock } from "bun:test"
 import { DailyOperationsService } from "./daily-operations.service"
 import type { DailyOperationsPrisma } from "./daily-operations.service"
 
-const count = mock(async () => 0)
+const count = mock(async (_args: Record<string, unknown>) => 0)
 const findFirst = mock(async (): Promise<{ createdAt: Date } | null> => null)
 
 const prismaMock: DailyOperationsPrisma = {
