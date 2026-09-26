@@ -3,13 +3,14 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { BillingTransactionService } from "@/modules/billing/billing-transaction.service"
 import { settleProductOrdersForInvoice } from "@/modules/billing/orders/payment-settlement"
-import { getCachedOrganization, getCachedUser } from "@/lib/workos-directory"
+import { getCachedUser } from "@/lib/workos-directory"
 import { PAYMENT_CONSTANTS } from "../constants"
 import type { InvoiceTypeValue } from "../types/payment.types"
 import {
   createInvoiceEmailService,
   type InvoiceEmailService,
 } from "@/modules/invoices/email.service"
+import { resolveInvoiceBilledTo } from "@/modules/billing/email-recipients"
 
 export class PaymentService {
   private billingTransactions: BillingTransactionService
@@ -273,11 +274,19 @@ export class PaymentService {
   /**
    * Resolve top-up invoice recipients. Admin is a fallback, not an
    * unconditional invoice recipient.
+   *
+   * `resolvedAdminEmail` lets a caller that already resolved the org admin
+   * (e.g. for its own notice logic) pass it in so we don't hit WorkOS again;
+   * omit it to resolve lazily, only when the fallback is actually needed.
    */
   private async resolveInvoiceRecipients(
     organizationId: string,
-    actorEmail?: string | null
-  ): Promise<{ recipients: Array<{ email: string }>; billedToEmail?: string }> {
+    actorEmail?: string | null,
+    resolvedAdminEmail?: string | null
+  ): Promise<{
+    recipients: Array<{ email: string }>
+    usedAdminFallback: boolean
+  }> {
     const recipients: Array<{ email: string }> = []
 
     const account = await prisma.billingAccount.findUnique({
@@ -301,7 +310,6 @@ export class PaymentService {
       }
     }
 
-    const billedToEmail = recipients[0]?.email ?? actorEmail ?? undefined
     if (
       actorEmail &&
       !recipients.some(
@@ -310,11 +318,19 @@ export class PaymentService {
     ) {
       recipients.push({ email: actorEmail })
     }
+
+    let usedAdminFallback = false
     if (recipients.length === 0) {
-      const adminEmail = await this.resolveOrgAdmin(organizationId)
-      if (adminEmail) recipients.push({ email: adminEmail })
+      const adminEmail =
+        resolvedAdminEmail !== undefined
+          ? resolvedAdminEmail
+          : await this.resolveOrgAdmin(organizationId)
+      if (adminEmail) {
+        recipients.push({ email: adminEmail })
+        usedAdminFallback = true
+      }
     }
-    return { recipients, billedToEmail }
+    return { recipients, usedAdminFallback }
   }
 
   private async resolveOrgAdmin(
@@ -366,13 +382,15 @@ export class PaymentService {
     const stored = await prisma.billingInvoice.findUnique({
       where: { id: invoice.id },
     })
-    const { recipients, billedToEmail } = await this.resolveInvoiceRecipients(
+    const { recipients } = await this.resolveInvoiceRecipients(
       organizationId,
       stored?.createdByEmail
     )
     if (recipients.length === 0) return
-    const organizationName =
-      (await getCachedOrganization(organizationId))?.name ?? organizationId
+    const { organizationName, billedToEmail } = await resolveInvoiceBilledTo(
+      organizationId,
+      stored?.createdByEmail
+    )
 
     const invoiceListItem = {
       id: invoice.id,
@@ -422,11 +440,14 @@ export class PaymentService {
       where: { id: invoice.id },
     })
     const isTopUp = stored?.type === "TOP_UP" || stored?.type === "TOPUP"
-    const { recipients, billedToEmail } = await this.resolveInvoiceRecipients(
-      organizationId,
-      isTopUp ? stored?.createdByEmail : undefined
-    )
+    const actorEmail = isTopUp ? stored?.createdByEmail : undefined
     const adminEmail = await this.resolveOrgAdmin(organizationId)
+    const { recipients, usedAdminFallback } =
+      await this.resolveInvoiceRecipients(
+        organizationId,
+        actorEmail,
+        adminEmail
+      )
     if (
       !isTopUp &&
       adminEmail &&
@@ -436,8 +457,10 @@ export class PaymentService {
     ) {
       recipients.push({ email: adminEmail })
     }
-    const organizationName =
-      (await getCachedOrganization(organizationId))?.name ?? organizationId
+    const { organizationName, billedToEmail } = await resolveInvoiceBilledTo(
+      organizationId,
+      actorEmail
+    )
 
     const invoiceData = {
       id: invoice.id,
@@ -465,15 +488,20 @@ export class PaymentService {
     if (isTopUp) {
       if (!adminEmail) {
         console.error(`[PaymentService] No org admin for top-up ${invoice.id}`)
+      } else if (usedAdminFallback) {
+        // Admin already received the invoice itself as the AC-06 fallback
+        // recipient (no billing contact, no actor email) — skip the separate
+        // notice so the admin gets exactly one email (AC-05).
       } else if (
-        adminEmail.toLowerCase() !== stored?.createdByEmail?.toLowerCase()
+        adminEmail.toLowerCase() !== (actorEmail ?? "").toLowerCase()
       ) {
         try {
           await this.emailService.sendTopupReceivedAdminNotice(
             {
               invoiceId: invoice.id,
               organizationId,
-              organizationName,
+              // ponytail: org id beats dropping the notice when name lookup fails
+              organizationName: organizationName ?? organizationId,
               actorEmail: stored?.createdByEmail ?? null,
               amount: invoiceData.totalAmount,
               currency: invoice.currency,
