@@ -1337,6 +1337,8 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
         inboundMessageId: "msg_blocked_fail_1",
       })
     ).rejects.toThrow("fallback not delivered")
+    expect(mockReleaseProcessingClaim).toHaveBeenCalled()
+    expect(mockMarkClaimDone).not.toHaveBeenCalled()
   })
 
   it("rethrows before recording a strike when the safety refusal is not delivered", async () => {
@@ -1451,5 +1453,32 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockLogStageFailure).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "PERSIST_REPLY" })
     )
+  })
+  it("does not send a blocked-word fallback while another attempt holds the claim", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        enableProfanityFilter: true,
+        customBlockedWords: ["kasar"],
+        fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      },
+    } as never)
+    mockAcquireProcessingClaim.mockResolvedValueOnce(false)
+
+    await expect(
+      processWhatsappAiBotInbound({
+        organizationId: "org_1",
+        deviceId: "dev_1",
+        contactPhone: "+62812345678",
+        inboundMessageText: "Dasar kata kasar kamu!",
+        conversationId: "conv_1",
+        inboundMessageId: "msg_blocked_race_1",
+      })
+    ).rejects.toThrow("REPLY_IN_PROGRESS")
+    expect(mockMessageService.sendMessage).not.toHaveBeenCalled()
   })
 })
