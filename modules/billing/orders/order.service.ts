@@ -21,7 +21,10 @@ import {
   type BillingFulfillmentRegistry,
 } from "./fulfillment-adapters"
 import { calculateProration } from "../proration"
-import { resolveInvoiceEmailRecipients } from "../email-recipients"
+import {
+  resolveInvoiceBilledTo,
+  resolveInvoiceEmailRecipients,
+} from "../email-recipients"
 import {
   invoiceEmailService,
   type InvoiceEmailService,
@@ -363,6 +366,8 @@ export class BillingOrderService {
               })
             : null
           const invoiceNumber = invoice?.invoiceNumber ?? invoiceId
+          const { organizationName, billedToEmail } =
+            await resolveInvoiceBilledTo(orgId)
           await Promise.allSettled(
             recipients.map((r) =>
               emailService
@@ -379,7 +384,8 @@ export class BillingOrderService {
                     dueAt: null,
                   },
                   r.email,
-                  orgId
+                  orgId,
+                  { organizationName, billedToEmail }
                 )
                 .catch((err) => {
                   console.error(
