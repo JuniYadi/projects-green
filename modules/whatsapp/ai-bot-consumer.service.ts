@@ -256,6 +256,18 @@ export async function processWhatsappAiBotInbound(
   })
   if (!contentGuard.ok) {
     if (contentGuard.reason === "MAX_CHAR_EXCEEDED") {
+      // Deliberate silence (AC-07: no reply for oversize), but never an
+      // unaccounted message: record the outcome in a structured log.
+      logger.info(
+        {
+          event: "ai_bot.inbound_silenced",
+          agentProfileId: agent.id,
+          channel: "WHATSAPP",
+          reason: contentGuard.reason,
+          inboundMessageId,
+        },
+        "AI bot deliberately silent"
+      )
       return { handled: false, reason: contentGuard.reason }
     }
     // Runs before the session lock, so it takes the same two-state claim
