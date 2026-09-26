@@ -423,22 +423,24 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
 
   it("completes full 8-step lifecycle from seed to teardown", async () => {
     // ══════════════════════════════════════════════════════════════════════════
-    // Step 1: Database template seed verification (5 official templates)
+    // Step 1: Database template seed verification (7 official templates)
     // ══════════════════════════════════════════════════════════════════════════
-    expect(OFFICIAL_APP_TEMPLATES.length).toBe(5)
+    expect(OFFICIAL_APP_TEMPLATES.length).toBe(7)
     const seedResult = await seedOfficialAppTemplates({
       prisma: mockPrisma as never,
     })
 
-    expect(seedResult.count).toBe(5)
+    expect(seedResult.count).toBe(7)
     expect(seedResult.slugs).toEqual([
       "n8n",
       "hermes",
       "9router",
+      "openclaw",
+      "omniroute",
       "umami",
       "wordpress",
     ])
-    expect(mockTemplates.length).toBe(5)
+    expect(mockTemplates.length).toBe(7)
 
     for (const tpl of mockTemplates) {
       expect(tpl.isOfficial).toBe(true)
@@ -456,7 +458,7 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
     )
     expect(listResponse.status).toBe(200)
     const publicTemplates = (await listResponse.json()) as MockAppTemplate[]
-    expect(publicTemplates.length).toBe(5)
+    expect(publicTemplates.length).toBe(7)
 
     const n8nDetailResponse = await appTemplateRoutes.handle(
       new Request("http://localhost/templates/n8n")
@@ -734,7 +736,7 @@ describe("Marketplace & Auto-Provisioning End-to-End Lifecycle", () => {
     )
     const updatedPublic =
       (await updatedPublicTemplatesResponse.json()) as MockAppTemplate[]
-    expect(updatedPublic.length).toBe(6)
+    expect(updatedPublic.length).toBe(8)
     expect(updatedPublic.some((t) => t.id === createdTemplate.id)).toBe(true)
 
     // ══════════════════════════════════════════════════════════════════════════
