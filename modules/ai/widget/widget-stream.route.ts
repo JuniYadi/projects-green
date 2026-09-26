@@ -404,7 +404,15 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
               // visitor even if persisting it fails
             }
 
-            controller.enqueue(encoder.encode(sseChunk(fallbackText)))
+            // If model text was already streamed, tell the client to replace
+            // it rather than append the fallback after a partial answer.
+            controller.enqueue(
+              encoder.encode(
+                fullAssistantText
+                  ? `data: ${JSON.stringify({ replace: fallbackText })}\n\n`
+                  : sseChunk(fallbackText)
+              )
+            )
             controller.enqueue(encoder.encode("data: [DONE]\n\n"))
           } finally {
             await releaseSessionLock(session.sessionId, lockToken)
