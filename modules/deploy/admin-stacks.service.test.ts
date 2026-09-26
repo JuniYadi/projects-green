@@ -184,6 +184,7 @@ mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
 
 const {
   listAdminStacks,
+  notSuspendedFilter,
   adminSuspendStack,
   adminResumeStack,
   processStackLifecycleJob,
@@ -280,7 +281,10 @@ describe("listAdminStacks", () => {
     await listAdminStacks({ status: "RUNNING" })
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ status: "RUNNING" }),
+        where: expect.objectContaining({
+          status: "RUNNING",
+          AND: [notSuspendedFilter],
+        }),
       })
     )
 
@@ -298,23 +302,7 @@ describe("listAdminStacks", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           metadataJson: { path: ["suspended"], equals: true },
-        }),
-      })
-    )
-
-    mockPrisma.applicationStack.findMany.mockClear()
-
-    await listAdminStacks({ status: "RUNNING" })
-    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          status: "RUNNING",
-          NOT: {
-            metadataJson: {
-              path: ["suspended"],
-              equals: true,
-            },
-          },
+          status: { not: "TERMINATED" },
         }),
       })
     )
@@ -325,6 +313,112 @@ describe("listAdminStacks", () => {
     expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: {} })
     )
+  })
+
+  it("applies notSuspendedFilter for all active statuses and excludes it for TERMINATED", async () => {
+    const activeStatuses = [
+      "RUNNING",
+      "IDLE",
+      "FAILED",
+      "QUEUED",
+      "BUILDING",
+      "DEPLOYING",
+    ]
+
+    for (const status of activeStatuses) {
+      mockPrisma.applicationStack.findMany.mockClear()
+      await listAdminStacks({ status })
+      expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status,
+            AND: [notSuspendedFilter],
+          }),
+        })
+      )
+    }
+
+    mockPrisma.applicationStack.findMany.mockClear()
+    await listAdminStacks({ status: "TERMINATED" })
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "TERMINATED",
+        }),
+      })
+    )
+    const callArgs = mockPrisma.applicationStack.findMany.mock.calls[0][0]
+    expect(callArgs.where.AND).toBeUndefined()
+  })
+
+  it("combines active status filter and search query into AND conditions", async () => {
+    await listAdminStacks({ status: "RUNNING", query: "landing" })
+
+    expect(mockPrisma.applicationStack.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: "RUNNING",
+          AND: [
+            notSuspendedFilter,
+            {
+              OR: expect.arrayContaining([
+                { slug: { contains: "landing", mode: "insensitive" } },
+                { name: { contains: "landing", mode: "insensitive" } },
+                { id: { contains: "landing", mode: "insensitive" } },
+              ]),
+            },
+          ],
+        }),
+      })
+    )
+  })
+
+  it("maps suspended stacks with active status (IDLE, FAILED, RUNNING) to STOPPED in DTO", async () => {
+    mockPrisma.applicationStack.findMany.mockImplementation(async () => [
+      {
+        ...mockStackRecord,
+        id: "stack_idle",
+        status: "IDLE",
+        metadataJson: { suspended: true },
+      },
+      {
+        ...mockStackRecord,
+        id: "stack_failed",
+        status: "FAILED",
+        metadataJson: { suspended: true },
+      },
+      {
+        ...mockStackRecord,
+        id: "stack_running",
+        status: "RUNNING",
+        metadataJson: { suspended: true },
+      },
+      {
+        ...mockStackRecord,
+        id: "stack_normal",
+        status: "RUNNING",
+        metadataJson: { suspended: false },
+      },
+      {
+        ...mockStackRecord,
+        id: "stack_no_meta",
+        status: "IDLE",
+        metadataJson: null,
+      },
+    ])
+
+    const result = await listAdminStacks()
+    expect(result.data).toHaveLength(5)
+    expect(result.data[0].status).toBe("STOPPED")
+    expect(result.data[0].suspended).toBe(true)
+    expect(result.data[1].status).toBe("STOPPED")
+    expect(result.data[1].suspended).toBe(true)
+    expect(result.data[2].status).toBe("STOPPED")
+    expect(result.data[2].suspended).toBe(true)
+    expect(result.data[3].status).toBe("RUNNING")
+    expect(result.data[3].suspended).toBe(false)
+    expect(result.data[4].status).toBe("IDLE")
+    expect(result.data[4].suspended).toBe(false)
   })
 
   it("ignores undefined and null sentinel values", async () => {

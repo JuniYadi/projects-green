@@ -1,7 +1,7 @@
 import * as jsYaml from "js-yaml"
 import { prisma } from "@/lib/prisma"
 import { getCachedOrganizations } from "@/lib/workos-directory"
-import { StackStatus, type Prisma } from "@prisma/client"
+import { StackStatus, Prisma } from "@prisma/client"
 import { releaseManagedStock } from "@/modules/deploy/app-managed-stock.service"
 import {
   resolveClusterIntegration,
@@ -67,6 +67,15 @@ export type AdminStacksListQuery = {
   status?: string
 }
 
+export const notSuspendedFilter: Prisma.ApplicationStackWhereInput = {
+  OR: [
+    { metadataJson: { equals: Prisma.DbNull } },
+    { metadataJson: { equals: Prisma.JsonNull } },
+    { metadataJson: { path: ["suspended"], equals: Prisma.AnyNull } },
+    { metadataJson: { path: ["suspended"], equals: false } },
+  ],
+}
+
 // ─── List ─────────────────────────────────────────────────────────────────────
 
 export async function listAdminStacks(params: AdminStacksListQuery = {}) {
@@ -75,6 +84,7 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
   const skip = (page - 1) * limit
 
   const where: Prisma.ApplicationStackWhereInput = {}
+  const andConditions: Prisma.ApplicationStackWhereInput[] = []
 
   const organizationId = params.organizationId?.trim()
   if (
@@ -98,26 +108,32 @@ export async function listAdminStacks(params: AdminStacksListQuery = {}) {
         equals: true,
       }
       where.status = { not: StackStatus.TERMINATED }
-    } else if (status === "RUNNING") {
-      where.status = StackStatus.RUNNING
-      where.NOT = {
-        metadataJson: {
-          path: ["suspended"],
-          equals: true,
-        },
-      }
     } else if ((Object.values(StackStatus) as string[]).includes(status)) {
       where.status = status as StackStatus
+      if (status !== StackStatus.TERMINATED) {
+        andConditions.push(notSuspendedFilter)
+      }
     }
   }
 
   const query = params.query?.trim()
   if (query && query !== "undefined" && query !== "null") {
-    where.OR = [
-      { id: { contains: query, mode: "insensitive" } },
-      { slug: { contains: query, mode: "insensitive" } },
-      { name: { contains: query, mode: "insensitive" } },
-    ]
+    const queryFilter: Prisma.ApplicationStackWhereInput = {
+      OR: [
+        { id: { contains: query, mode: "insensitive" } },
+        { slug: { contains: query, mode: "insensitive" } },
+        { name: { contains: query, mode: "insensitive" } },
+      ],
+    }
+    if (andConditions.length > 0) {
+      andConditions.push(queryFilter)
+    } else {
+      where.OR = queryFilter.OR
+    }
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions
   }
 
   const [total, stacks] = await Promise.all([
