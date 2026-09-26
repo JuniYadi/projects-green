@@ -62,18 +62,11 @@ mock.module("./emails/topup-received-admin-notice", () => ({
 }))
 
 const mockEmailLogCreate = mock(async () => ({ id: "notice-log-1" }))
-const mockEmailLogFindUnique = mock(
-  async (): Promise<{
-    id: string
-    status: string
-  } | null> => null
-)
 const mockEmailLogUpdate = mock(async () => ({}))
 mock.module("@/lib/prisma", () => ({
   prisma: {
     emailLog: {
       create: mockEmailLogCreate,
-      findUnique: mockEmailLogFindUnique,
       update: mockEmailLogUpdate,
     },
   },
@@ -98,12 +91,11 @@ describe("invoiceEmailService", () => {
     mockSendEmail.mockClear()
     mockRender.mockClear()
     mockEmailLogCreate.mockClear()
-    mockEmailLogFindUnique.mockClear()
     mockEmailLogUpdate.mockClear()
+    mockConsoleError.mockClear()
     mockSendEmail.mockImplementation(async () => {})
     mockRender.mockImplementation(async () => "<html>Test Email</html>")
     mockEmailLogCreate.mockImplementation(async () => ({ id: "notice-log-1" }))
-    mockEmailLogFindUnique.mockImplementation(async () => null)
     mockEmailLogUpdate.mockImplementation(async () => ({}))
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
@@ -453,7 +445,7 @@ describe("invoiceEmailService", () => {
       paidAt: new Date("2026-09-26T00:00:00.000Z"),
     }
 
-    it("claims the log before enqueueing, with a colon-free jobId", async () => {
+    it("claims the log with raw bodyHtml before enqueueing, with a colon-free jobId", async () => {
       await emailService.sendTopupReceivedAdminNotice(
         topupData,
         "admin@org.com"
@@ -464,12 +456,16 @@ describe("invoiceEmailService", () => {
           eventKey: "topup-admin:inv-123",
           recipientEmail: "admin@org.com",
           type: "TOPUP_RECEIVED_ADMIN_NOTICE",
+          // Stored raw (not redacted) so the sweeper can replay the exact
+          // sent payload; this template has no secrets to redact.
+          bodyHtml: "<html>Test Email</html>",
           status: "QUEUED",
         }),
       })
       expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           to: "admin@org.com",
+          html: "<html>Test Email</html>",
           emailLogId: "notice-log-1",
         }),
         { jobId: "topup-admin_inv-123" }
@@ -481,80 +477,47 @@ describe("invoiceEmailService", () => {
       expect(createOrder).toBeLessThan(sendOrder)
     })
 
-    it("does not enqueue a duplicate when the existing row is already SENT", async () => {
+    it("returns without enqueuing on a duplicate claim (P2002)", async () => {
       mockEmailLogCreate.mockRejectedValueOnce(
         new Prisma.PrismaClientKnownRequestError("Duplicate event", {
           code: "P2002",
           clientVersion: "7.10.0",
         })
       )
-      mockEmailLogFindUnique.mockResolvedValueOnce({
-        id: "notice-log-1",
-        status: "SENT",
-      })
 
       await expect(
         emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
       ).resolves.toBeUndefined()
+      // Re-enqueuing with the same jobId is a no-op BullMQ would silently
+      // ignore anyway; the sweeper owns recovery for a row not yet SENT.
       expect(mockSendEmail).not.toHaveBeenCalled()
     })
 
-    it("re-enqueues a duplicate with the same jobId and existing id when not yet SENT", async () => {
-      mockEmailLogCreate.mockRejectedValueOnce(
-        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
-          code: "P2002",
-          clientVersion: "7.10.0",
-        })
-      )
-      mockEmailLogFindUnique.mockResolvedValueOnce({
-        id: "existing-log-1",
-        status: "FAILED",
-      })
-
-      await emailService.sendTopupReceivedAdminNotice(
-        topupData,
-        "admin@org.com"
-      )
-
-      expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ emailLogId: "existing-log-1" }),
-        { jobId: "topup-admin_inv-123" }
-      )
-    })
-
-    it("leaves the claim retryable when enqueue fails", async () => {
+    it("leaves the claim row QUEUED (not FAILED) when enqueue fails, for the sweeper to recover", async () => {
       mockSendEmail.mockRejectedValueOnce(new Error("Queue unavailable"))
 
       await expect(
         emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
       ).rejects.toThrow("Queue unavailable")
 
-      expect(mockEmailLogUpdate).toHaveBeenCalledWith({
-        where: { id: "notice-log-1" },
-        data: { status: "FAILED" },
-      })
+      expect(mockEmailLogUpdate).not.toHaveBeenCalled()
+      expect(mockConsoleError).toHaveBeenCalled()
 
+      // A retry that lands on the now-existing claim row just returns
+      // without a second enqueue attempt.
       mockEmailLogCreate.mockRejectedValueOnce(
         new Prisma.PrismaClientKnownRequestError("Duplicate event", {
           code: "P2002",
           clientVersion: "7.10.0",
         })
       )
-      mockEmailLogFindUnique.mockResolvedValueOnce({
-        id: "notice-log-1",
-        status: "FAILED",
-      })
 
       await emailService.sendTopupReceivedAdminNotice(
         topupData,
         "admin@org.com"
       )
 
-      expect(mockSendEmail).toHaveBeenCalledTimes(2)
-      expect(mockSendEmail.mock.calls[1]).toEqual([
-        expect.objectContaining({ emailLogId: "notice-log-1" }),
-        { jobId: "topup-admin_inv-123" },
-      ])
+      expect(mockSendEmail).toHaveBeenCalledTimes(1)
     })
   })
 })
