@@ -616,6 +616,52 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
+  it("sends the fallback, not raw tags, when the reply is tags only and the flag is false", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        name: "CS Official Bot",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+        allowInteractiveReplies: false,
+        fallbackMessage: "Mohon coba lagi nanti.",
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      totalMessages: 0,
+    } as never)
+
+    mockGenerateText.mockResolvedValueOnce({
+      text: "[BUTTON: Beli Sekarang]\n[URL: Kunjungi Web | https://example.com/shop]",
+      usage: { totalTokens: 30, promptTokens: 10, completionTokens: 20 },
+    } as never)
+
+    await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Mau belanja dong",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_tags_only_1",
+    })
+
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Mohon coba lagi nanti." })
+    )
+    const sent = mockMessageService.sendMessage.mock.calls.map(
+      (c) => (c[0] as { message: string }).message
+    )
+    expect(
+      sent.some((m) => m.includes("[BUTTON:") || m.includes("[URL:"))
+    ).toBe(false)
+  })
+
   it("dispatches interactive payload when action tags are detected", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
