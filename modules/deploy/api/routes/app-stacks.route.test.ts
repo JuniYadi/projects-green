@@ -21,6 +21,7 @@ const mockPrisma = {
   applicationStack: {
     findMany: mock(async () => []),
     findUnique: mock(async () => null),
+    findFirst: mock(async () => null),
     update: mock(async () => null),
   },
   applicationDeployment: {
@@ -168,6 +169,7 @@ describe("appStacksRoutes", () => {
     mockWithAuth.mockClear()
     mockPrisma.applicationStack.findMany.mockClear()
     mockPrisma.applicationStack.findUnique.mockClear()
+    mockPrisma.applicationStack.findFirst.mockClear()
     mockPrisma.applicationStack.update.mockClear()
     mockPrisma.applicationDeployment.count.mockClear()
     mockPrisma.applicationDeployment.findMany.mockClear()
@@ -176,6 +178,7 @@ describe("appStacksRoutes", () => {
     mockPrisma.appHostingCluster.findFirst.mockClear()
     mockPrisma.applicationStack.findMany.mockResolvedValue([] as never)
     mockPrisma.applicationStack.findUnique.mockResolvedValue(null as never)
+    mockPrisma.applicationStack.findFirst.mockResolvedValue(null as never)
     mockPrisma.applicationStack.update.mockResolvedValue(null as never)
     mockPrisma.applicationDeployment.count.mockResolvedValue(0 as never)
     mockPrisma.applicationDeployment.findMany.mockResolvedValue([] as never)
@@ -745,6 +748,27 @@ describe("appStacksRoutes", () => {
     expect(res.status).toBe(404)
     const body = (await res.json()) as { error: string }
     expect(body.error).toBe("NOT_FOUND")
+  })
+
+  it("resolves stack by name fallback when slug does not match exactly", async () => {
+    mockPrisma.applicationStack.findUnique.mockResolvedValueOnce(null as never)
+    mockPrisma.applicationStack.findFirst.mockResolvedValueOnce({
+      id: "stack-1",
+      slug: "app-9router-test",
+      name: "9router-test",
+      status: "RUNNING",
+      deployments: [],
+    } as never)
+
+    const res = await get("/deploy/apps/9router-test")
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data: { stack: { slug: string; name: string } }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data.stack.slug).toBe("app-9router-test")
+    expect(body.data.stack.name).toBe("9router-test")
   })
 
   it("rejects unauthenticated requests", async () => {

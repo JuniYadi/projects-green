@@ -22,6 +22,15 @@ const ensureManagedDomainForStack = mock(async () => ({
 
 mock.module("@/modules/deploy/app-hosting-edge.service", () => ({
   ensureManagedDomainForStack,
+  addAllowlistEntry: mock(async () => null),
+  createDomainForStack: mock(async () => null),
+  deleteAllowlistEntry: mock(async () => null),
+  deleteDomainForStack: mock(async () => null),
+  getAllowlist: mock(async () => null),
+  listDomainsForStack: mock(async () => []),
+  updateAllowlist: mock(async () => null),
+  uploadDomainCertificate: mock(async () => null),
+  verifyDomain: mock(async () => null),
 }))
 
 // Managed stock is mocked so the route test does not require Vault or a
@@ -307,6 +316,64 @@ describe("deploySubmitRoutes /submit", () => {
 
     expect(res.status).toBe(200)
     expect(claimManagedStock).not.toHaveBeenCalled()
+  })
+
+  it("resolves unique stackSlug with app- prefix for numeric name and increments on collision", async () => {
+    ;(mockPrisma.applicationStack.findUnique as any).mockImplementation(
+      async ({
+        where,
+      }: {
+        where?: { organizationId_slug?: { slug?: string }; id?: string }
+      }) => {
+        if (where?.organizationId_slug) {
+          if (where.organizationId_slug.slug === "app-9router-test") {
+            return { id: "existing-1", slug: "app-9router-test" }
+          }
+          return null
+        }
+        return {
+          ...stackRecord,
+          clusterId: null,
+          envVarsJson: [],
+        }
+      }
+    )
+
+    ;(mockPrisma.applicationStack.create as any).mockImplementation(
+      async ({ data }: { data?: Record<string, unknown> }) => ({
+        ...stackRecord,
+        clusterId: null,
+        envVarsJson: [],
+        ...data,
+      })
+    )
+
+    ;(mockPrisma.applicationStack.update as any).mockImplementation(
+      async ({ data }: { data?: Record<string, unknown> }) => ({
+        ...stackRecord,
+        clusterId: null,
+        envVarsJson: [],
+        ...data,
+      })
+    )
+
+    const res = await submit({
+      sourceType: "MANAGED_TEMPLATE",
+      templateId: "9router",
+      name: "9router-test",
+      resourcePlanId: "payg",
+      billingMode: "PAYG",
+      cpu: 250,
+      memory: 256,
+    })
+
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as {
+      ok: boolean
+      data?: { stackSlug: string }
+    }
+    expect(body.ok).toBe(true)
+    expect(body.data?.stackSlug).toBe("app-9router-test-2")
   })
 
   it("threads deploymentType and additionalPorts from a DB template blueprint into stack metadataJson", async () => {

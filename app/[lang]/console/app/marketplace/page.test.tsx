@@ -312,4 +312,37 @@ describe("Console Marketplace Hub & Template Cards", () => {
       "/en/console/app/platform/my-n8n-app?tab=deployments"
     )
   })
+
+  it("redirects to payload.data.stackSlug when backend returns a modified RFC slug", async () => {
+    const { eden } = await import("@/lib/eden")
+    // @ts-expect-error test mock
+    eden.api.deploy.submit.post.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        data: {
+          stackId: "stack-9router",
+          stackSlug: "app-9router-test",
+        },
+      },
+    })
+
+    const user = userEvent.setup()
+    const { getAllByRole, getByText } = render(<ConsoleMarketplacePage />)
+
+    const deployButtons = getAllByRole("button", { name: /^deploy$/i })
+    await user.click(deployButtons[0])
+
+    const appNameInput = document.querySelector(
+      "#app-name-input"
+    ) as HTMLInputElement
+    await user.clear(appNameInput)
+    await user.type(appNameInput, "9router-test")
+
+    const submitDeployBtn = getByText("Confirm & Deploy Instantly")
+    await user.click(submitDeployBtn)
+
+    expect(mockPush).toHaveBeenCalledWith(
+      "/en/console/app/platform/app-9router-test?tab=deployments"
+    )
+  })
 })

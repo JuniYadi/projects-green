@@ -207,7 +207,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      const stack = await prisma.applicationStack.findUnique({
+      let stack = await prisma.applicationStack.findUnique({
         where: {
           organizationId_slug: {
             organizationId: auth.organizationId,
@@ -216,6 +216,16 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         },
         select: { id: true },
       })
+
+      if (!stack) {
+        stack = await prisma.applicationStack.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            name: params.slug,
+          },
+          select: { id: true },
+        })
+      }
 
       if (!stack) {
         set.status = 404
@@ -283,7 +293,7 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
         }
       }
 
-      const stack = await prisma.applicationStack.findUnique({
+      let stack = await prisma.applicationStack.findUnique({
         where: {
           organizationId_slug: {
             organizationId: auth.organizationId,
@@ -309,6 +319,33 @@ export const appStacksRoutes = new Elysia({ prefix: "/deploy/apps" })
           },
         },
       })
+
+      if (!stack) {
+        stack = await prisma.applicationStack.findFirst({
+          where: {
+            organizationId: auth.organizationId,
+            name: params.slug,
+          },
+          include: {
+            template: true,
+            cluster: {
+              include: {
+                region: true,
+              },
+            },
+            deployments: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              include: {
+                events: {
+                  orderBy: { createdAt: "asc" },
+                  select: { type: true, createdAt: true },
+                },
+              },
+            },
+          },
+        })
+      }
 
       if (!stack) {
         set.status = 404

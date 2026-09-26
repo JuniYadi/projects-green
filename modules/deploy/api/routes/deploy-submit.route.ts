@@ -30,6 +30,7 @@ import {
 } from "../../catalog-plan-utils"
 import type { CatalogPlan } from "@/lib/billing-client"
 import { appTemplateBlueprintSchema } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import { slugify, resolveUniqueStackSlug } from "../../deploy-slug"
 interface BlueprintRuntimeConfig {
   runtime?: {
     defaultPort?: number
@@ -61,19 +62,6 @@ interface BlueprintRuntimeConfig {
  * The wizard then monitors the returned deployId via the real
  * monitoring/pipeline endpoints — there is no simulated success path.
  */
-
-const slugify = (value: string): string => {
-  let slug = value
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .replace(/-{2,}/g, "-")
-  if (!slug) return "app"
-  if (/^[0-9]/.test(slug)) {
-    slug = `app-${slug}`
-  }
-  return slug
-}
 
 const envVarSchema = t.Object({
   key: t.String(),
@@ -168,7 +156,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       repositoryConnectionId = null
       name = body.name?.trim() || managedTemplate.name
-      slug = slugify(name)
+      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
 
       if (body.templateId) {
         const dbTemplate = await prisma.appTemplate.findFirst({
@@ -274,7 +262,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
       }
       repositoryConnectionId = null
       name = body.name?.trim() || template.name
-      slug = slugify(name)
+      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
       resolvedTemplateDefaultPort = template.build.defaultPort ?? null
     } else if (sourceType === "PUBLIC") {
       const parsed = parsePublicGitUrl(body.publicSourceUrl ?? "")
@@ -292,7 +280,7 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         body.publicSourceRef?.trim() || body.branchName?.trim() || "main"
       const derivedName = parsed.host.split(".")[0] || "app"
       name = body.name?.trim() || derivedName
-      slug = slugify(name)
+      slug = await resolveUniqueStackSlug(prisma, auth.organizationId, name)
     } else {
       // Resolve the repository connection for GitHub deploys.
       const rawRepoId = String(body.repositoryId)
@@ -326,8 +314,19 @@ export const deploySubmitRoutes = new Elysia({ prefix: "/deploy" }).post(
         }
       }
       repositoryConnectionId = connection.id
-      slug = slugify(connection.repoName || body.name || "app")
-      name = connection.repoName || body.name || slug
+      name = connection.repoName || body.name || "app"
+
+      const existingForConnection = await prisma.applicationStack.findFirst({
+        where: {
+          organizationId: auth.organizationId,
+          repositoryConnectionId: connection.id,
+        },
+        select: { id: true, slug: true },
+      })
+
+      slug = existingForConnection
+        ? existingForConnection.slug
+        : await resolveUniqueStackSlug(prisma, auth.organizationId, name)
     }
 
     const rawResourcePlanId = body.resourcePlanId?.trim() || null
