@@ -370,6 +370,11 @@ export async function processWhatsappAiBotInbound(
 
     // Daily limit, checked against the count *before* this message so a
     // blocked message never needs an increment/rollback dance.
+    // session.totalMessages counts customer messages only: the increment
+    // below is its single writer on this path. Messages here are logged via
+    // prisma.aiChatMessage.create, never recordMessage (which would also
+    // increment it); the only recordMessage caller, recordSafetyViolation,
+    // returns above before this guard.
     const dailyGuard = checkInboundAgentGuardrails({
       text: cleanText,
       maxCharLength: agent.maxCharLength,
