@@ -21,6 +21,15 @@ export function getAiBotTimeoutMs(): number {
 }
 
 /**
+ * Session lock TTL (seconds) that outlives a full model call, so the lock
+ * cannot expire mid-generation and let a concurrent message in. The lock
+ * is released explicitly on every path; the TTL only matters on a crash.
+ */
+export function getAiBotLockTtlSeconds(): number {
+  return Math.ceil(getAiBotTimeoutMs() / 1000) + 30
+}
+
+/**
  * Detects whether an error thrown by an AI SDK call represents a timeout
  * (or an aborted call), as opposed to a generic provider/model failure.
  */
