@@ -329,6 +329,7 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
 
     expect(res.handled).toBe(true)
     expect(res.reason).toBe("BLOCKED_WORD_TRIGGERED")
+    expect(mockMarkClaimDone).toHaveBeenCalled() // retry won't resend
     expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         message: "Mohon gunakan bahasa yang sopan.",
@@ -1109,6 +1110,9 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockMarkClaimDone).not.toHaveBeenCalled()
     expect(mockReleaseProcessingClaim).toHaveBeenCalled()
     expect(mockMessageService.sendMessage).toHaveBeenCalledTimes(2)
+    // nothing persisted, so the retry doesn't duplicate the customer row
+    expect(mockPrisma.aiChatMessage.create).not.toHaveBeenCalled()
+    expect(mockPrisma.aiChatSession.update).not.toHaveBeenCalled()
     expect(mockLogStageFailure).toHaveBeenCalledWith(
       expect.objectContaining({ stage: "SEND" })
     )
@@ -1370,5 +1374,82 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     expect(mockRecordSafetyViolation).not.toHaveBeenCalled()
     expect(mockMarkClaimDone).not.toHaveBeenCalled()
     expect(mockReleaseProcessingClaim).toHaveBeenCalled()
+  })
+  it("sends the generic fallback when generation fails and the agent has no fallbackMessage", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+        fallbackMessage: null,
+      },
+    } as never)
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      sessionId: "wa_conv_1",
+      totalMessages: 0,
+    } as never)
+    mockGenerateText.mockRejectedValueOnce(new Error("provider 500"))
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_no_fallback_1",
+    })
+
+    expect(res.reason).toBe("GENERATION_FAILED")
+    expect(mockMessageService.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini.",
+      })
+    )
+    // delivered outcome → the customer turn is recorded once
+    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalledTimes(1)
+    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ role: "user", sessionId: "wa_conv_1" }),
+    })
+  })
+
+  it("logs PERSIST_REPLY and still resolves when the strike write fails after the refusal", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        maxCharLength: 500,
+        customBlockedWords: [],
+        strikeEscalation: true,
+        fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+      },
+    } as never)
+    mockInspectAgentPromptSafety.mockReturnValueOnce({
+      ok: false,
+      reason: "PROFANITY",
+      refusalMessage: "Mohon gunakan bahasa yang sopan.",
+    } as never)
+    mockRecordSafetyViolation.mockRejectedValueOnce(new Error("db down"))
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812000004",
+      inboundMessageText: "kata kasar apapun",
+      conversationId: "conv_strike_fail",
+      inboundMessageId: "msg_strike_fail_1",
+    })
+
+    expect(res.reason).toBe("SAFETY_VIOLATION_PROFANITY")
+    expect(mockLogStageFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: "PERSIST_REPLY" })
+    )
   })
 })
