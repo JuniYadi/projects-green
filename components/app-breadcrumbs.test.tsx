@@ -164,4 +164,70 @@ describe("buildAppBreadcrumbItems", () => {
       { label: "Custom Reports", href: undefined },
     ])
   })
+
+  it("maps platform route to Platforms label and platforms list href", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/console/app/platform/sample-app",
+        rootSegment: "console",
+      })
+    ).toEqual([
+      { label: "Console", href: "/en/console" },
+      { label: "App", href: "/en/console/app" },
+      { label: "Platforms", href: "/en/console/app/platforms" },
+      { label: "Sample App", href: undefined },
+    ])
+
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/console/app/platform/sample-app/terminal",
+        rootSegment: "console",
+      })
+    ).toEqual([
+      { label: "Console", href: "/en/console" },
+      { label: "App", href: "/en/console/app" },
+      { label: "Platforms", href: "/en/console/app/platforms" },
+      { label: "Sample App", href: "/en/console/app/platform/sample-app" },
+      { label: "Terminal", href: undefined },
+    ])
+  })
+
+  it("maps intermediate AI Studio route to console ai agents landing page", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/console/ai/knowledge",
+        rootSegment: "console",
+      })
+    ).toEqual([
+      { label: "Console", href: "/en/console" },
+      { label: "AI Studio", href: "/en/console/ai/agents" },
+      { label: "Knowledge Base", href: undefined },
+    ])
+  })
+
+  it("maps catalog products and portal system routes to valid endpoints", () => {
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/portal/billing/catalog/products/new",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "Billing", href: "/en/portal/billing" },
+      { label: "Catalog", href: "/en/portal/billing/catalog" },
+      { label: "Products", href: "/en/portal/billing/catalog" },
+      { label: "New Product", href: undefined },
+    ])
+
+    expect(
+      buildAppBreadcrumbItems({
+        pathname: "/en/portal/system/cronjobs",
+        rootSegment: "portal",
+      })
+    ).toEqual([
+      { label: "Portal", href: "/en/portal" },
+      { label: "System", href: "/en/portal/system/cronjobs" },
+      { label: "CronJobs & Workers", href: undefined },
+    ])
+  })
 })

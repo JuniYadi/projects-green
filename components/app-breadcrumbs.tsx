@@ -27,46 +27,126 @@ type AppBreadcrumbsProps = {
   rootSegment: AppRootSegment
 }
 const SEGMENT_LABELS: Record<string, string> = {
-  analytics: "Analytics",
+  addons: "Add-ons",
+  admin: "Admin",
   agents: "AI Agents",
   ai: "AI Studio",
-  knowledge: "Knowledge Base",
-  providers: "BYOK Providers",
-  admin: "Admin",
   alerts: "Alerts",
+  analytics: "Analytics",
+  "api-keys": "API Keys",
   app: "App",
+  "audit-logs": "Audit Logs",
   billing: "Billing",
+  broadcasts: "Broadcasts",
+  builder: "Template Builder",
+  catalog: "Catalog",
+  catalogs: "Catalogs",
+  clusters: "Clusters",
+  connections: "Connections",
   console: "Console",
+  contacts: "Contacts",
+  credentials: "Credentials",
+  cronjobs: "CronJobs & Workers",
+  "delivery-logs": "Delivery Logs",
+  deploy: "Deploy",
+  deployments: "Deployments",
+  detector: "Detector",
   devices: "Devices",
   documentations: "Documentation",
+  events: "Events",
+  invitations: "Invitations",
   invoices: "Invoices",
+  knowledge: "Knowledge Base",
+  manage: "Manage",
+  "managed-stocks": "Managed Stocks",
+  marketplace: "Marketplace",
+  members: "Members",
+  messages: "Messages",
+  "meta-apps": "Meta Apps",
+  metrics: "Metrics",
+  "my-templates": "My Templates",
   new: "New",
   organization: "Organization",
   organizations: "Organizations",
+  ownership: "Ownership",
   packages: "Packages",
-  portal: "Portal",
   "payment-methods": "Payment Methods",
+  platform: "Platforms",
+  platforms: "Platforms",
+  portal: "Portal",
+  pricing: "Pricing",
+  products: "Products",
+  profiles: "Profiles",
+  promotions: "Promotions",
+  providers: "BYOK Providers",
   regions: "Regions",
   servers: "Servers",
-  pricing: "Pricing",
   settings: "Settings",
   "ssh-keys": "SSH Keys",
+  stacks: "Stacks",
+  storage: "Storage Audit",
   subscriptions: "Subscriptions",
   "support-tickets": "Support Tickets",
+  system: "System",
   templates: "Templates",
+  terminal: "Terminal",
+  topup: "Top Up",
+  transactions: "Transactions",
+  vouchers: "Vouchers",
   vpn: "VPN",
+  "webhook-logs": "Webhook Logs",
   whatsapp: "WhatsApp",
+  workflows: "Workflows",
 }
 
 const DETAIL_LABELS_BY_PARENT: Record<string, string> = {
+  addons: "Addon Detail",
+  agents: "Agent Detail",
+  broadcasts: "Broadcast Detail",
+  catalogs: "Catalog Detail",
+  clusters: "Cluster Detail",
+  devices: "Device Detail",
   invoices: "Invoice Detail",
+  messages: "Message Journey",
   organizations: "Organization Detail",
+  orgs: "Organization Detail",
+  platform: "Platform Detail",
+  platforms: "Platform Detail",
+  products: "Product Detail",
+  promotions: "Promotion Detail",
+  servers: "Server Detail",
+  services: "Service Detail",
+  subscriptions: "Subscription Detail",
   "support-tickets": "Support Ticket Detail",
   templates: "Template Detail",
-  messages: "Message Journey",
+  webhooks: "Webhook Detail",
+  workflows: "Workflow Detail",
 }
+
 const NEW_LABELS_BY_PARENT: Record<string, string> = {
+  addons: "New Add-on",
+  agents: "New Agent",
+  broadcasts: "New Broadcast",
+  credentials: "New Credential",
+  devices: "New Device",
+  products: "New Product",
+  promotions: "New Promotion",
+  "support-tickets": "New Ticket",
   templates: "New Template",
+  workflows: "New Workflow",
+}
+
+const RELATIVE_HREF_OVERRIDES: Record<string, string> = {
+  "console/app/platform": "console/app/platforms",
+  "console/ai": "console/ai/agents",
+  "console/billing/payments": "console/billing",
+  "portal/billing/catalog/products": "portal/billing/catalog",
+  "portal/settings": "portal/settings/emails",
+  "portal/system": "portal/system/cronjobs",
+  "portal/app/events": "portal/app",
+  "portal/billing/org": "portal/orgs",
+  admin: "portal/admin",
+  "admin/whatsapp": "portal/whatsapp/devices",
 }
 
 export function buildAppBreadcrumbItems({
@@ -87,10 +167,10 @@ export function buildAppBreadcrumbItems({
   return breadcrumbSegments.map((segment, index) => {
     const isLast = index === breadcrumbSegments.length - 1
     const parentSegment = breadcrumbSegments[index - 1]
-    const hrefSegments = [
-      ...baseSegments,
-      ...breadcrumbSegments.slice(0, index + 1),
-    ]
+    const relativeSubpath = breadcrumbSegments.slice(0, index + 1).join("/")
+    const targetSubpath =
+      RELATIVE_HREF_OVERRIDES[relativeSubpath] ?? relativeSubpath
+    const hrefSegments = [...baseSegments, ...targetSubpath.split("/")]
 
     return {
       label: labelForSegment(
@@ -119,12 +199,10 @@ export function AppBreadcrumbs({ rootSegment }: AppBreadcrumbsProps) {
               <BreadcrumbItem
                 className={index === 0 ? "hidden md:block" : undefined}
               >
-                {isLast ? (
+                {isLast || !item.href ? (
                   <BreadcrumbPage>{item.label}</BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink href={item.href ?? "#"}>
-                    {item.label}
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href={item.href}>{item.label}</BreadcrumbLink>
                 )}
               </BreadcrumbItem>
               {!isLast ? (
