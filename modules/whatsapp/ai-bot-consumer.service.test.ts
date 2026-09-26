@@ -1006,6 +1006,44 @@ describe("modules/whatsapp/ai-bot-consumer.service", () => {
     )
   })
 
+  it("counts one customer message per turn towards the daily limit", async () => {
+    mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
+      id: "bind_1",
+      isActive: true,
+      agentProfile: {
+        id: "agent_1",
+        isActive: true,
+        systemPrompt: "Anda adalah CS toko.",
+        maxCharLength: 500,
+        dailyUserLimit: 20,
+      },
+    } as never)
+
+    mockPrisma.aiChatSession.findUnique.mockResolvedValueOnce({
+      id: "sess_1",
+      sessionId: "wa_conv_1",
+      totalMessages: 0,
+    } as never)
+
+    const res = await processWhatsappAiBotInbound({
+      organizationId: "org_1",
+      deviceId: "dev_1",
+      contactPhone: "+62812345678",
+      inboundMessageText: "Halo admin toko",
+      conversationId: "conv_1",
+      inboundMessageId: "msg_count_once_1",
+    })
+
+    expect(res.responseMessageId).toBeDefined()
+    // user + assistant rows are logged, but only one counter increment
+    expect(mockPrisma.aiChatMessage.create).toHaveBeenCalledTimes(2)
+    const counterUpdates = mockPrisma.aiChatSession.update.mock.calls.filter(
+      ([args]) => args.data?.totalMessages
+    )
+    expect(counterUpdates).toHaveLength(1)
+    expect(counterUpdates[0]?.[0].data.totalMessages).toEqual({ increment: 1 })
+  })
+
   it("does not send a fallback when bookkeeping fails after the reply was sent", async () => {
     mockPrisma.aiChannelBinding.findFirst.mockResolvedValueOnce({
       id: "bind_1",
