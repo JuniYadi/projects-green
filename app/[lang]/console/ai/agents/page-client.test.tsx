@@ -74,11 +74,11 @@ describe("AiAgentsPageClient", () => {
   it("renders a truthful status and one primary action", async () => {
     const { findByText, findByTestId } = render(<AiAgentsPageClient />)
     expect(await findByText("Tanya CS")).toBeDefined()
-    expect(await findByText("Siap dihubungkan")).toBeDefined()
+    expect(await findByText("Belum ada channel")).toBeDefined()
     const card = await findByTestId("agent-card-agent_1")
     expect(card.textContent).not.toContain("Bantu pelanggan")
     expect(card.textContent).not.toContain("Aktif")
-    expect(card.querySelectorAll("button").length).toBe(2)
+    expect(card.querySelectorAll("button").length).toBe(3)
   })
 
   it("filters agents by search", async () => {
