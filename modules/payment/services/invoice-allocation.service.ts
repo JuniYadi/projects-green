@@ -354,6 +354,7 @@ export class InvoiceAllocationService {
           status: "COMPLETED",
           amount: new Prisma.Decimal(amount),
           completedAt: new Date(),
+          referenceId: reference ?? pendingAllocation.referenceId,
         },
       })
     } else {

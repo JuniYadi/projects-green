@@ -29,15 +29,19 @@ export const createWebhookRoutes = () =>
 
       const { merchantOrderId, resultCode, reference, amount } = params
 
+      const attemptKey = reference
+        ? `${merchantOrderId}:${reference}`
+        : merchantOrderId
+
       const existingLog = await prisma.paymentAuditLog.findFirst({
         where: {
-          entityId: merchantOrderId,
+          entityId: attemptKey,
           action: "DUITKU_CALLBACK_RECEIVED",
         },
       })
 
       if (existingLog) {
-        console.log(`Callback already processed for ${merchantOrderId}`)
+        console.log(`Callback already processed for ${attemptKey}`)
         return { ok: true, message: "Already processed" }
       }
 
@@ -45,7 +49,7 @@ export const createWebhookRoutes = () =>
         data: {
           action: "DUITKU_CALLBACK_RECEIVED",
           entityType: "Invoice",
-          entityId: merchantOrderId,
+          entityId: attemptKey,
           actorId: "SYSTEM",
           details: params,
         },
@@ -132,7 +136,7 @@ export const createWebhookRoutes = () =>
             data: {
               action: "DUITKU_PAYMENT_COMPLETED",
               entityType: "Invoice",
-              entityId: merchantOrderId,
+              entityId: attemptKey,
               actorId: "SYSTEM",
               details: { amount, reference },
             },

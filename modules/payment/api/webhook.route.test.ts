@@ -101,7 +101,7 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(body).toEqual({ ok: true })
     expect(mockVerifyCallback).toHaveBeenCalledTimes(1)
     expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
-      where: { entityId: "inv-123", action: "DUITKU_CALLBACK_RECEIVED" },
+      where: { entityId: "inv-123:REF001", action: "DUITKU_CALLBACK_RECEIVED" },
     })
     expect(mockPaymentAuditLog.create).toHaveBeenCalledTimes(2)
     expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
@@ -123,7 +123,7 @@ describe("Webhook Route - Duitku Callback", () => {
   it("skips processing on duplicate callback", async () => {
     mockPaymentAuditLog.findFirst.mockResolvedValueOnce({
       id: "log-123",
-      entityId: "inv-123",
+      entityId: "inv-123:REF001",
       action: "DUITKU_CALLBACK_RECEIVED",
     })
 
@@ -133,6 +133,22 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(res.status).toBe(200)
     expect(body).toEqual({ ok: true, message: "Already processed" })
     expect(mockCreditBalance).not.toHaveBeenCalled()
+  })
+
+  it("allows subsequent attempts for the same invoice to process when reference differs", async () => {
+    mockPaymentAuditLog.findFirst.mockResolvedValueOnce(null)
+
+    const res = await postCallback({
+      ...DEFAULT_BODY,
+      reference: "REF002",
+    })
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(body).toEqual({ ok: true })
+    expect(mockPaymentAuditLog.findFirst).toHaveBeenCalledWith({
+      where: { entityId: "inv-123:REF002", action: "DUITKU_CALLBACK_RECEIVED" },
+    })
   })
 
   it("does not credit balance when resultCode is not 00", async () => {

@@ -311,7 +311,98 @@ describe("InvoiceAllocationService", () => {
       expect(result.status).toBe("PAID")
       expect(mockUpdateAllocation).toHaveBeenCalledWith({
         where: { id: "alloc-pending" },
-        data: expect.objectContaining({ status: "COMPLETED" }),
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          referenceId: "duitku_ref_1",
+        }),
+      })
+      expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
+    })
+
+    it("handles multiple sequential callbacks for different attempts on same invoice", async () => {
+      // First attempt callback arrives: only partial payment
+      mockFindUniqueInvoice.mockResolvedValueOnce({
+        id: "inv-1",
+        totalAmount: new Decimal(100000),
+        currency: "IDR",
+        billingAccountId: "acc-1",
+        billingAccount: { organizationId: "org-1" },
+        allocations: [
+          {
+            id: "alloc-attempt-1",
+            status: "PENDING",
+            referenceId: "ref-attempt-1",
+          },
+          {
+            id: "alloc-attempt-2",
+            status: "PENDING",
+            referenceId: "ref-attempt-2",
+          },
+        ],
+      })
+      mockUpdateAllocation.mockResolvedValueOnce({})
+      mockFindManyAllocation.mockResolvedValueOnce([
+        { amount: new Decimal(50000), status: "COMPLETED" },
+      ])
+      mockUpdateInvoice.mockResolvedValueOnce({})
+
+      const result1 = await service.processGatewayCallback({
+        merchantOrderId: "inv-1",
+        reference: "ref-attempt-1",
+        amount: 50000,
+      })
+
+      expect(result1.ok).toBe(true)
+      expect(result1.status).toBe("PARTIALLY_PAID")
+      expect(mockUpdateAllocation).toHaveBeenCalledWith({
+        where: { id: "alloc-attempt-1" },
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          referenceId: "ref-attempt-1",
+        }),
+      })
+
+      // Later attempt callback arrives for the same invoice: completes remaining due
+      mockFindUniqueInvoice.mockResolvedValueOnce({
+        id: "inv-1",
+        totalAmount: new Decimal(100000),
+        currency: "IDR",
+        billingAccountId: "acc-1",
+        billingAccount: { organizationId: "org-1" },
+        allocations: [
+          {
+            id: "alloc-attempt-1",
+            status: "COMPLETED",
+            referenceId: "ref-attempt-1",
+          },
+          {
+            id: "alloc-attempt-2",
+            status: "PENDING",
+            referenceId: "ref-attempt-2",
+          },
+        ],
+      })
+      mockUpdateAllocation.mockResolvedValueOnce({})
+      mockFindManyAllocation.mockResolvedValueOnce([
+        { amount: new Decimal(50000), status: "COMPLETED" },
+        { amount: new Decimal(50000), status: "COMPLETED" },
+      ])
+      mockUpdateInvoice.mockResolvedValueOnce({})
+
+      const result2 = await service.processGatewayCallback({
+        merchantOrderId: "inv-1",
+        reference: "ref-attempt-2",
+        amount: 50000,
+      })
+
+      expect(result2.ok).toBe(true)
+      expect(result2.status).toBe("PAID")
+      expect(mockUpdateAllocation).toHaveBeenCalledWith({
+        where: { id: "alloc-attempt-2" },
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          referenceId: "ref-attempt-2",
+        }),
       })
       expect(mockSettleOrders).toHaveBeenCalledWith("inv-1")
     })

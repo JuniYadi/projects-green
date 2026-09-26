@@ -61,6 +61,9 @@ const mockPrisma = {
   paymentCurrency: {
     findUnique: mock(() => Promise.resolve(null)),
   },
+  billingInvoicePaymentAllocation: {
+    create: mock(() => Promise.resolve({})),
+  },
 }
 const mockFulfillOrder = mock(() => Promise.resolve())
 
@@ -404,7 +407,7 @@ describe("PaymentService", () => {
       )
       expect(mockPrisma.billingInvoice.update).toHaveBeenCalledWith({
         where: { id: "inv-123" },
-        data: { status: "PAID" },
+        data: expect.objectContaining({ status: "PAID" }),
       })
     })
 

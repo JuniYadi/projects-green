@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test"
 
 import {
+  toInvoicePaymentAllocationDTO,
   toPaymentConfirmationDTO,
   toPaymentInfoDTO,
 } from "@/modules/invoices/invoices.dto"
@@ -343,5 +344,65 @@ describe("toPaymentInfoDTO", () => {
         (e) => e.type === "payment_approved" || e.type === "payment_rejected"
       )
     ).toHaveLength(0)
+  })
+})
+
+describe("toInvoicePaymentAllocationDTO", () => {
+  it("maps allocation fields correctly", () => {
+    const allocation: NonNullable<InvoiceDetailRecord["allocations"]>[number] =
+      {
+        id: "alloc-1",
+        invoiceId: "inv-1",
+        billingAccountId: "ba-1",
+        amount: 50000,
+        currency: "IDR",
+        source: "GATEWAY_DUITKU",
+        status: "COMPLETED",
+        referenceId: "duitku-ref-1",
+        idempotencyKey: null,
+        metadataJson: null,
+        createdAt: new Date("2026-06-01T10:00:00Z"),
+        updatedAt: new Date("2026-06-01T10:00:00Z"),
+        completedAt: new Date("2026-06-01T10:05:00Z"),
+      }
+
+    const dto = toInvoicePaymentAllocationDTO(allocation)
+
+    expect(dto).toEqual({
+      id: "alloc-1",
+      invoiceId: "inv-1",
+      billingAccountId: "ba-1",
+      amount: 50000,
+      currency: "IDR",
+      source: "GATEWAY_DUITKU",
+      status: "COMPLETED",
+      referenceId: "duitku-ref-1",
+      createdAt: "2026-06-01T10:00:00.000Z",
+      completedAt: "2026-06-01T10:05:00.000Z",
+    })
+  })
+
+  it("handles null referenceId and completedAt", () => {
+    const allocation: NonNullable<InvoiceDetailRecord["allocations"]>[number] =
+      {
+        id: "alloc-2",
+        invoiceId: "inv-1",
+        billingAccountId: "ba-1",
+        amount: 30000,
+        currency: "IDR",
+        source: "BALANCE",
+        status: "PENDING",
+        referenceId: null,
+        idempotencyKey: null,
+        metadataJson: null,
+        createdAt: new Date("2026-06-01T10:00:00Z"),
+        updatedAt: new Date("2026-06-01T10:00:00Z"),
+        completedAt: null,
+      }
+
+    const dto = toInvoicePaymentAllocationDTO(allocation)
+
+    expect(dto.referenceId).toBeNull()
+    expect(dto.completedAt).toBeNull()
   })
 })
