@@ -1,4 +1,9 @@
 import { prisma as defaultPrisma } from "@/lib/prisma"
+import {
+  actionableDeploymentWhere,
+  getActionableDeploymentIds,
+} from "@/modules/deploy/actionable-deployments"
+import type { Prisma } from "@prisma/client"
 
 import {
   toDTO,
@@ -18,9 +23,15 @@ type QueueDelegate = {
   findFirst?: (args: Record<string, unknown>) => Promise<QueueRecord | null>
 }
 
+type DeploymentDelegate = QueueDelegate & {
+  findMany: (
+    args: Prisma.ApplicationDeploymentFindManyArgs
+  ) => Promise<Array<{ id: string }>>
+}
+
 export type DailyOperationsPrisma = {
   paymentConfirmation: QueueDelegate
-  applicationDeployment: QueueDelegate
+  applicationDeployment: DeploymentDelegate
   supportTicket: QueueDelegate
   billingInvoice: QueueDelegate
   billingOrder: QueueDelegate
@@ -125,6 +136,10 @@ export class DailyOperationsService {
     const now = options.now ?? new Date()
     const since = new Date(now.getTime() - DAY_IN_MILLISECONDS)
 
+    const deploymentIds = await getActionableDeploymentIds(
+      this.prisma.applicationDeployment
+    ).catch(() => null)
+
     const definitions: Array<{
       name: keyof DailyOperationsSnapshot
       delegate: QueueDelegate
@@ -153,8 +168,8 @@ export class DailyOperationsService {
           priority: "HIGH",
           href: "/portal/app/deployments?status=FAILED,BUILDING",
           where: {
-            status: { in: ["FAILED", "BUILDING"] },
-            stack: { status: { not: "TERMINATED" } },
+            ...actionableDeploymentWhere,
+            id: { in: deploymentIds ?? [] },
           },
           activeMessage: "{count} deployment perlu ditindaklanjuti",
           cleanMessage: "Antrean bersih",
@@ -232,7 +247,24 @@ export class DailyOperationsService {
     const entries = await Promise.all(
       definitions.map(
         async ({ name, delegate, definition }) =>
-          [name, await createMetric(delegate, definition, now)] as const
+          [
+            name,
+            name === "failedDeployments" && deploymentIds === null
+              ? {
+                  key: definition.key,
+                  label: definition.label,
+                  priority: definition.priority,
+                  count: 0,
+                  href: definition.href,
+                  oldestAt: null,
+                  ageMinutes: null,
+                  available: false,
+                  message:
+                    definition.unavailableMessage ??
+                    "Antrean tidak dapat dimuat",
+                }
+              : await createMetric(delegate, definition, now),
+          ] as const
       )
     )
     const metrics = Object.fromEntries(entries) as Record<

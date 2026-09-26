@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
+import type { Prisma } from "@prisma/client"
 
 import { DailyOperationsService } from "./daily-operations.service"
 import type { DailyOperationsPrisma } from "./daily-operations.service"
 
 const count = mock(async (_args: Record<string, unknown>) => 0)
 const findFirst = mock(async (): Promise<{ createdAt: Date } | null> => null)
+const findMany = mock(
+  async (_args: Prisma.ApplicationDeploymentFindManyArgs) => [{ id: "dep-1" }]
+)
 
 const prismaMock: DailyOperationsPrisma = {
   paymentConfirmation: { count, findFirst },
-  applicationDeployment: { count, findFirst },
+  applicationDeployment: { count, findFirst, findMany },
   supportTicket: { count, findFirst },
   billingInvoice: { count, findFirst },
   billingOrder: { count, findFirst },
@@ -18,8 +22,10 @@ describe("DailyOperationsService", () => {
   beforeEach(() => {
     count.mockReset()
     findFirst.mockReset()
+    findMany.mockClear()
     count.mockResolvedValue(0)
     findFirst.mockResolvedValue(null)
+    findMany.mockResolvedValue([{ id: "dep-1" }])
   })
 
   it("returns prioritized queue metrics and clean messages", async () => {
@@ -53,7 +59,14 @@ describe("DailyOperationsService", () => {
       where: {
         status: { in: ["FAILED", "BUILDING"] },
         stack: { status: { not: "TERMINATED" } },
+        id: { in: ["dep-1"] },
       },
+    })
+    expect(findMany).toHaveBeenCalledWith({
+      distinct: ["stackId"],
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      where: { stack: { status: { not: "TERMINATED" } } },
+      select: { id: true },
     })
     expect(result.overdueInvoices.count).toBe(4)
     expect(result.newOrders.count).toBe(5)
@@ -71,6 +84,30 @@ describe("DailyOperationsService", () => {
     expect(result.paymentsAwaitingConfirmation.count).toBe(0)
     expect(result.paymentsAwaitingConfirmation.available).toBe(false)
     expect(result.overdueInvoices.available).toBe(true)
+  })
+
+  it("marks deployments unavailable when latest-deployment lookup fails", async () => {
+    findMany.mockRejectedValueOnce(new Error("deployment database unavailable"))
+
+    const result = await new DailyOperationsService(prismaMock).getOverview()
+
+    expect(result.failedDeployments.available).toBe(false)
+    expect(result.failedDeployments.count).toBe(0)
+  })
+
+  it("excludes superseded deployments when the latest IDs are empty", async () => {
+    findMany.mockResolvedValueOnce([])
+
+    const result = await new DailyOperationsService(prismaMock).getOverview()
+
+    expect(result.failedDeployments.count).toBe(0)
+    expect(count.mock.calls[1][0]).toEqual({
+      where: {
+        status: { in: ["FAILED", "BUILDING"] },
+        stack: { status: { not: "TERMINATED" } },
+        id: { in: [] },
+      },
+    })
   })
 
   it("calculates oldest age in minutes and reports clean queues", async () => {
