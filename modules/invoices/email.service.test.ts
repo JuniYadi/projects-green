@@ -12,13 +12,17 @@ mock.module("@/lib/email-log", () => ({
   redactEmailHtml: (html: string) => html,
 }))
 
-const mockSendEmail = mock(async () => {})
+const mockSendEmail = mock(
+  async (_data?: unknown, _opts?: { jobId?: string }) => {}
+)
 
 mock.module("@/lib/queue/email", () => ({
   sendEmail: mockSendEmail,
 }))
 
-const mockRender = mock(async () => "<html><body>Test Email</body></html>")
+const mockRender = mock(
+  async (_element?: unknown) => "<html><body>Test Email</body></html>"
+)
 const passthrough = ({ children }: { children?: unknown }) => children
 mock.module("react-email", () => ({
   render: mockRender,
@@ -58,10 +62,20 @@ mock.module("./emails/topup-received-admin-notice", () => ({
 }))
 
 const mockEmailLogCreate = mock(async () => ({ id: "notice-log-1" }))
-const mockEmailLogDelete = mock(async () => ({}))
+const mockEmailLogFindUnique = mock(
+  async (): Promise<{
+    id: string
+    status: string
+  } | null> => null
+)
+const mockEmailLogUpdate = mock(async () => ({}))
 mock.module("@/lib/prisma", () => ({
   prisma: {
-    emailLog: { create: mockEmailLogCreate, delete: mockEmailLogDelete },
+    emailLog: {
+      create: mockEmailLogCreate,
+      findUnique: mockEmailLogFindUnique,
+      update: mockEmailLogUpdate,
+    },
   },
 }))
 
@@ -84,10 +98,13 @@ describe("invoiceEmailService", () => {
     mockSendEmail.mockClear()
     mockRender.mockClear()
     mockEmailLogCreate.mockClear()
-    mockEmailLogDelete.mockClear()
+    mockEmailLogFindUnique.mockClear()
+    mockEmailLogUpdate.mockClear()
     mockSendEmail.mockImplementation(async () => {})
     mockRender.mockImplementation(async () => "<html>Test Email</html>")
     mockEmailLogCreate.mockImplementation(async () => ({ id: "notice-log-1" }))
+    mockEmailLogFindUnique.mockImplementation(async () => null)
+    mockEmailLogUpdate.mockImplementation(async () => ({}))
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
     process.env.EMAIL_FROM = "Billing <billing@test.com>"
@@ -117,6 +134,22 @@ describe("invoiceEmailService", () => {
       await emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
 
       expect(mockRender).toHaveBeenCalled()
+    })
+
+    it("renders Billed To from options, never the positional recipient", async () => {
+      await emailService.sendInvoiceCreated(
+        mockInvoice,
+        "recipient@example.com",
+        "org-123",
+        { organizationName: "Acme Corp", billedToEmail: "billing@acme.com" }
+      )
+
+      const [element] = mockRender.mock.calls[0] as [
+        { props: Record<string, unknown> },
+      ]
+      expect(element.props.billedToEmail).toBe("billing@acme.com")
+      expect(element.props.billedToEmail).not.toBe("recipient@example.com")
+      expect(element.props.organizationName).toBe("Acme Corp")
     })
   })
 
@@ -165,6 +198,22 @@ describe("invoiceEmailService", () => {
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
       )
+    })
+
+    it("renders Billed To from options, never the positional recipient", async () => {
+      await emailService.sendInvoicePaid(
+        paidInvoice,
+        "recipient@example.com",
+        "org-123",
+        { organizationName: "Acme Corp", billedToEmail: "billing@acme.com" }
+      )
+
+      const [element] = mockRender.mock.calls[0] as [
+        { props: Record<string, unknown> },
+      ]
+      expect(element.props.billedToEmail).toBe("billing@acme.com")
+      expect(element.props.billedToEmail).not.toBe("recipient@example.com")
+      expect(element.props.organizationName).toBe("Acme Corp")
     })
   })
 
@@ -392,8 +441,8 @@ describe("invoiceEmailService", () => {
     })
   })
 
-  it("claims an admin notice once per invoice and sends using that log", async () => {
-    const data = {
+  describe("sendTopupReceivedAdminNotice", () => {
+    const topupData = {
       invoiceId: "inv-123",
       organizationId: "org-123",
       organizationName: "Acme",
@@ -403,50 +452,109 @@ describe("invoiceEmailService", () => {
       paymentMethod: "VA",
       paidAt: new Date("2026-09-26T00:00:00.000Z"),
     }
-    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
-    expect(mockEmailLogCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        eventKey: "topup-admin:inv-123",
-        recipientEmail: "admin@org.com",
-        type: "TOPUP_RECEIVED_ADMIN_NOTICE",
-      }),
-    })
-    expect(mockSendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "admin@org.com",
-        emailLogId: "notice-log-1",
-      })
-    )
 
-    mockEmailLogCreate.mockRejectedValueOnce(
-      new Prisma.PrismaClientKnownRequestError("Duplicate event", {
-        code: "P2002",
-        clientVersion: "7.10.0",
-      })
-    )
-    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
-    expect(mockSendEmail).toHaveBeenCalledTimes(1)
-  })
+    it("claims the log before enqueueing, with a colon-free jobId", async () => {
+      await emailService.sendTopupReceivedAdminNotice(
+        topupData,
+        "admin@org.com"
+      )
 
-  it("releases a notice claim if queueing fails so it can be retried", async () => {
-    const data = {
-      invoiceId: "inv-123",
-      organizationId: "org-123",
-      organizationName: "Acme",
-      actorEmail: "payer@org.com",
-      amount: 50000,
-      currency: "IDR",
-      paymentMethod: "VA",
-      paidAt: new Date("2026-09-26T00:00:00.000Z"),
-    }
-    mockSendEmail.mockRejectedValueOnce(new Error("Queue unavailable"))
-    await expect(
-      emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
-    ).rejects.toThrow("Queue unavailable")
-    expect(mockEmailLogDelete).toHaveBeenCalledWith({
-      where: { id: "notice-log-1" },
+      expect(mockEmailLogCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          eventKey: "topup-admin:inv-123",
+          recipientEmail: "admin@org.com",
+          type: "TOPUP_RECEIVED_ADMIN_NOTICE",
+          status: "QUEUED",
+        }),
+      })
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "admin@org.com",
+          emailLogId: "notice-log-1",
+        }),
+        { jobId: "topup-admin_inv-123" }
+      )
+      expect(mockSendEmail.mock.calls[0][1]!.jobId).not.toContain(":")
+
+      const createOrder = mockEmailLogCreate.mock.invocationCallOrder[0]
+      const sendOrder = mockSendEmail.mock.invocationCallOrder[0]
+      expect(createOrder).toBeLessThan(sendOrder)
     })
-    await emailService.sendTopupReceivedAdminNotice(data, "admin@org.com")
-    expect(mockSendEmail).toHaveBeenCalledTimes(2)
+
+    it("does not enqueue a duplicate when the existing row is already SENT", async () => {
+      mockEmailLogCreate.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+          code: "P2002",
+          clientVersion: "7.10.0",
+        })
+      )
+      mockEmailLogFindUnique.mockResolvedValueOnce({
+        id: "notice-log-1",
+        status: "SENT",
+      })
+
+      await expect(
+        emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
+      ).resolves.toBeUndefined()
+      expect(mockSendEmail).not.toHaveBeenCalled()
+    })
+
+    it("re-enqueues a duplicate with the same jobId and existing id when not yet SENT", async () => {
+      mockEmailLogCreate.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+          code: "P2002",
+          clientVersion: "7.10.0",
+        })
+      )
+      mockEmailLogFindUnique.mockResolvedValueOnce({
+        id: "existing-log-1",
+        status: "FAILED",
+      })
+
+      await emailService.sendTopupReceivedAdminNotice(
+        topupData,
+        "admin@org.com"
+      )
+
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ emailLogId: "existing-log-1" }),
+        { jobId: "topup-admin_inv-123" }
+      )
+    })
+
+    it("leaves the claim retryable when enqueue fails", async () => {
+      mockSendEmail.mockRejectedValueOnce(new Error("Queue unavailable"))
+
+      await expect(
+        emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
+      ).rejects.toThrow("Queue unavailable")
+
+      expect(mockEmailLogUpdate).toHaveBeenCalledWith({
+        where: { id: "notice-log-1" },
+        data: { status: "FAILED" },
+      })
+
+      mockEmailLogCreate.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+          code: "P2002",
+          clientVersion: "7.10.0",
+        })
+      )
+      mockEmailLogFindUnique.mockResolvedValueOnce({
+        id: "notice-log-1",
+        status: "FAILED",
+      })
+
+      await emailService.sendTopupReceivedAdminNotice(
+        topupData,
+        "admin@org.com"
+      )
+
+      expect(mockSendEmail).toHaveBeenCalledTimes(2)
+      expect(mockSendEmail.mock.calls[1]).toEqual([
+        expect.objectContaining({ emailLogId: "notice-log-1" }),
+        { jobId: "topup-admin_inv-123" },
+      ])
+    })
   })
 })
