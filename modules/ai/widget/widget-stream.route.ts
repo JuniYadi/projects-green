@@ -33,6 +33,24 @@ const widgetStreamSchema = z.object({
 
 export type WidgetStreamBody = z.infer<typeof widgetStreamSchema>
 
+const SSE_HEADERS = {
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache",
+  Connection: "keep-alive",
+  "X-Accel-Buffering": "no",
+}
+
+function sseChunk(text: string) {
+  return `data: ${JSON.stringify({ chunk: text })}\n\n`
+}
+
+// A one-chunk SSE reply (refusal or fallback) followed by [DONE].
+function sseTextResponse(text: string) {
+  return new Response(sseChunk(text) + "data: [DONE]\n\n", {
+    headers: SSE_HEADERS,
+  })
+}
+
 export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
   const runStreamText = deps.streamTextFn || streamText
 
@@ -164,20 +182,53 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         }
       }
 
-      // 5. Sliding window memory + build tools
-      const history = await getSlidingWindowMessages(session.id, 10)
-      const tools = await buildAgentTools({
-        organizationId: agent.organizationId || "",
-        agentProfileId: agent.id,
-        sessionId: session.sessionId,
-      })
+      const fallbackText =
+        agent.fallbackMessage ||
+        "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
 
+      // Any failure after the lock is held and before the stream starts
+      // (context load, provider resolution) gets the same treatment as a
+      // generation failure: stage log, fallback reply, lock released.
+      const failBeforeStream = async (stage: string, error: unknown) => {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId: session.sessionId,
+          channel: "WEB_LIVECHAT",
+          stage,
+          error,
+        })
+        try {
+          await recordMessage({
+            sessionId: session.sessionId,
+            role: "assistant",
+            content: fallbackText,
+          })
+        } catch {
+          // best-effort — the fallback still reaches the visitor
+        }
+        await releaseSessionLock(session.sessionId, lockToken)
+        return sseTextResponse(fallbackText)
+      }
+
+      // 5. Sliding window memory + build tools
       // 6. Record user message
-      await recordMessage({
-        sessionId: session.sessionId,
-        role: "user",
-        content: message,
-      })
+      let history: Awaited<ReturnType<typeof getSlidingWindowMessages>>
+      let tools: Awaited<ReturnType<typeof buildAgentTools>>
+      try {
+        history = await getSlidingWindowMessages(session.id, 10)
+        tools = await buildAgentTools({
+          organizationId: agent.organizationId || "",
+          agentProfileId: agent.id,
+          sessionId: session.sessionId,
+        })
+        await recordMessage({
+          sessionId: session.sessionId,
+          role: "user",
+          content: message,
+        })
+      } catch (error) {
+        return failBeforeStream("CONTEXT_LOAD", error)
+      }
 
       // 6b. Agent prompt-safety check (injection/profanity/oversize) via the
       // dedicated ai-agent-guardrails safety check (AC-09) — separate from
@@ -196,49 +247,46 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
           safetyCheck.refusalMessage ||
           "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
 
-        await recordMessage({
-          sessionId: session.sessionId,
-          role: "assistant",
-          content: refusalText,
-        })
+        try {
+          await recordMessage({
+            sessionId: session.sessionId,
+            role: "assistant",
+            content: refusalText,
+          })
 
-        if (agent.strikeEscalation) {
-          await recordSessionStrike(
-            session.sessionId,
-            safetyCheck.reason ?? "PROFANITY"
-          )
+          if (agent.strikeEscalation) {
+            await recordSessionStrike(
+              session.sessionId,
+              safetyCheck.reason ?? "PROFANITY"
+            )
+          }
+        } catch (error) {
+          // The refusal still goes out; only the bookkeeping failed.
+          logStageFailure({
+            agentProfileId: agent.id,
+            sessionId: session.sessionId,
+            channel: "WEB_LIVECHAT",
+            stage: "PERSIST_REPLY",
+            error,
+          })
         }
 
         await releaseSessionLock(session.sessionId, lockToken)
 
-        const encoder = new TextEncoder()
-        const refusalStream = new ReadableStream({
-          start(controller) {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ chunk: refusalText })}\n\n`
-              )
-            )
-            controller.enqueue(encoder.encode("data: [DONE]\n\n"))
-            controller.close()
-          },
-        })
-
-        return new Response(refusalStream, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-            "X-Accel-Buffering": "no",
-          },
-        })
+        return sseTextResponse(refusalText)
       }
 
       // 7. Resolve Language Model
-      const providerConfig = await resolveAiProviderConfig({
-        organizationId: agent.organizationId,
-      })
-      const model = createAiLanguageModel(providerConfig)
+      let providerConfig: Awaited<ReturnType<typeof resolveAiProviderConfig>>
+      let model: ReturnType<typeof createAiLanguageModel>
+      try {
+        providerConfig = await resolveAiProviderConfig({
+          organizationId: agent.organizationId,
+        })
+        model = createAiLanguageModel(providerConfig)
+      } catch (error) {
+        return failBeforeStream("PROVIDER_RESOLUTION", error)
+      }
 
       const systemPrompt = [
         agent.systemPrompt || "Anda adalah asisten AI toko resmi.",
@@ -270,28 +318,34 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
 
             for await (const chunk of aiStream.textStream) {
               fullAssistantText += chunk
-              const sseEvent = `data: ${JSON.stringify({ chunk })}\n\n`
-              controller.enqueue(encoder.encode(sseEvent))
+              controller.enqueue(encoder.encode(sseChunk(chunk)))
             }
 
             // End of stream marker
             controller.enqueue(encoder.encode("data: [DONE]\n\n"))
 
-            // Record assistant message tokens
-            await recordMessage({
-              sessionId: session.sessionId,
-              role: "assistant",
-              content: fullAssistantText,
-              modelName: providerConfig.defaultModel,
-            })
+            // The reply is already delivered; a persistence failure is only
+            // logged, never answered with a second (fallback) reply.
+            try {
+              await recordMessage({
+                sessionId: session.sessionId,
+                role: "assistant",
+                content: fullAssistantText,
+                modelName: providerConfig.defaultModel,
+              })
+            } catch (error) {
+              logStageFailure({
+                agentProfileId: agent.id,
+                sessionId: session.sessionId,
+                channel: "WEB_LIVECHAT",
+                stage: "PERSIST_REPLY",
+                error,
+              })
+            }
           } catch (err: unknown) {
             // Never surface a raw {error} event to the visitor — stream the
             // agent's fallback as a normal chunk instead (AC-03), whether
             // this was a timeout (AC-02) or any other model/stream failure.
-            const fallbackText =
-              agent.fallbackMessage ||
-              "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
-
             logStageFailure({
               agentProfileId: agent.id,
               sessionId: session.sessionId,
@@ -311,11 +365,7 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
               // visitor even if persisting it fails
             }
 
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ chunk: fallbackText })}\n\n`
-              )
-            )
+            controller.enqueue(encoder.encode(sseChunk(fallbackText)))
             controller.enqueue(encoder.encode("data: [DONE]\n\n"))
           } finally {
             await releaseSessionLock(session.sessionId, lockToken)
@@ -324,14 +374,7 @@ export function createPublicAiWidgetRoutes(deps: StreamDependencies = {}) {
         },
       })
 
-      return new Response(readableStream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-          "X-Accel-Buffering": "no",
-        },
-      })
+      return new Response(readableStream, { headers: SSE_HEADERS })
     }
   )
 }
