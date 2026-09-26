@@ -1,8 +1,7 @@
-import type { KeyboardEvent, MouseEvent } from "react"
 import Link from "next/link"
 import { DotsThree, Trash, WhatsappLogo } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,37 +148,18 @@ export function AgentListItem({
 }: Props) {
   const archived = agent.status === "ARCHIVED"
   const toneClass = avatarTones[hashToIndex(agent.name, avatarTones.length)]
-
-  function stop(event: MouseEvent) {
-    event.stopPropagation()
-  }
-
-  function openAgent() {
-    onPrimaryAction(agent)
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.target !== event.currentTarget) return
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      openAgent()
-    }
-  }
+  const canvasHref =
+    `/${lang}/console/ai/agents/${agent.id}/canvas?` +
+    `agentProfileId=${agent.id}&agentProfileName=` +
+    encodeURIComponent(agent.name)
 
   return (
     <Card
       data-testid={`agent-card-${agent.id}`}
-      role="button"
-      tabIndex={0}
-      onClick={openAgent}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        "cursor-pointer border-border focus-visible:outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring"
-      )}
+      className="relative border-border"
     >
-      <CardHeader className="flex-row items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex items-start justify-between gap-4 px-(--card-spacing)">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
             className={cn(
               "inline-flex shrink-0 rounded-full border-2 p-0.5",
@@ -205,16 +185,13 @@ export function AgentListItem({
             ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="relative z-10 flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
             aria-label={copy.actions.delete}
             className="text-muted-foreground hover:text-destructive"
-            onClick={(event) => {
-              stop(event)
-              onDelete(agent)
-            }}
+            onClick={() => onDelete(agent)}
           >
             <Trash size={18} />
           </Button>
@@ -224,29 +201,16 @@ export function AgentListItem({
                 variant="ghost"
                 size="icon"
                 aria-label={copy.actions.more}
-                onClick={stop}
               >
                 <DotsThree size={20} weight="bold" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-52"
-              onClick={stop}
-            >
+            <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onSelect={() => onEdit(agent)}>
                 {copy.actions.edit}
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link
-                  href={
-                    `/${lang}/console/ai/agents/${agent.id}/canvas?` +
-                    `agentProfileId=${agent.id}&agentProfileName=` +
-                    encodeURIComponent(agent.name)
-                  }
-                >
-                  {copy.actions.canvas}
-                </Link>
+                <Link href={canvasHref}>{copy.actions.canvas}</Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => onAdvancedAction(agent, "simulator")}
@@ -289,7 +253,7 @@ export function AgentListItem({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </CardHeader>
+      </div>
       <CardContent className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <span
@@ -310,16 +274,22 @@ export function AgentListItem({
           {actionNeededStatuses.has(agent.operationalStatus) ? (
             <Button
               size="sm"
-              onClick={(event) => {
-                stop(event)
-                onPrimaryAction(agent)
-              }}
+              className="relative z-10"
+              onClick={() => onPrimaryAction(agent)}
             >
               {primaryLabel(agent, copy)}
             </Button>
           ) : null}
         </div>
       </CardContent>
+      <Link
+        href={canvasHref}
+        aria-label={agent.name}
+        className={cn(
+          "absolute inset-0 rounded-[inherit]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        )}
+      />
     </Card>
   )
 }
