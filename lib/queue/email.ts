@@ -32,6 +32,18 @@ export class EmailJob extends BaseJob {
   static async handle(job: { data: EmailJobData }): Promise<void> {
     const { to, subject, html, from } = job.data
     const emailLogId = job.data.emailLogId
+
+    // The sweeper may re-enqueue a row whose original job is still queued
+    // behind a worker backlog. If that original job already sent, this one
+    // is a no-op — bounds duplicate sends to at most one per row.
+    if (emailLogId) {
+      const existing = await prisma.emailLog.findUnique({
+        where: { id: emailLogId },
+        select: { status: true },
+      })
+      if (existing?.status === "SENT") return
+    }
+
     const transporter = createTransporter()
     const fromAddress = from ?? process.env.EMAIL_FROM ?? "noreply@yourapp.com"
 
