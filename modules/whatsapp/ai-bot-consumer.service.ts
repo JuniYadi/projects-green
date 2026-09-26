@@ -1,17 +1,29 @@
 import { generateText, stepCountIs, type ModelMessage } from "ai"
 
+import { logger, logStageFailure } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
+import { claimProcessedEvent } from "@/lib/whatsapp/idempotency-repository"
+import {
+  getAiBotTimeoutMs,
+  isAiBotTimeoutError,
+} from "@/modules/ai/ai-bot-timeout"
 import {
   resolveAiProviderConfig,
   createAiLanguageModel,
 } from "@/modules/ai/ai-provider.factory"
 import { searchHybridKnowledge } from "@/modules/ai/ai-rag.service"
+import { checkInboundAgentGuardrails } from "@/modules/ai/agents/ai-agent-inbound-guard"
+import {
+  inspectAgentPromptSafety,
+  recordSafetyViolation,
+} from "@/modules/ai/agents/ai-agent-guardrails"
 import {
   acquireSessionLock,
   getSlidingWindowMessages,
   releaseSessionLock,
 } from "@/modules/ai/agents/ai-agent-session.service"
 import { buildAgentTools } from "@/modules/ai/agents/ai-agent-tools"
+import { checkActiveBan } from "@/modules/docs/docs.guard"
 import {
   buildInteractivePayload,
   parseInteractiveButtons,
@@ -61,6 +73,52 @@ export const VISION_FALLBACK_TEXT =
   "untuk dibantu CS kami:"
 
 /**
+ * Generic Indonesian fallback shown when the model returns no usable text
+ * and the agent has no `fallbackMessage` configured. Reused by the widget
+ * (`widget-stream.route.ts`) and the simulator so all three bot paths show
+ * the same wording when they have nothing better to say.
+ */
+export const GENERIC_AI_FALLBACK_MESSAGE =
+  "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
+
+/**
+ * Attempts one best-effort fallback send after a stage has already failed
+ * and been logged. A second failure here is itself logged but never
+ * thrown, so a broken fallback send can't crash the caller a second time.
+ */
+async function sendBestEffortFallback(params: {
+  organizationId: string
+  phoneNumber: string
+  deviceId: string
+  replyToMessageId: string
+  fallbackMessage: string | null | undefined
+  agentProfileId: string
+  sessionId?: string
+  stage: string
+}): Promise<void> {
+  if (!params.fallbackMessage) {
+    return
+  }
+  try {
+    await messageService.sendMessage({
+      organizationId: params.organizationId,
+      phoneNumber: params.phoneNumber,
+      message: params.fallbackMessage,
+      deviceId: params.deviceId,
+      replyToMessageId: params.replyToMessageId,
+    })
+  } catch (fallbackError) {
+    logStageFailure({
+      agentProfileId: params.agentProfileId,
+      sessionId: params.sessionId,
+      channel: "WHATSAPP",
+      stage: `${params.stage}_FALLBACK`,
+      error: fallbackError,
+    })
+  }
+}
+
+/**
  * Handles an inbound WhatsApp text message through the tenant's AI Agent
  * Profile (if bound and active).
  * Executes autonomous tool calling (RAG, tenant REST APIs, slot filling),
@@ -80,18 +138,40 @@ export async function processWhatsappAiBotInbound(
     mediaType,
   } = options
 
+  // 0. Silently drop messages from a banned customer (org-scoped, platform-
+  // wide bans still apply). Runs before any other lookup so a banned
+  // customer costs no extra query beyond the ban check itself.
+  const banInfo = await checkActiveBan({
+    organizationId,
+    customerPhone: contactPhone,
+  })
+  if (banInfo.isBanned) {
+    logger.warn(
+      {
+        event: "ai_bot.customer_banned",
+        channel: "WHATSAPP",
+        organizationId,
+        customerPhone: contactPhone,
+        banType: banInfo.banType,
+        reason: banInfo.reason,
+      },
+      "AI bot dropped message from banned customer"
+    )
+    return { handled: true, reason: "CUSTOMER_BANNED" }
+  }
+
   const trimmedText = inboundMessageText.trim()
   const isImage = Boolean(
     mediaUrl &&
-      (!mediaType ||
-        mediaType.startsWith("image") ||
-        mediaType === "image" ||
-        mediaUrl.includes("image"))
+    (!mediaType ||
+      mediaType.startsWith("image") ||
+      mediaType === "image" ||
+      mediaUrl.includes("image"))
   )
   const isPdf = Boolean(
     mediaType === "application/pdf" ||
-      mediaType === "pdf" ||
-      (mediaUrl && mediaUrl.toLowerCase().endsWith(".pdf"))
+    mediaType === "pdf" ||
+    (mediaUrl && mediaUrl.toLowerCase().endsWith(".pdf"))
   )
 
   let cleanText = trimmedText
@@ -124,34 +204,35 @@ export async function processWhatsappAiBotInbound(
 
   const agent = binding.agentProfile
 
-  // 2. Multi-Vector Guardrails / Profanity & Char limits
-  const maxChar = agent.maxCharLength || 800
-  if (cleanText.length > maxChar) {
-    return {
-      handled: false,
-      reason: "MAX_CHAR_EXCEEDED",
+  // 2. Multi-Vector Guardrails / Profanity & Char limits. Runs before any
+  // session lookup (via the shared modules/ai/agents/ai-agent-inbound-guard
+  // helper, also used by the widget) so a rejected message never creates an
+  // AiChatSession row — the daily-limit branch is checked separately below,
+  // once a session (and its message count) exists.
+  const contentGuard = checkInboundAgentGuardrails({
+    text: cleanText,
+    maxCharLength: agent.maxCharLength,
+    enableProfanityFilter: agent.enableProfanityFilter,
+    customBlockedWords: agent.customBlockedWords,
+    fallbackMessage: agent.fallbackMessage,
+  })
+  if (!contentGuard.ok) {
+    if (contentGuard.reason === "MAX_CHAR_EXCEEDED") {
+      return { handled: false, reason: contentGuard.reason }
     }
-  }
-
-  if (agent.enableProfanityFilter && agent.customBlockedWords?.length) {
-    const isBlocked = agent.customBlockedWords.some((word: string) =>
-      cleanText.toLowerCase().includes(word.toLowerCase().trim())
-    )
-    if (isBlocked) {
-      if (agent.fallbackMessage) {
-        await messageService.sendMessage({
-          organizationId,
-          phoneNumber: contactPhone,
-          message: agent.fallbackMessage,
-          deviceId,
-          replyToMessageId: inboundMessageId,
-        })
-      }
-      return {
-        handled: true,
-        reason: "BLOCKED_WORD_TRIGGERED",
-        agentProfileId: agent.id,
-      }
+    await sendBestEffortFallback({
+      organizationId,
+      phoneNumber: contactPhone,
+      deviceId,
+      replyToMessageId: inboundMessageId,
+      fallbackMessage: contentGuard.replyMessage,
+      agentProfileId: agent.id,
+      stage: contentGuard.reason,
+    })
+    return {
+      handled: true,
+      reason: contentGuard.reason,
+      agentProfileId: agent.id,
     }
   }
 
@@ -167,6 +248,20 @@ export async function processWhatsappAiBotInbound(
   }
 
   try {
+    // Claim this inbound message's reply before any LLM/send call, so a
+    // BullMQ retry of the same wamid (per AC-01) can never send a second
+    // reply for it, even after a mid-pipeline crash.
+    const claimedReply = await claimProcessedEvent(
+      `wa:bot-reply:${inboundMessageId}`
+    )
+    if (!claimedReply) {
+      return {
+        handled: true,
+        reason: "DUPLICATE_REPLY_CLAIMED",
+        agentProfileId: agent.id,
+      }
+    }
+
     let session = await prisma.aiChatSession.findUnique({
       where: { sessionId },
     })
@@ -183,35 +278,81 @@ export async function processWhatsappAiBotInbound(
       })
     }
 
-    // Increment message count atomically and check limit
-    const updatedSession = await prisma.aiChatSession.update({
-      where: { id: session.id },
-      data: { totalMessages: { increment: 1 } },
+    // Agent prompt-safety check (injection/profanity/oversize) + strike
+    // escalation (AC-09). Runs after the session exists (recordSafetyViolation
+    // needs session.sessionId) but before the daily-limit count below, using
+    // the dedicated ai-agent-guardrails safety check — separate from AC-07's
+    // char-limit/blocked-word helper already run above. Escalation is
+    // restricted to a PHONE-only, org-scoped ban (banScope: "PHONE_ONLY") so
+    // one abusive customer never bans the whole organization.
+    const safetyCheck = inspectAgentPromptSafety(cleanText, {
+      maxChars: agent.maxCharLength,
+      customBlockedWords: agent.customBlockedWords,
     })
-
-    const dailyLimit =
-      binding.customDailyUserLimit ?? agent.dailyUserLimit ?? 30
-    if (updatedSession.totalMessages > dailyLimit) {
-      // Rollback the increment
-      await prisma.aiChatSession.update({
-        where: { id: session.id },
-        data: { totalMessages: { decrement: 1 } },
+    if (!safetyCheck.ok) {
+      const safetyReason = safetyCheck.reason ?? "PROFANITY"
+      await sendBestEffortFallback({
+        organizationId,
+        phoneNumber: contactPhone,
+        deviceId,
+        replyToMessageId: inboundMessageId,
+        fallbackMessage: safetyCheck.refusalMessage,
+        agentProfileId: agent.id,
+        sessionId,
+        stage: `SAFETY_${safetyReason}`,
       })
-      if (agent.fallbackMessage) {
-        await messageService.sendMessage({
-          organizationId,
-          phoneNumber: contactPhone,
-          message: agent.fallbackMessage,
-          deviceId,
-          replyToMessageId: inboundMessageId,
-        })
-      }
+      await recordSafetyViolation({
+        sessionId: session.sessionId,
+        organizationId,
+        userId: null,
+        customerPhone: contactPhone,
+        ipAddress: null,
+        content: cleanText,
+        reason: safetyReason,
+        enableStrikeEscalation: agent.strikeEscalation,
+        banScope: "PHONE_ONLY",
+      })
       return {
         handled: true,
-        reason: "DAILY_LIMIT_REACHED",
+        reason: `SAFETY_VIOLATION_${safetyReason}`,
         agentProfileId: agent.id,
       }
     }
+
+    // Daily limit, checked against the count *before* this message so a
+    // blocked message never needs an increment/rollback dance.
+    const dailyGuard = checkInboundAgentGuardrails({
+      text: cleanText,
+      maxCharLength: agent.maxCharLength,
+      enableProfanityFilter: agent.enableProfanityFilter,
+      customBlockedWords: agent.customBlockedWords,
+      fallbackMessage: agent.fallbackMessage,
+      dailyUserLimit: binding.customDailyUserLimit ?? agent.dailyUserLimit,
+      currentMessageCount: session.totalMessages,
+    })
+    if (!dailyGuard.ok) {
+      await sendBestEffortFallback({
+        organizationId,
+        phoneNumber: contactPhone,
+        deviceId,
+        replyToMessageId: inboundMessageId,
+        fallbackMessage: dailyGuard.replyMessage,
+        agentProfileId: agent.id,
+        sessionId,
+        stage: dailyGuard.reason,
+      })
+      return {
+        handled: true,
+        reason: dailyGuard.reason,
+        agentProfileId: agent.id,
+      }
+    }
+
+    // Guard passed — count this message towards the daily limit.
+    await prisma.aiChatSession.update({
+      where: { id: session.id },
+      data: { totalMessages: { increment: 1 } },
+    })
 
     // 4. Universal AI Model Resolution (BYOK via Vault or Managed)
     let model
@@ -224,16 +365,23 @@ export async function processWhatsappAiBotInbound(
       resolvedModelName = providerConfig.defaultModel || ""
       model = createAiLanguageModel(providerConfig)
     } catch (error) {
-      console.error("[whatsapp-ai-bot] Failed to resolve AI model:", error)
-      if (agent.fallbackMessage) {
-        await messageService.sendMessage({
-          organizationId,
-          phoneNumber: contactPhone,
-          message: agent.fallbackMessage,
-          deviceId,
-          replyToMessageId: inboundMessageId,
-        })
-      }
+      logStageFailure({
+        agentProfileId: agent.id,
+        sessionId,
+        channel: "WHATSAPP",
+        stage: "PROVIDER_RESOLUTION",
+        error,
+      })
+      await sendBestEffortFallback({
+        organizationId,
+        phoneNumber: contactPhone,
+        deviceId,
+        replyToMessageId: inboundMessageId,
+        fallbackMessage: agent.fallbackMessage,
+        agentProfileId: agent.id,
+        sessionId,
+        stage: "PROVIDER_RESOLUTION",
+      })
       return {
         handled: true,
         reason: "AI_PROVIDER_ERROR",
@@ -290,10 +438,7 @@ export async function processWhatsappAiBotInbound(
     // Construct inbound message content (multimodal or text)
     type MessageContent =
       | string
-      | Array<
-          | { type: "text"; text: string }
-          | { type: "image"; image: URL }
-        >
+      | Array<{ type: "text"; text: string } | { type: "image"; image: URL }>
 
     let userMessageContent: MessageContent = cleanText
     if (isImage && mediaUrl) {
@@ -364,9 +509,10 @@ export async function processWhatsappAiBotInbound(
         content: msg.content,
       }
     })
-    messages.push(
-      { role: "user", content: userMessageContent } as unknown as ModelMessage
-    )
+    messages.push({
+      role: "user",
+      content: userMessageContent,
+    } as unknown as ModelMessage)
 
     // 6. In-Database Hybrid RAG (pgvector + BM25 ts_rank)
     const knowledgeChunks = await searchHybridKnowledge({
@@ -416,12 +562,13 @@ export async function processWhatsappAiBotInbound(
         "yang dapat Anda bantu terkait dokumen tersebut."
       : ""
 
-    const interactiveGuidance =
-      "\n\n### TOMBOL AKSI INTERAKTIF:\n" +
-      "- Anda dapat menyertakan tombol aksi interaktif di akhir balasan " +
-      "jika relevan dengan format [BUTTON: Label Singkat] " +
-      "(maksimal 3 tombol) atau [URL: Label | https://tautan.com].\n" +
-      "- Pastikan label tombol ringkas (maksimal 20 karakter) dan relevan."
+    const interactiveGuidance = agent.allowInteractiveReplies
+      ? "\n\n### TOMBOL AKSI INTERAKTIF:\n" +
+        "- Anda dapat menyertakan tombol aksi interaktif di akhir balasan " +
+        "jika relevan dengan format [BUTTON: Label Singkat] " +
+        "(maksimal 3 tombol) atau [URL: Label | https://tautan.com].\n" +
+        "- Pastikan label tombol ringkas (maksimal 20 karakter) dan relevan."
+      : ""
 
     const systemPrompt = contextText
       ? `${basePrompt}\n\n### KONTEKS DOKUMEN RESMI:\n${contextText}\n\n` +
@@ -445,36 +592,67 @@ export async function processWhatsappAiBotInbound(
         messages,
         tools,
         stopWhen: stepCountIs(5),
+        timeout: getAiBotTimeoutMs(),
         ...({ maxSteps: 5 } as Record<string, unknown>),
       })
 
       const rawReplyText =
         aiResult.text.trim() ||
         agent.fallbackMessage ||
-        "Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."
+        GENERIC_AI_FALLBACK_MESSAGE
 
+      // Tags are always stripped, even when interactive replies are off, so
+      // a model that emits [BUTTON:]/[URL:] tags never leaks raw markup.
       const { cleanText, buttons } = parseInteractiveButtons(rawReplyText)
-      const hasButtons = buttons.length > 0
+      const hasButtons = agent.allowInteractiveReplies && buttons.length > 0
       const outboundText = cleanText || rawReplyText
 
-      // Send reply back to customer
-      const sendResult = hasButtons
-        ? await messageService.sendMessage({
-            organizationId,
-            phoneNumber: contactPhone,
-            deviceId,
-            type: "interactive",
-            interactivePayload: buildInteractivePayload(cleanText, buttons),
-            message: outboundText,
-            replyToMessageId: inboundMessageId,
-          })
-        : await messageService.sendMessage({
-            organizationId,
-            phoneNumber: contactPhone,
-            deviceId,
-            message: outboundText,
-            replyToMessageId: inboundMessageId,
-          })
+      // Send reply back to customer. Guarded separately from the
+      // generateText call above so a send failure is tagged SEND_FAILED,
+      // not GENERATION_FAILED/TIMEOUT, and gets its own fallback attempt.
+      let sendResult: Awaited<ReturnType<typeof messageService.sendMessage>>
+      try {
+        sendResult = hasButtons
+          ? await messageService.sendMessage({
+              organizationId,
+              phoneNumber: contactPhone,
+              deviceId,
+              type: "interactive",
+              interactivePayload: buildInteractivePayload(cleanText, buttons),
+              message: outboundText,
+              replyToMessageId: inboundMessageId,
+            })
+          : await messageService.sendMessage({
+              organizationId,
+              phoneNumber: contactPhone,
+              deviceId,
+              message: outboundText,
+              replyToMessageId: inboundMessageId,
+            })
+      } catch (sendError) {
+        logStageFailure({
+          agentProfileId: agent.id,
+          sessionId,
+          channel: "WHATSAPP",
+          stage: "SEND",
+          error: sendError,
+        })
+        await sendBestEffortFallback({
+          organizationId,
+          phoneNumber: contactPhone,
+          deviceId,
+          replyToMessageId: inboundMessageId,
+          fallbackMessage: agent.fallbackMessage,
+          agentProfileId: agent.id,
+          sessionId,
+          stage: "SEND",
+        })
+        return {
+          handled: true,
+          reason: "SEND_FAILED",
+          agentProfileId: agent.id,
+        }
+      }
       await prisma.aiChatSession.update({
         where: { id: session.id },
         data: {
@@ -486,8 +664,7 @@ export async function processWhatsappAiBotInbound(
 
       // Log chat message
       const usage = aiResult.usage as
-        | { promptTokens?: number; completionTokens?: number }
-        | undefined
+        { promptTokens?: number; completionTokens?: number } | undefined
       await prisma.aiChatMessage.create({
         data: {
           sessionId: session.id,
@@ -505,19 +682,27 @@ export async function processWhatsappAiBotInbound(
         tokensUsed: aiResult.usage?.totalTokens || 0,
       }
     } catch (error) {
-      console.error("[whatsapp-ai-bot] AI generation error:", error)
-      if (agent.fallbackMessage) {
-        await messageService.sendMessage({
-          organizationId,
-          phoneNumber: contactPhone,
-          message: agent.fallbackMessage,
-          deviceId,
-          replyToMessageId: inboundMessageId,
-        })
-      }
+      const timedOut = isAiBotTimeoutError(error)
+      logStageFailure({
+        agentProfileId: agent.id,
+        sessionId,
+        channel: "WHATSAPP",
+        stage: "GENERATION",
+        error,
+      })
+      await sendBestEffortFallback({
+        organizationId,
+        phoneNumber: contactPhone,
+        deviceId,
+        replyToMessageId: inboundMessageId,
+        fallbackMessage: agent.fallbackMessage,
+        agentProfileId: agent.id,
+        sessionId,
+        stage: "GENERATION",
+      })
       return {
         handled: true,
-        reason: "GENERATION_FAILED",
+        reason: timedOut ? "TIMEOUT" : "GENERATION_FAILED",
         agentProfileId: agent.id,
       }
     }
