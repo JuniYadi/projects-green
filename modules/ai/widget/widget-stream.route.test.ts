@@ -121,9 +121,9 @@ describe("widget-stream.route", () => {
       createPublicAiWidgetRoutes({
         streamTextFn: (async () => {
           return {
-            textStream: (async function* () {
-              yield "Halo "
-              yield "dunia!"
+            fullStream: (async function* () {
+              yield { type: "text-delta", text: "Halo " }
+              yield { type: "text-delta", text: "dunia!" }
             })(),
           }
         }) as never,
@@ -158,9 +158,15 @@ describe("widget-stream.route", () => {
 
     const errorApp = new Elysia().use(
       createPublicAiWidgetRoutes({
-        streamTextFn: (() => {
-          throw new Error("AI provider quota exceeded")
-        }) as never,
+        // The real streamText never throws; failures arrive as stream parts.
+        streamTextFn: (() => ({
+          fullStream: (async function* () {
+            yield {
+              type: "error",
+              error: new Error("AI provider quota exceeded"),
+            }
+          })(),
+        })) as never,
       })
     )
 
@@ -214,9 +220,11 @@ describe("widget-stream.route", () => {
       createPublicAiWidgetRoutes({
         streamTextFn: ((options: { timeout?: unknown }) => {
           receivedTimeout = options.timeout
-          throw Object.assign(new Error("timed out"), {
-            name: "TimeoutError",
-          })
+          return {
+            fullStream: (async function* () {
+              yield { type: "abort", reason: "timed out" }
+            })(),
+          }
         }) as never,
       })
     )
@@ -245,6 +253,47 @@ describe("widget-stream.route", () => {
       "widget_agent-1_vis-1",
       "lock-token-123"
     )
+  })
+
+  it("streams the fallback when the model returns no text", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+    const emptyApp = new Elysia().use(
+      createPublicAiWidgetRoutes({
+        streamTextFn: (() => ({
+          fullStream: (async function* () {
+            yield { type: "finish" }
+          })(),
+        })) as never,
+      })
+    )
+
+    const text = await (
+      await emptyApp.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Halo",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+    ).text()
+
+    expect(text).toContain(
+      'data: {"chunk":"Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."}'
+    )
+    expect(text.match(/data: \[DONE\]/g)).toHaveLength(1)
   })
 
   it("should return 422 when missing required body fields", async () => {
