@@ -26,6 +26,7 @@ const mockBillingAccount = {
 const mockBillingInvoicePaymentAllocation = {
   create: mock(() => Promise.resolve({})),
   update: mock(() => Promise.resolve({})),
+  upsert: mock(() => Promise.resolve({})),
   findMany: mock(() => Promise.resolve([])),
 }
 
@@ -111,6 +112,8 @@ describe("Webhook Route - Duitku Callback", () => {
     mockBillingInvoicePaymentAllocation.create.mockResolvedValue({})
     mockBillingInvoicePaymentAllocation.update.mockReset()
     mockBillingInvoicePaymentAllocation.update.mockResolvedValue({})
+    mockBillingInvoicePaymentAllocation.upsert.mockReset()
+    mockBillingInvoicePaymentAllocation.upsert.mockResolvedValue({})
     mockBillingInvoicePaymentAllocation.findMany.mockReset()
     mockBillingInvoicePaymentAllocation.findMany.mockResolvedValue([])
     mockCreditBalance.mockReset()
@@ -136,6 +139,17 @@ describe("Webhook Route - Duitku Callback", () => {
     expect(mockPaymentAuditLog.create).toHaveBeenCalledTimes(1)
     expect(mockCreditBalance).toHaveBeenCalledWith("org-123", 50000, "inv-123")
     expect(mockMarkInvoiceAsPaid).toHaveBeenCalledWith("inv-123")
+    expect(mockBillingInvoicePaymentAllocation.upsert).toHaveBeenCalledWith({
+      where: { idempotencyKey: "alloc:topup:inv-123:REF001" },
+      update: {},
+      create: expect.objectContaining({
+        invoiceId: "inv-123",
+        source: "GATEWAY_DUITKU",
+        status: "COMPLETED",
+        referenceId: "REF001",
+        idempotencyKey: "alloc:topup:inv-123:REF001",
+      }),
+    })
     expect(mockSendInvoicePaidEmail).toHaveBeenCalledWith({}, "org-123")
   })
 

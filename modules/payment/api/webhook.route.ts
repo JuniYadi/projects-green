@@ -89,9 +89,12 @@ export const createWebhookRoutes = () =>
             const paidInvoice =
               await paymentService.markInvoiceAsPaid(merchantOrderId)
 
+            const allocationIdempotencyKey = `alloc:topup:${attemptKey}`
             try {
-              await prisma.billingInvoicePaymentAllocation.create({
-                data: {
+              await prisma.billingInvoicePaymentAllocation.upsert({
+                where: { idempotencyKey: allocationIdempotencyKey },
+                update: {},
+                create: {
                   invoiceId: merchantOrderId,
                   billingAccountId: invoice.billingAccountId,
                   amount: new Prisma.Decimal(parseInt(amount)),
@@ -99,6 +102,7 @@ export const createWebhookRoutes = () =>
                   source: "GATEWAY_DUITKU",
                   status: "COMPLETED",
                   referenceId: reference ?? null,
+                  idempotencyKey: allocationIdempotencyKey,
                   completedAt: new Date(),
                 },
               })
