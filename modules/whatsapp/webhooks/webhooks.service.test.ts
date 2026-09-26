@@ -88,6 +88,20 @@ mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }))
 
+const mockProcessWhatsappWorkflowInbound = mock(
+  async () => ({ handled: false }) as { handled: boolean }
+)
+mock.module("@/modules/whatsapp/workflow/workflow-runner", () => ({
+  processWhatsappWorkflowInbound: mockProcessWhatsappWorkflowInbound,
+}))
+
+const mockProcessWhatsappAiBotInbound = mock(
+  async () => ({ handled: true }) as { handled: boolean }
+)
+mock.module("@/modules/whatsapp/ai-bot-consumer.service", () => ({
+  processWhatsappAiBotInbound: mockProcessWhatsappAiBotInbound,
+}))
+
 const {
   createWebhookEvent,
   recordProcessingResult,
@@ -667,8 +681,70 @@ describe("processInboundMessage", () => {
     mockPrisma.whatsappConversation.findFirst.mockClear()
     mockPrisma.whatsappConversation.create.mockClear()
     mockPrisma.whatsappConversation.update.mockClear()
+    mockPrisma.whatsappMessage.findFirst.mockClear()
     mockPrisma.whatsappMessage.create.mockClear()
     mockPrisma.whatsappContact.upsert.mockClear()
+    mockProcessWhatsappWorkflowInbound.mockClear()
+    mockProcessWhatsappAiBotInbound.mockClear()
+
+    mockPrisma.whatsappMessage.findFirst.mockResolvedValue(null)
+    mockProcessWhatsappWorkflowInbound.mockResolvedValue({ handled: false })
+    mockProcessWhatsappAiBotInbound.mockResolvedValue({ handled: true })
+  })
+
+  it("is idempotent on duplicate waMessageId: reuses the existing message row instead of creating a duplicate", async () => {
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "conv-dup",
+      contactPhone: "+6281111111111",
+    } as any)
+    mockPrisma.whatsappMessage.findFirst.mockResolvedValueOnce({
+      id: "msg-existing",
+      waMessageId: "wamid.dup.1",
+      conversationId: "conv-dup",
+      metadata: {},
+      createdAt: new Date(),
+    } as any)
+
+    await processInboundMessage(
+      {
+        from: "6281111111111",
+        id: "wamid.dup.1",
+        timestamp: "1787218099",
+        type: "text",
+        text: { body: "Retry me" },
+      },
+      "device-1",
+      "org-1"
+    )
+
+    expect(mockPrisma.whatsappMessage.create).not.toHaveBeenCalled()
+    expect(mockProcessWhatsappAiBotInbound).toHaveBeenCalledWith(
+      expect.objectContaining({ inboundMessageId: "wamid.dup.1" })
+    )
+  })
+
+  it("awaits and propagates bot pipeline errors so a caller (e.g. WebhookRetryJob) can retry", async () => {
+    mockPrisma.whatsappConversation.findFirst.mockResolvedValue({
+      id: "conv-err",
+      contactPhone: "+6282222222222",
+    } as any)
+    mockProcessWhatsappAiBotInbound.mockRejectedValueOnce(
+      new Error("bot pipeline exploded")
+    )
+
+    await expect(
+      processInboundMessage(
+        {
+          from: "6282222222222",
+          id: "wamid.err.1",
+          timestamp: "1787218100",
+          type: "text",
+          text: { body: "Trigger a failure" },
+        },
+        "device-1",
+        "org-1"
+      )
+    ).rejects.toThrow("bot pipeline exploded")
   })
 
   it("normalizes incoming Indonesian phone numbers to E.164 (+62...)", async () => {
