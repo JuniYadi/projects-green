@@ -267,6 +267,14 @@ export async function checkActiveBan(params: {
         {
           OR: [{ isPermanent: true }, { blockedUntil: { gt: now } }],
         },
+        params.organizationId
+          ? {
+              OR: [
+                { organizationId: params.organizationId },
+                { organizationId: null },
+              ],
+            }
+          : { organizationId: null },
       ],
     },
     orderBy: [{ isPermanent: "desc" }, { offenseLevel: "desc" }],
@@ -338,6 +346,13 @@ export function getEscalationLevel(totalStrikes: number): {
 
 /**
  * Records a strike for a session and evaluates cumulative strikes across the organization / target to escalate bans.
+ *
+ * `banScope: "PHONE_ONLY"` (agent-bot strike escalation, AC-09) pools strikes
+ * only within the same organizationId + customerPhone pair and, on
+ * escalation, creates only a PHONE ban — never ORGANIZATION/USER/IP — so one
+ * abusive customer can never ban an entire organization. Omitting it keeps
+ * today's behaviour byte-for-byte unchanged (docs-chat, the only existing
+ * caller, never sets it).
  */
 export async function recordStrikeAndEscalate(params: {
   sessionId: string
@@ -346,6 +361,7 @@ export async function recordStrikeAndEscalate(params: {
   ipAddress?: string | null
   customerPhone?: string | null
   reason: string
+  banScope?: "PHONE_ONLY"
 }): Promise<ActiveBanInfo> {
   const now = new Date()
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
@@ -360,29 +376,43 @@ export async function recordStrikeAndEscalate(params: {
     },
   })
 
-  // 2. Count total strikes from sessions in org / user / IP over last 7 days
-  const sessionFilter: Array<{
-    organizationId?: string
-    userId?: string
-    ipAddress?: string
-  }> = []
-  if (params.organizationId) {
-    sessionFilter.push({ organizationId: params.organizationId })
-  }
-  if (params.userId) {
-    sessionFilter.push({ userId: params.userId })
-  }
-  if (params.ipAddress) {
-    sessionFilter.push({ ipAddress: params.ipAddress })
-  }
+  // 2. Count total strikes from sessions in org / user / IP over last 7 days.
+  // banScope "PHONE_ONLY" pools strikes only within this org+phone pair
+  // instead of the whole org.
+  let sessions: Array<{ strikeCount: number }>
+  if (params.banScope === "PHONE_ONLY") {
+    sessions = await prisma.aiChatSession.findMany({
+      where: {
+        updatedAt: { gte: sevenDaysAgo },
+        organizationId: params.organizationId ?? undefined,
+        customerPhone: params.customerPhone ?? undefined,
+      },
+      select: { strikeCount: true },
+    })
+  } else {
+    const sessionFilter: Array<{
+      organizationId?: string
+      userId?: string
+      ipAddress?: string
+    }> = []
+    if (params.organizationId) {
+      sessionFilter.push({ organizationId: params.organizationId })
+    }
+    if (params.userId) {
+      sessionFilter.push({ userId: params.userId })
+    }
+    if (params.ipAddress) {
+      sessionFilter.push({ ipAddress: params.ipAddress })
+    }
 
-  const sessions = await prisma.aiChatSession.findMany({
-    where: {
-      updatedAt: { gte: sevenDaysAgo },
-      OR: sessionFilter.length > 0 ? sessionFilter : undefined,
-    },
-    select: { strikeCount: true },
-  })
+    sessions = await prisma.aiChatSession.findMany({
+      where: {
+        updatedAt: { gte: sevenDaysAgo },
+        OR: sessionFilter.length > 0 ? sessionFilter : undefined,
+      },
+      select: { strikeCount: true },
+    })
+  }
 
   const totalCumulativeStrikes = sessions.reduce(
     (sum, s) => sum + (s.strikeCount || 0),
@@ -399,20 +429,32 @@ export async function recordStrikeAndEscalate(params: {
       targetValue: string
     }> = []
 
-    if (params.userId) {
-      targetsToBan.push({ banType: "USER", targetValue: params.userId })
-    }
-    if (params.organizationId) {
-      targetsToBan.push({
-        banType: "ORGANIZATION",
-        targetValue: params.organizationId,
-      })
-    }
-    if (params.ipAddress) {
-      targetsToBan.push({ banType: "IP", targetValue: params.ipAddress })
-    }
-    if (params.customerPhone) {
-      targetsToBan.push({ banType: "PHONE", targetValue: params.customerPhone })
+    if (params.banScope === "PHONE_ONLY") {
+      if (params.customerPhone) {
+        targetsToBan.push({
+          banType: "PHONE",
+          targetValue: params.customerPhone,
+        })
+      }
+    } else {
+      if (params.userId) {
+        targetsToBan.push({ banType: "USER", targetValue: params.userId })
+      }
+      if (params.organizationId) {
+        targetsToBan.push({
+          banType: "ORGANIZATION",
+          targetValue: params.organizationId,
+        })
+      }
+      if (params.ipAddress) {
+        targetsToBan.push({ banType: "IP", targetValue: params.ipAddress })
+      }
+      if (params.customerPhone) {
+        targetsToBan.push({
+          banType: "PHONE",
+          targetValue: params.customerPhone,
+        })
+      }
     }
 
     let primaryBan: ActiveBanInfo | null = null
@@ -457,6 +499,28 @@ export async function recordStrikeAndEscalate(params: {
     )
   }
   return { isBanned: false }
+}
+
+/**
+ * Marks a single session as strike-blocked (increments strikeCount, sets
+ * isBlocked + blockReason) without touching the organization-wide strike
+ * pool or AiChatBan — the widget's entire escalation mechanism (AC-09). It
+ * never calls prisma.aiChatBan.create, so a widget visitor's violation
+ * structurally cannot ban anyone else.
+ */
+export async function recordSessionStrike(
+  sessionId: string,
+  reason: string
+): Promise<{ isBlocked: boolean }> {
+  await prisma.aiChatSession.updateMany({
+    where: { sessionId },
+    data: {
+      strikeCount: { increment: 1 },
+      isBlocked: true,
+      blockReason: reason,
+    },
+  })
+  return { isBlocked: true }
 }
 
 function escapeRegExp(string: string) {
