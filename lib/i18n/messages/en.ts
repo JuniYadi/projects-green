@@ -6658,6 +6658,7 @@ export const enMessages: AppMessages = {
       dashboard: {
         noDescription: "No description",
         noChannel: "No channel connected",
+        activeOn: "Active on {target}",
         updated: "Updated",
         searchPlaceholder: "Search agents",
         filters: {
