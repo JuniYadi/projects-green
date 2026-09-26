@@ -34,7 +34,7 @@ export const InvoicePaidEmail = ({
   taxAmount,
   discountAmount,
   lineItems,
-  recipientEmail,
+  billedToEmail,
   organizationName,
   locale = "en",
 }: InvoicePaidEmailProps) => {
@@ -66,7 +66,7 @@ export const InvoicePaidEmail = ({
             periodEnd={periodEnd}
             paidAt={paidAt}
             paymentMethod={paymentMethod}
-            recipientEmail={recipientEmail}
+            billedToEmail={billedToEmail}
             organizationName={organizationName}
             locale={locale}
           />
@@ -90,9 +90,7 @@ export const InvoicePaidEmail = ({
 
           <Hr style={styles.divider} />
 
-          <Text style={styles.footer}>
-            {messages.paidFooter}
-          </Text>
+          <Text style={styles.footer}>{messages.paidFooter}</Text>
         </Container>
       </Body>
     </Html>

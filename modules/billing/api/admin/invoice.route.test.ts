@@ -417,12 +417,17 @@ describe("AdminInvoiceRoute", () => {
               sendInvoiceOverdue: mock(async () => {}),
               sendInvoiceCancelled: mock(async () => {}),
               sendPaymentConfirmationSubmitted: mock(async () => {}),
+              sendTopupReceivedAdminNotice: mock(async () => {}),
             },
             getOrganizationIdByBillingAccount: async () => "org-1",
             resolveInvoiceRecipients: async () => [
               { email: "recip1@example.com" },
               { email: "recip2@example.com" },
             ],
+            resolveInvoiceBilledTo: async () => ({
+              organizationName: "Acme Org",
+              billedToEmail: "billed-to@example.com",
+            }),
           })
         )
         .compile()
@@ -439,11 +444,15 @@ describe("AdminInvoiceRoute", () => {
       expect(mockSendInvoiceCreated).toHaveBeenCalledTimes(2)
       expect(mockSendInvoiceCreated).toHaveBeenCalledWith(
         expect.objectContaining({ id: "inv-1" }),
-        "recip1@example.com"
+        "recip1@example.com",
+        "org-1",
+        { organizationName: "Acme Org", billedToEmail: "billed-to@example.com" }
       )
       expect(mockSendInvoiceCreated).toHaveBeenCalledWith(
         expect.objectContaining({ id: "inv-1" }),
-        "recip2@example.com"
+        "recip2@example.com",
+        "org-1",
+        { organizationName: "Acme Org", billedToEmail: "billed-to@example.com" }
       )
     })
 
@@ -487,11 +496,16 @@ describe("AdminInvoiceRoute", () => {
               sendInvoiceOverdue: mock(async () => {}),
               sendInvoiceCancelled: mockSendInvoiceCancelled,
               sendPaymentConfirmationSubmitted: mock(async () => {}),
+              sendTopupReceivedAdminNotice: mock(async () => {}),
             },
             getOrganizationIdByBillingAccount: async () => "org-1",
             resolveInvoiceRecipients: async () => [
               { email: "recip1@example.com" },
             ],
+            resolveInvoiceBilledTo: async () => ({
+              organizationName: "Acme Org",
+              billedToEmail: "billed-to@example.com",
+            }),
           })
         )
         .compile()
@@ -508,9 +522,342 @@ describe("AdminInvoiceRoute", () => {
       expect(mockSendInvoiceCancelled).toHaveBeenCalledTimes(1)
       expect(mockSendInvoiceCancelled).toHaveBeenCalledWith(
         expect.objectContaining({ id: "inv-1" }),
-        "recip1@example.com"
+        "recip1@example.com",
+        undefined,
+        "org-1",
+        { organizationName: "Acme Org", billedToEmail: "billed-to@example.com" }
       )
     })
+
+    it("sends invoice paid email with billed-to options on OPEN→PAID", async () => {
+      const mockInvoice = {
+        id: "inv-1",
+        invoiceNumber: "INV-2026-05-001",
+        status: "OPEN",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+      mockBalanceUpdate.mockResolvedValueOnce({})
+
+      const mockSendInvoicePaid = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            emailService: {
+              sendInvoiceCreated: mock(async () => {}),
+              sendPaymentReminder: mock(async () => {}),
+              sendInvoicePaid: mockSendInvoicePaid,
+              sendInvoiceOverdue: mock(async () => {}),
+              sendInvoiceCancelled: mock(async () => {}),
+              sendPaymentConfirmationSubmitted: mock(async () => {}),
+              sendTopupReceivedAdminNotice: mock(async () => {}),
+            },
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            resolveInvoiceRecipients: async () => [
+              { email: "recip1@example.com" },
+            ],
+            resolveInvoiceBilledTo: async () => ({
+              organizationName: "Acme Org",
+              billedToEmail: "billed-to@example.com",
+            }),
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-1", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendInvoicePaid).toHaveBeenCalledTimes(1)
+      expect(mockSendInvoicePaid).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-1" }),
+        "recip1@example.com",
+        "org-1",
+        { organizationName: "Acme Org", billedToEmail: "billed-to@example.com" }
+      )
+    })
+
+    it("calls the top-up paid email dep (not generic sendInvoicePaid) for TOP_UP invoice on OPEN→PAID", async () => {
+      const mockInvoice = {
+        id: "inv-topup",
+        invoiceNumber: "INV-2026-05-003",
+        status: "OPEN",
+        type: "TOP_UP",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+      mockBalanceUpdate.mockResolvedValueOnce({})
+
+      const mockSendInvoicePaid = mock(async () => {})
+      const mockSendTopupInvoicePaidEmail = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            emailService: {
+              sendInvoiceCreated: mock(async () => {}),
+              sendPaymentReminder: mock(async () => {}),
+              sendInvoicePaid: mockSendInvoicePaid,
+              sendInvoiceOverdue: mock(async () => {}),
+              sendInvoiceCancelled: mock(async () => {}),
+              sendPaymentConfirmationSubmitted: mock(async () => {}),
+              sendTopupReceivedAdminNotice: mock(async () => {}),
+            },
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-topup", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledTimes(1)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-topup" }),
+        "org-1"
+      )
+      expect(mockSendInvoicePaid).not.toHaveBeenCalled()
+    })
+
+    it("calls the top-up paid email dep for legacy TOPUP type on OPEN→PAID", async () => {
+      const mockInvoice = {
+        id: "inv-topup-legacy",
+        invoiceNumber: "INV-2026-05-004",
+        status: "OPEN",
+        type: "TOPUP",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+      mockBalanceUpdate.mockResolvedValueOnce({})
+
+      const mockSendInvoicePaid = mock(async () => {})
+      const mockSendTopupInvoicePaidEmail = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            emailService: {
+              sendInvoiceCreated: mock(async () => {}),
+              sendPaymentReminder: mock(async () => {}),
+              sendInvoicePaid: mockSendInvoicePaid,
+              sendInvoiceOverdue: mock(async () => {}),
+              sendInvoiceCancelled: mock(async () => {}),
+              sendPaymentConfirmationSubmitted: mock(async () => {}),
+              sendTopupReceivedAdminNotice: mock(async () => {}),
+            },
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-topup-legacy", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledTimes(1)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-topup-legacy" }),
+        "org-1"
+      )
+      expect(mockSendInvoicePaid).not.toHaveBeenCalled()
+    })
+
+    it("skips the top-up paid notice when the balance credit fails", async () => {
+      const mockInvoice = {
+        id: "inv-topup-credit-fail",
+        invoiceNumber: "INV-2026-05-005",
+        status: "OPEN",
+        type: "TOP_UP",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+      mockBalanceUpdate.mockRejectedValueOnce(
+        new Error("balance update failed")
+      )
+
+      const mockSendTopupInvoicePaidEmail = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-topup-credit-fail", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      const body = await response.json()
+      expect(body.ok).toBe(true)
+      expect(body.invoice.status).toBe("PAID")
+      expect(mockSendTopupInvoicePaidEmail).not.toHaveBeenCalled()
+    })
+
+    it("sends the top-up paid notice when the balance credit succeeds", async () => {
+      const mockInvoice = {
+        id: "inv-topup-credit-ok",
+        invoiceNumber: "INV-2026-05-006",
+        status: "OPEN",
+        type: "TOP_UP",
+        subtotalAmount: new Decimal("100000.00"),
+        taxAmount: new Decimal("0.00"),
+        discountAmount: new Decimal("0.00"),
+        totalAmount: new Decimal("100000.00"),
+        currency: "IDR",
+        issuedAt: null,
+        dueAt: new Date("2026-06-15"),
+        paidAt: null,
+        createdAt: new Date("2026-06-01"),
+        billingAccountId: "ba-1",
+      }
+
+      const mockUpdated = {
+        ...mockInvoice,
+        status: "PAID",
+        paidAt: new Date(),
+      }
+
+      mockFindUnique.mockResolvedValueOnce(mockInvoice)
+      mockUpdate.mockResolvedValueOnce(mockUpdated)
+      mockBalanceUpdate.mockResolvedValueOnce({})
+
+      const mockSendTopupInvoicePaidEmail = mock(async () => {})
+
+      const app = new Elysia()
+        .use(
+          createAdminInvoiceRoutes({
+            authenticate: async () => defaultAuth as MockAuthContext,
+            getPlatformRole: mockPlatformRole,
+            isAdmin: mockIsAdmin,
+            getOrganizationIdByBillingAccount: async () => "org-1",
+            sendTopupInvoicePaidEmail: mockSendTopupInvoicePaidEmail,
+          })
+        )
+        .compile()
+
+      const response = await app.handle(
+        new Request("http://localhost/admin/invoices/inv-topup-credit-ok", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "PAID" }),
+        })
+      )
+
+      expect(response.status).toBe(200)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledTimes(1)
+      expect(mockSendTopupInvoicePaidEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "inv-topup-credit-ok" }),
+        "org-1"
+      )
+    })
+
     it("returns 422 when trying ISSUED→ISSUED (same status)", async () => {
       const mockInvoice = {
         id: "inv-same",

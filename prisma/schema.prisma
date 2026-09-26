@@ -1492,6 +1492,8 @@ model BillingInvoice {
   paidAt           DateTime?
   // Payment module fields
   type             String? // "TOP_UP", "SERVICE", "RECURRING"
+  createdByUserId  String?
+  createdByEmail   String?
   paymentMethod    String? // "VA", "QRIS", "MANUAL_BANK"
   gatewayId        String?
   dueDate          DateTime?
@@ -3184,6 +3186,7 @@ enum EmailLogType {
   INVOICE_CREATED
   INVOICE_PAYMENT_REMINDER
   INVOICE_PAID
+  TOPUP_RECEIVED_ADMIN_NOTICE
   PAYMENT_CONFIRMATION_SUBMITTED
   INVOICE_OVERDUE
   INVOICE_CANCELLED
@@ -3200,6 +3203,7 @@ enum EmailLogType {
 
 enum EmailLogStatus {
   QUEUED
+  PROCESSING
   SENT
   FAILED
   BOUNCED

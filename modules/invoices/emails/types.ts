@@ -23,7 +23,7 @@ export interface InvoiceEmailCommonProps {
   taxAmount?: string
   discountAmount?: string
   lineItems?: InvoiceEmailLineItem[]
-  recipientEmail?: string
+  billedToEmail?: string
   organizationName?: string
   locale?: AppLocale
 }

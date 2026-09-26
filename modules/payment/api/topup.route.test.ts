@@ -207,6 +207,60 @@ describe("TopupRoute POST /topup", () => {
     expect(json.ok).toBe(true)
     expect(json.invoice.id).toBe("inv_1")
     expect(json.invoice.paymentMethod).toBe("MANUAL_BANK")
+    expect(mockCreateTopupInvoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: "user_1",
+        actorEmail: "user@example.com",
+      })
+    )
+  })
+
+  it("rejects a top-up without an authenticated actor", async () => {
+    mockAuthValue = { user: null, organizationId: "org_1" }
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+    expect(res.status).toBe(401)
+    expect(mockCreateTopupInvoice).not.toHaveBeenCalled()
+  })
+
+  it("rejects a top-up when the actor email is an empty string", async () => {
+    mockAuthValue = {
+      user: { id: "user_1", email: "" },
+      organizationId: "org_1",
+    }
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+    expect(res.status).toBe(401)
+    expect(mockCreateTopupInvoice).not.toHaveBeenCalled()
+  })
+
+  it("rejects a top-up when the actor email is undefined", async () => {
+    mockAuthValue = {
+      user: { id: "user_1", email: undefined } as unknown as {
+        id: string
+        email: string
+      },
+      organizationId: "org_1",
+    }
+    const res = await app().handle(
+      new Request("http://localhost/topup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: 50000, paymentMethod: "MANUAL_BANK" }),
+      })
+    )
+    expect(res.status).toBe(401)
+    expect(mockCreateTopupInvoice).not.toHaveBeenCalled()
   })
 
   it("returns 400 when VA/QRIS gateway is not available", async () => {

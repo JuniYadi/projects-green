@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
+import { Prisma } from "@prisma/client"
 
 // Mock console.error to suppress error logging in tests
 const mockConsoleError = mock(() => {})
@@ -8,15 +9,20 @@ const mockCreateEmailLog = mock(async () => "email-log-123")
 
 mock.module("@/lib/email-log", () => ({
   createEmailLog: mockCreateEmailLog,
+  redactEmailHtml: (html: string) => html,
 }))
 
-const mockSendEmail = mock(async () => {})
+const mockSendEmail = mock(
+  async (_data?: unknown, _opts?: { jobId?: string }) => {}
+)
 
 mock.module("@/lib/queue/email", () => ({
   sendEmail: mockSendEmail,
 }))
 
-const mockRender = mock(async () => "<html><body>Test Email</body></html>")
+const mockRender = mock(
+  async (_element?: unknown) => "<html><body>Test Email</body></html>"
+)
 const passthrough = ({ children }: { children?: unknown }) => children
 mock.module("react-email", () => ({
   render: mockRender,
@@ -51,6 +57,20 @@ mock.module("./emails/invoice-overdue", () => ({
 mock.module("./emails/invoice-cancelled", () => ({
   InvoiceCancelledEmail: () => "<div>Invoice Cancelled</div>",
 }))
+mock.module("./emails/topup-received-admin-notice", () => ({
+  TopupReceivedAdminNotice: () => "<div>Top-up received</div>",
+}))
+
+const mockEmailLogCreate = mock(async () => ({ id: "notice-log-1" }))
+const mockEmailLogUpdate = mock(async () => ({}))
+mock.module("@/lib/prisma", () => ({
+  prisma: {
+    emailLog: {
+      create: mockEmailLogCreate,
+      update: mockEmailLogUpdate,
+    },
+  },
+}))
 
 const mockInvoice = {
   id: "inv-123",
@@ -70,6 +90,13 @@ describe("invoiceEmailService", () => {
     mockCreateEmailLog.mockClear()
     mockSendEmail.mockClear()
     mockRender.mockClear()
+    mockEmailLogCreate.mockClear()
+    mockEmailLogUpdate.mockClear()
+    mockConsoleError.mockClear()
+    mockSendEmail.mockImplementation(async () => {})
+    mockRender.mockImplementation(async () => "<html>Test Email</html>")
+    mockEmailLogCreate.mockImplementation(async () => ({ id: "notice-log-1" }))
+    mockEmailLogUpdate.mockImplementation(async () => ({}))
 
     originalEnv = { ...process.env, NODE_ENV: "test" }
     process.env.EMAIL_FROM = "Billing <billing@test.com>"
@@ -99,6 +126,22 @@ describe("invoiceEmailService", () => {
       await emailService.sendInvoiceCreated(mockInvoice, "user@example.com")
 
       expect(mockRender).toHaveBeenCalled()
+    })
+
+    it("renders Billed To from options, never the positional recipient", async () => {
+      await emailService.sendInvoiceCreated(
+        mockInvoice,
+        "recipient@example.com",
+        "org-123",
+        { organizationName: "Acme Corp", billedToEmail: "billing@acme.com" }
+      )
+
+      const [element] = mockRender.mock.calls[0] as [
+        { props: Record<string, unknown> },
+      ]
+      expect(element.props.billedToEmail).toBe("billing@acme.com")
+      expect(element.props.billedToEmail).not.toBe("recipient@example.com")
+      expect(element.props.organizationName).toBe("Acme Corp")
     })
   })
 
@@ -147,6 +190,22 @@ describe("invoiceEmailService", () => {
           subject: expect.stringContaining(mockInvoice.invoiceNumber),
         })
       )
+    })
+
+    it("renders Billed To from options, never the positional recipient", async () => {
+      await emailService.sendInvoicePaid(
+        paidInvoice,
+        "recipient@example.com",
+        "org-123",
+        { organizationName: "Acme Corp", billedToEmail: "billing@acme.com" }
+      )
+
+      const [element] = mockRender.mock.calls[0] as [
+        { props: Record<string, unknown> },
+      ]
+      expect(element.props.billedToEmail).toBe("billing@acme.com")
+      expect(element.props.billedToEmail).not.toBe("recipient@example.com")
+      expect(element.props.organizationName).toBe("Acme Corp")
     })
   })
 
@@ -359,18 +418,107 @@ describe("invoiceEmailService", () => {
 
       const data = module.getInvoiceEmailData(
         detailInvoice,
-        "admin@org.com",
+        "payer@org.com",
         "Acme Corp"
       )
 
       expect(data.subtotalAmount).toBe("$140.00")
       expect(data.taxAmount).toBe("$10.00")
-      expect(data.recipientEmail).toBe("admin@org.com")
+      expect(data.billedToEmail).toBe("payer@org.com")
       expect(data.organizationName).toBe("Acme Corp")
       expect(data.lineItems).toBeDefined()
       expect(data.lineItems?.[0].description).toBe("VPN Plan")
       expect(data.paymentMethod).toBe("Bank Transfer")
       expect(data.paidAt).toBe("May 10, 2026")
+    })
+  })
+
+  describe("sendTopupReceivedAdminNotice", () => {
+    const topupData = {
+      invoiceId: "inv-123",
+      organizationId: "org-123",
+      organizationName: "Acme",
+      actorEmail: "payer@org.com",
+      amount: 50000,
+      currency: "IDR",
+      paymentMethod: "VA",
+      paidAt: new Date("2026-09-26T00:00:00.000Z"),
+    }
+
+    it("claims the log with raw bodyHtml before enqueueing, with a colon-free jobId", async () => {
+      await emailService.sendTopupReceivedAdminNotice(
+        topupData,
+        "admin@org.com"
+      )
+
+      expect(mockEmailLogCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          eventKey: "topup-admin:inv-123",
+          recipientEmail: "admin@org.com",
+          type: "TOPUP_RECEIVED_ADMIN_NOTICE",
+          // Stored raw (not redacted) so the sweeper can replay the exact
+          // sent payload; this template has no secrets to redact.
+          bodyHtml: "<html>Test Email</html>",
+          status: "QUEUED",
+        }),
+      })
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "admin@org.com",
+          html: "<html>Test Email</html>",
+          emailLogId: "notice-log-1",
+          noticeAttempt: 0,
+        }),
+        { jobId: "topup-admin_inv-123" }
+      )
+      expect(mockSendEmail.mock.calls[0][1]!.jobId).not.toContain(":")
+
+      const createOrder = mockEmailLogCreate.mock.invocationCallOrder[0]
+      const sendOrder = mockSendEmail.mock.invocationCallOrder[0]
+      expect(createOrder).toBeLessThan(sendOrder)
+    })
+
+    it("returns without enqueuing on a duplicate claim (P2002)", async () => {
+      mockEmailLogCreate.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+          code: "P2002",
+          clientVersion: "7.10.0",
+        })
+      )
+
+      await expect(
+        emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
+      ).resolves.toBeUndefined()
+      // Re-enqueuing with the same jobId is a no-op BullMQ would silently
+      // ignore anyway; the sweeper owns recovery for a row not yet SENT.
+      expect(mockSendEmail).not.toHaveBeenCalled()
+    })
+
+    it("leaves the claim row QUEUED (not FAILED) when enqueue fails, for the sweeper to recover", async () => {
+      mockSendEmail.mockRejectedValueOnce(new Error("Queue unavailable"))
+
+      await expect(
+        emailService.sendTopupReceivedAdminNotice(topupData, "admin@org.com")
+      ).rejects.toThrow("Queue unavailable")
+
+      expect(mockEmailLogUpdate).not.toHaveBeenCalled()
+      expect(mockConsoleError).toHaveBeenCalled()
+
+      // A retry that lands on the now-existing claim row just returns
+      // without a second enqueue attempt.
+      mockEmailLogCreate.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError("Duplicate event", {
+          code: "P2002",
+          clientVersion: "7.10.0",
+        })
+      )
+
+      await emailService.sendTopupReceivedAdminNotice(
+        topupData,
+        "admin@org.com"
+      )
+
+      expect(mockSendEmail).toHaveBeenCalledTimes(1)
     })
   })
 })

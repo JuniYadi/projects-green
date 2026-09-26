@@ -32,7 +32,7 @@ export const PaymentReminderEmail = ({
   taxAmount,
   discountAmount,
   lineItems,
-  recipientEmail,
+  billedToEmail,
   organizationName,
   locale = "en",
 }: PaymentReminderEmailProps) => {
@@ -65,7 +65,7 @@ export const PaymentReminderEmail = ({
             dueAt={dueAt}
             periodStart={periodStart}
             periodEnd={periodEnd}
-            recipientEmail={recipientEmail}
+            billedToEmail={billedToEmail}
             organizationName={organizationName}
             locale={locale}
           />
@@ -89,9 +89,7 @@ export const PaymentReminderEmail = ({
 
           <Hr style={styles.divider} />
 
-          <Text style={styles.footer}>
-            {messages.createdFooter}
-          </Text>
+          <Text style={styles.footer}>{messages.createdFooter}</Text>
         </Container>
       </Body>
     </Html>

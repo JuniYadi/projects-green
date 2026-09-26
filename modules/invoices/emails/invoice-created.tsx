@@ -32,7 +32,7 @@ export const InvoiceCreatedEmail = ({
   taxAmount,
   discountAmount,
   lineItems,
-  recipientEmail,
+  billedToEmail,
   organizationName,
   locale = "en",
 }: InvoiceCreatedEmailProps) => {
@@ -54,9 +54,7 @@ export const InvoiceCreatedEmail = ({
             {messages.createdHeading.replace("{invoiceNumber}", invoiceNumber)}
           </Heading>
 
-          <Text style={styles.intro}>
-            {messages.createdIntro}
-          </Text>
+          <Text style={styles.intro}>{messages.createdIntro}</Text>
 
           <InvoiceSummarySection
             invoiceNumber={invoiceNumber}
@@ -65,7 +63,7 @@ export const InvoiceCreatedEmail = ({
             dueAt={dueAt}
             periodStart={periodStart}
             periodEnd={periodEnd}
-            recipientEmail={recipientEmail}
+            billedToEmail={billedToEmail}
             organizationName={organizationName}
             locale={locale}
           />
@@ -89,9 +87,7 @@ export const InvoiceCreatedEmail = ({
 
           <Hr style={styles.divider} />
 
-          <Text style={styles.footer}>
-            {messages.createdFooter}
-          </Text>
+          <Text style={styles.footer}>{messages.createdFooter}</Text>
         </Container>
       </Body>
     </Html>

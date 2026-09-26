@@ -2,6 +2,8 @@ import { render } from "react-email"
 
 import { createEmailLog } from "@/lib/email-log"
 import { sendEmail } from "@/lib/queue/email"
+import { prisma } from "@/lib/prisma"
+import { Prisma } from "@prisma/client"
 
 import { InvoiceCreatedEmail } from "./emails/invoice-created"
 import { PaymentReminderEmail } from "./emails/payment-reminder"
@@ -9,6 +11,7 @@ import { InvoicePaidEmail } from "./emails/invoice-paid"
 import { InvoiceOverdueEmail } from "./emails/invoice-overdue"
 import { InvoiceCancelledEmail } from "./emails/invoice-cancelled"
 import { PaymentConfirmationSubmittedEmail } from "./emails/payment-confirmation-submitted"
+import { TopupReceivedAdminNotice } from "./emails/topup-received-admin-notice"
 
 import type {
   InvoiceEmailLineItem,
@@ -29,6 +32,7 @@ export class InvoiceEmailServiceError extends Error {
 
 export type InvoiceEmailServiceOptions = {
   organizationName?: string
+  billedToEmail?: string
 }
 
 export type InvoiceEmailService = {
@@ -75,6 +79,19 @@ export type InvoiceEmailService = {
     },
     recipientEmail: string
   ): Promise<void>
+  sendTopupReceivedAdminNotice(
+    data: {
+      invoiceId: string
+      organizationId: string
+      organizationName: string
+      actorEmail: string | null
+      amount: number
+      currency: string
+      paymentMethod: string | null
+      paidAt: Date
+    },
+    recipientEmail: string
+  ): Promise<void>
 }
 
 const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -105,7 +122,7 @@ const formatDate = (dateStr: string | null | undefined): string => {
 
 export const getInvoiceEmailData = (
   invoice: InvoiceListItem | InvoiceDetail,
-  recipientEmail?: string,
+  billedToEmail?: string,
   organizationName?: string
 ): InvoiceEmailCommonProps => {
   const amount = "totalAmount" in invoice ? invoice.totalAmount : 0
@@ -169,17 +186,80 @@ export const getInvoiceEmailData = (
     lineItems,
     paidAt,
     paymentMethod,
-    recipientEmail,
+    billedToEmail,
     organizationName,
   }
 }
 
 export const createInvoiceEmailService = (): InvoiceEmailService => ({
+  async sendTopupReceivedAdminNotice(data, recipientEmail) {
+    const html = await render(
+      <TopupReceivedAdminNotice
+        invoiceId={data.invoiceId}
+        organizationName={data.organizationName}
+        actorEmail={data.actorEmail}
+        amount={formatCurrency(data.amount, data.currency)}
+        paymentMethod={data.paymentMethod}
+        paidAt={formatDate(data.paidAt.toISOString())}
+      />
+    )
+    const subject = `Top-up received - ${data.organizationName}`
+    const eventKey = `topup-admin:${data.invoiceId}`
+    // BullMQ 5.81 rejects ':' in custom job ids, so the queue key must be
+    // colon-free even though the DB dedup key (eventKey) keeps the colon.
+    const jobId = `topup-admin_${data.invoiceId}`
+
+    // Claim the send first (unique eventKey), then enqueue — never the
+    // other way around, or the worker can run before this row exists.
+    let emailLogId: string
+    try {
+      const log = await prisma.emailLog.create({
+        data: {
+          eventKey,
+          recipientEmail,
+          type: "TOPUP_RECEIVED_ADMIN_NOTICE",
+          subject,
+          // Raw HTML, not redacted: the sweeper replays this exact
+          // bodyHtml on retry, and this template holds no secrets.
+          bodyHtml: html,
+          organizationId: data.organizationId,
+          relatedEntityType: "invoice",
+          relatedEntityId: data.invoiceId,
+          status: "QUEUED",
+        },
+      })
+      emailLogId = log.id
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        // A claim row already exists, SENT or not. Re-enqueuing here would
+        // reuse the same jobId, which BullMQ silently ignores while
+        // retaining the old job — so just return and let the sweeper own
+        // recovery for anything not yet SENT.
+        return
+      }
+      throw error
+    }
+
+    try {
+      await sendEmail(
+        { to: recipientEmail, subject, html, emailLogId, noticeAttempt: 0 },
+        { jobId }
+      )
+    } catch (error) {
+      // Leave the row QUEUED (not FAILED) so the sweeper can find and
+      // resend it; only log the failure here.
+      console.error("Failed to enqueue topup admin notice email:", error)
+      throw error
+    }
+  },
   async sendInvoiceCreated(invoice, recipientEmail, organizationId, options) {
     try {
       const emailData = getInvoiceEmailData(
         invoice,
-        recipientEmail,
+        options?.billedToEmail,
         options?.organizationName
       )
       const html = await render(<InvoiceCreatedEmail {...emailData} />)
@@ -212,7 +292,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     try {
       const emailData = getInvoiceEmailData(
         invoice,
-        recipientEmail,
+        options?.billedToEmail,
         options?.organizationName
       )
       const html = await render(<PaymentReminderEmail {...emailData} />)
@@ -245,7 +325,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     try {
       const emailData = getInvoiceEmailData(
         invoice,
-        recipientEmail,
+        options?.billedToEmail,
         options?.organizationName
       )
       const html = await render(<InvoicePaidEmail {...emailData} />)
@@ -278,7 +358,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     try {
       const emailData = getInvoiceEmailData(
         invoice,
-        recipientEmail,
+        options?.billedToEmail,
         options?.organizationName
       )
       const html = await render(<InvoiceOverdueEmail {...emailData} />)
@@ -317,7 +397,7 @@ export const createInvoiceEmailService = (): InvoiceEmailService => ({
     try {
       const emailData = getInvoiceEmailData(
         invoice,
-        recipientEmail,
+        options?.billedToEmail,
         options?.organizationName
       )
       const html = await render(

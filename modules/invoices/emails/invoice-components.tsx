@@ -13,7 +13,7 @@ interface InvoiceSummaryProps {
   periodEnd?: string
   paidAt?: string
   paymentMethod?: string
-  recipientEmail?: string
+  billedToEmail?: string
   organizationName?: string
   locale?: AppLocale
 }
@@ -41,7 +41,7 @@ export const InvoiceSummarySection = ({
   periodEnd,
   paidAt,
   paymentMethod,
-  recipientEmail,
+  billedToEmail,
   organizationName,
   locale = "en",
 }: InvoiceSummaryProps) => {
@@ -62,15 +62,15 @@ export const InvoiceSummarySection = ({
           <span style={styles.metaLabel}>{messages.billedTo}</span>{" "}
           <span style={styles.metaValue}>
             {organizationName}
-            {recipientEmail ? ` (${recipientEmail})` : ""}
+            {billedToEmail ? ` (${billedToEmail})` : ""}
           </span>
         </Text>
       )}
 
-      {!organizationName && recipientEmail && (
+      {!organizationName && billedToEmail && (
         <Text style={styles.metaRow}>
           <span style={styles.metaLabel}>{messages.billedTo}</span>{" "}
-          <span style={styles.metaValue}>{recipientEmail}</span>
+          <span style={styles.metaValue}>{billedToEmail}</span>
         </Text>
       )}
 
@@ -123,7 +123,10 @@ interface InvoiceItemsListProps {
   locale?: AppLocale
 }
 
-export const InvoiceItemsList = ({ lineItems, locale = "en" }: InvoiceItemsListProps) => {
+export const InvoiceItemsList = ({
+  lineItems,
+  locale = "en",
+}: InvoiceItemsListProps) => {
   const messages = getMessages(locale).pEmailTemplates.invoices
   if (!lineItems || lineItems.length === 0) {
     return null
@@ -223,7 +226,9 @@ export const InvoiceCostBreakdown = ({
             <tr>
               <td style={styles.breakdownLeftCol}>
                 <Text style={styles.breakdownRow}>
-                  <span style={styles.metaLabel}>{messages.discountVoucher}</span>
+                  <span style={styles.metaLabel}>
+                    {messages.discountVoucher}
+                  </span>
                 </Text>
               </td>
               <td align="right" style={styles.breakdownRightCol}>
