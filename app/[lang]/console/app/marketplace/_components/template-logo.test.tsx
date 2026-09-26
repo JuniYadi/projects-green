@@ -41,6 +41,19 @@ describe("TemplateLogo", () => {
     expect(element).toBeTruthy()
   })
 
+  it("renders img or fallback when iconUrl is provided for mapped template (e.g. hermes)", () => {
+    const { container } = render(
+      <TemplateLogo
+        slug="hermes"
+        name="Hermes"
+        iconUrl="/app-hosting/icons/hermes.svg"
+      />
+    )
+    const element =
+      container.querySelector("img") || container.querySelector("svg")
+    expect(element).toBeTruthy()
+  })
+
   it("falls back to /app-hosting/icons/<slug>.svg or Package when icon is not in simple-icons", () => {
     const { container } = render(<TemplateLogo slug="9router" name="9router" />)
     const element =

@@ -15,6 +15,7 @@ mock.module("next/navigation", () => ({
   useParams: () => ({ lang: "en", id: "tmpl-1" }),
 }))
 interface SavePayload {
+  iconUrl?: string | null
   blueprintJson?: {
     access?: { title: string; steps: Array<{ text: string }> }
     runtime?: {
@@ -478,5 +479,51 @@ describe("TemplateEditorForm", () => {
     const payload = onSave.mock.calls[0]?.[0]
     expect(payload?.blueprintJson?.runtime?.readOnlyRootFilesystem).toBe(true)
     expect(payload?.blueprintJson?.runtime?.fsGroup).toBe(3000)
+  })
+
+  it("renders local icon preset selector and saves chosen iconUrl", async () => {
+    const onSave = mock(async (_payload: SavePayload) => {})
+    const template = OFFICIAL_APP_TEMPLATES.find(
+      (item) => item.slug === "hermes"
+    )!
+    const { getByText, getByDisplayValue } = render(
+      <TemplateEditorForm
+        isNew={false}
+        onSave={onSave}
+        initialData={{
+          id: "tmpl-hermes",
+          name: template.name,
+          slug: template.slug,
+          tagline: template.tagline,
+          description: template.description,
+          iconUrl: "/app-hosting/icons/hermes.svg",
+          category: template.category,
+          visibility: template.visibility,
+          version: template.version,
+          isOfficial: true,
+          isFeatured: true,
+          currency: "USD",
+          installCount: 0,
+          reviewNotes: null,
+          verifiedAt: null,
+          priceMonthly: "0",
+          blueprintJson: template.blueprint,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }}
+      />
+    )
+
+    // Verify initial iconUrl is rendered in input
+    const iconInput = getByDisplayValue("/app-hosting/icons/hermes.svg")
+    expect(iconInput).toBeTruthy()
+
+    await userEvent.setup().click(getByText("Save Changes"))
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+
+    const calls = onSave.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    const payload = calls[0]?.[0]
+    expect(payload?.iconUrl).toBe("/app-hosting/icons/hermes.svg")
   })
 })

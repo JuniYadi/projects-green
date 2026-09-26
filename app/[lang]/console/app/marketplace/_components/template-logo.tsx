@@ -75,16 +75,12 @@ export function TemplateLogo({
     setHasError(false)
   }
 
-  // Priority 1: Use react-icons/si if it exists
-  if (ReactIcon) {
-    return <ReactIcon className={className} />
-  }
-  // Priority 2: Fallback to public/app-hosting/icons/<slug>.svg (or provided custom iconUrl)
-  if (imageSource && !hasError) {
+  // Priority 1: Explicitly provided iconUrl if valid and hasn't errored
+  if (safeCustomUrl && !hasError) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- dynamic icon path/SVG rendering
       <img
-        src={imageSource}
+        src={safeCustomUrl}
         alt={name || slug || "Template icon"}
         className={`${className} object-contain`}
         onError={() => setHasError(true)}
@@ -92,6 +88,24 @@ export function TemplateLogo({
     )
   }
 
-  // Priority 3: Final fallback placeholder if no image exists
+  // Priority 2: Use react-icons/si if it exists
+  if (ReactIcon) {
+    return <ReactIcon className={className} />
+  }
+
+  // Priority 3: Fallback to public/app-hosting/icons/<slug>.svg
+  if (defaultSlugUrl && !hasError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- dynamic icon path/SVG rendering
+      <img
+        src={defaultSlugUrl}
+        alt={name || slug || "Template icon"}
+        className={`${className} object-contain`}
+        onError={() => setHasError(true)}
+      />
+    )
+  }
+
+  // Priority 4: Final fallback placeholder if no image exists
   return <Package className={`${className} text-muted-foreground`} />
 }

@@ -30,6 +30,7 @@ import {
   type AppTemplateBlueprint,
   type AppTemplatePackage,
 } from "@/modules/deploy/blueprint/app-template-blueprint.schema"
+import { TEMPLATE_LOCAL_ICONS } from "@/modules/deploy/constants/template-local-icons.generated"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -716,10 +717,44 @@ export default function TemplateBuilderPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="iconUrl">{messages.step1.iconUrl}</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="iconUrl">{messages.step1.iconUrl}</Label>
+                  <Select
+                    value={
+                      TEMPLATE_LOCAL_ICONS.some(
+                        (icon) => icon.path === formData.iconUrl
+                      )
+                        ? formData.iconUrl
+                        : "custom"
+                    }
+                    onValueChange={(val) => {
+                      if (val !== "custom") {
+                        updateField("iconUrl", val)
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-7 w-[190px] text-xs">
+                      <SelectValue placeholder="Preset Icon Lokal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="custom" className="text-xs">
+                        Manual / Custom URL
+                      </SelectItem>
+                      {TEMPLATE_LOCAL_ICONS.map((icon) => (
+                        <SelectItem
+                          key={icon.path}
+                          value={icon.path}
+                          className="text-xs"
+                        >
+                          {icon.name} ({icon.fileName})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Input
                   id="iconUrl"
-                  placeholder="https://raw.githubusercontent.com/.../logo.png"
+                  placeholder="https://... or /app-hosting/icons/..."
                   value={formData.iconUrl}
                   onChange={(e) => updateField("iconUrl", e.target.value)}
                 />

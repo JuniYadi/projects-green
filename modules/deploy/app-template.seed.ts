@@ -38,7 +38,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       "n8n is an extendable workflow automation tool that enables you to connect anything to everything with self-hosted nodes and integrations.",
     readmeMarkdown:
       "# n8n\n\nSelf-hosted workflow automation platform with support for hundreds of integrations.",
-    iconUrl: "https://assets.pfnapp.com/templates/n8n.svg",
+    iconUrl: "/app-hosting/icons/n8n.svg",
     category: "AUTOMATION",
     visibility: "PUBLIC",
     version: "1.0.0",
@@ -153,7 +153,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       "Hermes Agent is Nous Research's autonomous AI agent gateway with persistent memory, tool orchestration, and optional API and web dashboard.",
     readmeMarkdown:
       "# Hermes Agent\n\nManaged deployment of Nous Research's autonomous AI agent gateway with persistent storage at `/opt/data` and supervised gateway runtime.",
-    iconUrl: "https://assets.pfnapp.com/templates/hermes.svg",
+    iconUrl: "/app-hosting/icons/hermes.svg",
     category: "AI",
     visibility: "PUBLIC",
     version: "1.0.0",
@@ -518,7 +518,7 @@ export const OFFICIAL_APP_TEMPLATES: readonly OfficialAppTemplateSeedItem[] = [
       "WordPress is web publishing software you can use to create a beautiful website, blog, or community with thousands of plugins and themes.",
     readmeMarkdown:
       "# WordPress\n\nExtensible CMS and publishing system powered by PHP and MySQL.",
-    iconUrl: "https://assets.pfnapp.com/templates/wordpress.svg",
+    iconUrl: "/app-hosting/icons/wordpress.svg",
     category: "CMS",
     visibility: "PUBLIC",
     version: "1.0.0",

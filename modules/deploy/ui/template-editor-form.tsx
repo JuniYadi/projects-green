@@ -38,6 +38,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { TemplateLogo } from "@/app/[lang]/console/app/marketplace/_components/template-logo"
+import { TEMPLATE_LOCAL_ICONS } from "@/modules/deploy/constants/template-local-icons.generated"
 import {
   Select,
   SelectContent,
@@ -1144,9 +1145,43 @@ export function TemplateEditorForm({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="template-icon">
-                    {messages.identity.iconUrl}
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="template-icon">
+                      {messages.identity.iconUrl}
+                    </Label>
+                    <Select
+                      value={
+                        TEMPLATE_LOCAL_ICONS.some(
+                          (icon) => icon.path === iconUrl
+                        )
+                          ? iconUrl
+                          : "custom"
+                      }
+                      onValueChange={(val) => {
+                        if (val !== "custom") {
+                          setIconUrl(val)
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-[190px] text-xs">
+                        <SelectValue placeholder="Preset Icon Lokal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom" className="text-xs">
+                          Manual / Custom URL
+                        </SelectItem>
+                        {TEMPLATE_LOCAL_ICONS.map((icon) => (
+                          <SelectItem
+                            key={icon.path}
+                            value={icon.path}
+                            className="text-xs"
+                          >
+                            {icon.name} ({icon.fileName})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 p-1.5">
                       <TemplateLogo
