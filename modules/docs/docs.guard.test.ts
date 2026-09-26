@@ -83,6 +83,18 @@ describe("docs.guard - inspectPromptSafety", () => {
     expect(result.reason).toBe("PROFANITY")
   })
 
+  it("skips profanity and blocked words when checkProfanity is false", () => {
+    const off = { checkProfanity: false }
+    expect(inspectPromptSafety("Halo bot goblok", [], off).ok).toBe(true)
+    expect(
+      inspectPromptSafety("Try competitorX", ["competitorX"], off).ok
+    ).toBe(true)
+    // injection is never toggled off
+    expect(
+      inspectPromptSafety("goblok <script>alert(1)</script>", [], off).reason
+    ).toBe("INJECTION")
+  })
+
   it("detects script and injection attacks", () => {
     const injections = [
       "<script>alert(1)</script>",
