@@ -6117,6 +6117,7 @@ export type AppMessages = {
         deleteError: string
         deleteTitle: string
         deleteDescription: string
+        deleteDescriptionEmpty: string
         forceDeleteTitle: string
         forceDeleteDescription: string
         forceDeleteButton: string
