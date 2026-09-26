@@ -255,6 +255,48 @@ describe("widget-stream.route", () => {
     )
   })
 
+  it("replaces partial text with the fallback when the stream fails mid-answer", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      fallbackMessage: "Maaf, coba lagi nanti.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+    const partialApp = new Elysia().use(
+      createPublicAiWidgetRoutes({
+        streamTextFn: (() => ({
+          fullStream: (async function* () {
+            yield { type: "text-delta", text: "Setengah jaw" }
+            yield { type: "error", error: new Error("connection reset") }
+          })(),
+        })) as never,
+      })
+    )
+
+    const text = await (
+      await partialApp.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Halo",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+    ).text()
+
+    expect(text).toContain('data: {"replace":"Maaf, coba lagi nanti."}')
+    expect(text).not.toContain('{"chunk":"Maaf, coba lagi nanti."}')
+    expect(text.match(/data: \[DONE\]/g)).toHaveLength(1)
+  })
+
   it("streams the fallback when the model returns no text", async () => {
     mockFindUniqueAgent.mockResolvedValue({
       id: "agent-1",
