@@ -11,15 +11,40 @@ const mockRecordMessage = mock()
 const mockBuildAgentTools = mock()
 const mockResolveAiProviderConfig = mock()
 const mockCreateAiLanguageModel = mock()
+const mockRecordSessionStrike = mock(async () => ({ isBlocked: true }))
+const mockCreateBan = mock(async () => ({}))
+const mockInspectAgentPromptSafety = mock(
+  () =>
+    ({ ok: true }) as {
+      ok: boolean
+      reason?: string
+      refusalMessage?: string
+    }
+)
 
 const mockPrisma = {
   aiAgentProfile: {
     findUnique: mockFindUniqueAgent,
   },
+  aiChatBan: {
+    create: mockCreateBan,
+  },
 }
 
 mock.module("@/lib/prisma", () => ({
   prisma: mockPrisma,
+}))
+
+mock.module("@/modules/docs/docs.guard", () => ({
+  recordSessionStrike: mockRecordSessionStrike,
+}))
+
+// Mocked explicitly, not re-exported from the real module: bun test runs
+// all files in one process, and another file's mock.module() for this same
+// path (e.g. ai-bot-consumer.service.test.ts) would otherwise leak into
+// this file's import of the route under test.
+mock.module("@/modules/ai/agents/ai-agent-guardrails", () => ({
+  inspectAgentPromptSafety: mockInspectAgentPromptSafety,
 }))
 
 mock.module("@/modules/ai/agents/ai-agent-session.service", () => ({
@@ -39,6 +64,17 @@ mock.module("@/modules/ai/ai-provider.factory", () => ({
   createAiLanguageModel: mockCreateAiLanguageModel,
 }))
 
+const mockLogStageFailure = mock(() => {})
+mock.module("@/lib/logger", () => ({
+  logger: {
+    warn: mock(() => {}),
+    info: mock(() => {}),
+    error: mock(() => {}),
+    debug: mock(() => {}),
+  },
+  logStageFailure: mockLogStageFailure,
+}))
+
 const { Elysia } = await import("elysia")
 const { createPublicAiWidgetRoutes } = await import("./widget-stream.route")
 
@@ -55,7 +91,12 @@ describe("widget-stream.route", () => {
     mockBuildAgentTools.mockReset()
     mockResolveAiProviderConfig.mockReset()
     mockCreateAiLanguageModel.mockReset()
+    mockRecordSessionStrike.mockReset()
+    mockCreateBan.mockReset()
+    mockInspectAgentPromptSafety.mockReset()
 
+    mockRecordSessionStrike.mockResolvedValue({ isBlocked: true })
+    mockInspectAgentPromptSafety.mockReturnValue({ ok: true })
     mockGetSlidingWindowMessages.mockResolvedValue([])
     mockBuildAgentTools.mockResolvedValue({})
     mockResolveAiProviderConfig.mockResolvedValue({
@@ -68,6 +109,7 @@ describe("widget-stream.route", () => {
     mockAcquireSessionLock.mockResolvedValue("lock-token-123")
     mockReleaseSessionLock.mockResolvedValue(true)
     mockRecordMessage.mockResolvedValue({ id: "msg-1" })
+    mockLogStageFailure.mockClear()
 
     app = new Elysia().use(
       createPublicAiWidgetRoutes({
@@ -130,7 +172,73 @@ describe("widget-stream.route", () => {
 
     expect(res.status).toBe(200)
     const text = await res.text()
-    expect(text).toContain("AI provider quota exceeded")
+    expect(text).not.toContain('"error"')
+    expect(text).toContain(
+      'data: {"chunk":"Mohon maaf, kami belum dapat menjawab pertanyaan Anda saat ini."}'
+    )
+    expect(text).toContain("data: [DONE]")
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
+    expect(mockLogStageFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentProfileId: "agent-1",
+        channel: "WEB_LIVECHAT",
+        stage: "GENERATION",
+      })
+    )
+  })
+
+  it("emits fallbackMessage as a normal chunk and releases the lock when runStreamText times out", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      fallbackMessage: "Mohon tunggu, agen kami akan membantu Anda.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+
+    let receivedTimeout: unknown
+    const timeoutApp = new Elysia().use(
+      createPublicAiWidgetRoutes({
+        streamTextFn: ((options: { timeout?: unknown }) => {
+          receivedTimeout = options.timeout
+          throw Object.assign(new Error("timed out"), {
+            name: "TimeoutError",
+          })
+        }) as never,
+      })
+    )
+
+    const res = await timeoutApp.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Halo",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(200)
+    const text = await res.text()
+    expect(text).not.toContain('"error"')
+    expect(text).toContain(
+      'data: {"chunk":"Mohon tunggu, agen kami akan membantu Anda."}'
+    )
+    expect(text).toContain("data: [DONE]")
+    expect(receivedTimeout).toBe(60000)
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
   })
 
   it("should return 422 when missing required body fields", async () => {
@@ -246,6 +354,262 @@ describe("widget-stream.route", () => {
       "widget_agent-1_vis-1",
       "lock-token-123"
     )
+  })
+
+  it("returns 422 MAX_CHAR_EXCEEDED without calling the model", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      maxCharLength: 5,
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+      totalMessages: 0,
+    })
+
+    const streamTextFn = mock(() => {
+      throw new Error("model should not be called")
+    })
+    const guardApp = new Elysia().use(
+      createPublicAiWidgetRoutes({ streamTextFn: streamTextFn as never })
+    )
+
+    const res = await guardApp.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Pesan ini kepanjangan",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(422)
+    const json = (await res.json()) as { error: string; message?: string }
+    expect(json.error).toBe("MAX_CHAR_EXCEEDED")
+    expect(json.message).toBeUndefined()
+    expect(streamTextFn).not.toHaveBeenCalled()
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
+  })
+
+  it("returns 422 BLOCKED_WORD_TRIGGERED with fallbackMessage", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      enableProfanityFilter: true,
+      customBlockedWords: ["kasar"],
+      fallbackMessage: "Mohon gunakan bahasa yang sopan.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+      totalMessages: 0,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Dasar kata kasar kamu!",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(422)
+    const json = (await res.json()) as { error: string; message?: string }
+    expect(json.error).toBe("BLOCKED_WORD_TRIGGERED")
+    expect(json.message).toBe("Mohon gunakan bahasa yang sopan.")
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
+  })
+
+  it("returns 429 DAILY_LIMIT_REACHED and releases the lock", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      dailyUserLimit: 1,
+      fallbackMessage: "Batas chat harian Anda telah habis.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+      totalMessages: 1,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Halo lagi",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(429)
+    const json = (await res.json()) as { error: string; message?: string }
+    expect(json.error).toBe("DAILY_LIMIT_REACHED")
+    expect(json.message).toBe("Batas chat harian Anda telah habis.")
+    expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+      "widget_agent-1_vis-1",
+      "lock-token-123"
+    )
+  })
+
+  it("returns 403 CUSTOMER_BLOCKED before streaming when the session isBlocked", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      fallbackMessage: "Mohon tunggu, agen kami akan membantu Anda.",
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+      isBlocked: true,
+    })
+
+    const res = await app.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Halo",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(res.status).toBe(403)
+    const json = (await res.json()) as { error: string; message?: string }
+    expect(json.error).toBe("CUSTOMER_BLOCKED")
+    expect(json.message).toBe("Mohon tunggu, agen kami akan membantu Anda.")
+    expect(mockAcquireSessionLock).not.toHaveBeenCalled()
+  })
+
+  it(
+    "streams the refusal as a normal chunk and sets isBlocked on that " +
+      "session only when strikeEscalation is true",
+    async () => {
+      mockFindUniqueAgent.mockResolvedValue({
+        id: "agent-1",
+        isActive: true,
+        allowedDomains: [],
+        organizationId: "org-1",
+        strikeEscalation: true,
+      })
+      mockGetOrCreateSession.mockResolvedValue({
+        id: "sess-db-1",
+        sessionId: "widget_agent-1_vis-1",
+      })
+      mockInspectAgentPromptSafety.mockReturnValue({
+        ok: false,
+        reason: "PROFANITY",
+        refusalMessage: "Mohon sampaikan pertanyaan dengan bahasa yang sopan.",
+      })
+
+      const streamTextFn = mock(() => {
+        throw new Error("model should not be called")
+      })
+      const violationApp = new Elysia().use(
+        createPublicAiWidgetRoutes({ streamTextFn: streamTextFn as never })
+      )
+
+      const res = await violationApp.handle(
+        new Request("http://localhost/ai/widget/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            agentId: "agent-1",
+            message: "Dasar bot goblok banget sih",
+            visitorId: "vis-1",
+          }),
+        })
+      )
+
+      expect(res.status).toBe(200)
+      const text = await res.text()
+      expect(text).not.toContain('"error"')
+      expect(text).toContain('data: {"chunk":')
+      expect(text).toContain("data: [DONE]")
+      expect(streamTextFn).not.toHaveBeenCalled()
+      expect(mockRecordMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: "widget_agent-1_vis-1",
+          role: "assistant",
+        })
+      )
+      expect(mockRecordSessionStrike).toHaveBeenCalledWith(
+        "widget_agent-1_vis-1",
+        "PROFANITY"
+      )
+      expect(mockReleaseSessionLock).toHaveBeenCalledWith(
+        "widget_agent-1_vis-1",
+        "lock-token-123"
+      )
+    }
+  )
+
+  it("never creates an AiChatBan row on a widget violation", async () => {
+    mockFindUniqueAgent.mockResolvedValue({
+      id: "agent-1",
+      isActive: true,
+      allowedDomains: [],
+      organizationId: "org-1",
+      strikeEscalation: true,
+    })
+    mockGetOrCreateSession.mockResolvedValue({
+      id: "sess-db-1",
+      sessionId: "widget_agent-1_vis-1",
+    })
+    mockInspectAgentPromptSafety.mockReturnValue({
+      ok: false,
+      reason: "PROFANITY",
+      refusalMessage: "Mohon sampaikan pertanyaan dengan bahasa yang sopan.",
+    })
+
+    const streamTextFn = mock(() => {
+      throw new Error("model should not be called")
+    })
+    const violationApp = new Elysia().use(
+      createPublicAiWidgetRoutes({ streamTextFn: streamTextFn as never })
+    )
+
+    await violationApp.handle(
+      new Request("http://localhost/ai/widget/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          agentId: "agent-1",
+          message: "Dasar bot goblok banget sih",
+          visitorId: "vis-1",
+        }),
+      })
+    )
+
+    expect(mockRecordSessionStrike).toHaveBeenCalled()
+    expect(mockCreateBan).not.toHaveBeenCalled()
   })
 
   it("should return 429 if concurrency lock acquisition fails", async () => {
