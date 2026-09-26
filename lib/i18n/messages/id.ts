@@ -6715,6 +6715,7 @@ export const idMessages: AppMessages = {
       dashboard: {
         noDescription: "Tanpa deskripsi",
         noChannel: "Belum ada channel",
+        activeOn: "Aktif di {target}",
         updated: "Diperbarui",
         searchPlaceholder: "Cari agent",
         filters: {
@@ -6758,7 +6759,15 @@ export const idMessages: AppMessages = {
           "Agent tidak dapat dihapus. Lepaskan channel aktif terlebih dahulu.",
         deleteTitle: "Hapus agent secara permanen?",
         deleteDescription:
-          "Knowledge, sesi, action, dan binding terkait dapat ikut terhapus. Tindakan ini tidak dapat dibatalkan.",
+          "Ini juga menghapus {knowledge} dokumen knowledge dan " +
+          "{actions} action milik agent ini. Riwayat chat tetap " +
+          "disimpan. Tindakan ini tidak bisa dibatalkan.",
+        deleteDescriptionEmpty:
+          "Riwayat chat tetap disimpan. Tindakan ini tidak bisa dibatalkan.",
+        forceDeleteTitle: "Agent masih terhubung",
+        forceDeleteDescription:
+          "Agent ini terhubung ke {count} channel. Menghapusnya akan memutuskan hubungan tersebut. Tindakan ini tidak dapat dibatalkan.",
+        forceDeleteButton: "Putuskan & hapus",
         detailError: "Pengaturan agent gagal dimuat.",
       },
       dialog: {
@@ -6775,6 +6784,14 @@ export const idMessages: AppMessages = {
         saveChangesButton: "Simpan Perubahan",
         savingButton: "Menyimpan...",
         saveDraftButton: "Simpan sebagai Draft",
+        nameRequired: "Nama asisten wajib diisi.",
+        saveCanvasSuccess: "Asisten disimpan! Membuka di AI Canvas...",
+        saveSuccess: "Asisten AI berhasil disimpan.",
+        saveError: "Gagal menyimpan profil asisten.",
+        saveException: "Terjadi kesalahan saat menyimpan asisten.",
+        editSaveSuccess: "Profil asisten berhasil diperbarui.",
+        editSaveError: "Gagal memperbarui profil asisten.",
+        editSaveException: "Terjadi kesalahan saat memperbarui asisten.",
       },
       tabs: {
         aiAssistant: "Bantuan AI (Auto-Generate)",
@@ -6784,8 +6801,13 @@ export const idMessages: AppMessages = {
         presetsLabel: "💡 Rekomendasi Alur Instan (Klik untuk coba):",
         templatesButton: "Lihat template",
         presetTrackingLabel: "📦 Cek Status Resi",
+        presetTrackingPrompt:
+          "Bikinin bot untuk cek nomor resi & status pengiriman paket",
         presetRegistrationLabel: "📝 Formulir Pendaftaran",
+        presetRegistrationPrompt:
+          "Formulir pendaftaran dan tanya kebutuhan prospek baru",
         presetGreetingLabel: "👋 Menu Tombol Sapaan",
+        presetGreetingPrompt: "Menu tombol selamat datang dan info kontak CS",
         promptLabel: "Ketik Kebutuhan Alur Bot Anda",
         promptPlaceholder:
           "Contoh: Buatkan bot yang tanya nama lalu kirim daftar harga...",
@@ -6793,6 +6815,16 @@ export const idMessages: AppMessages = {
         simulatorTitle: "Simulator Chat WhatsApp",
         livePreview: "Pratinjau Langsung",
         testInputPlaceholder: "Ketik balasan untuk tes alur...",
+        generateButton: "Rancang Alur",
+        generatingButton: "Merancang...",
+        defaultSummary: "Alur berhasil dirancang otomatis oleh AI.",
+        defaultStepDetail: "Langkah alur",
+        generateSuccess: "Alur berhasil dirancang otomatis!",
+        generateError: "Gagal merancang alur dengan AI.",
+        generateException: "Terjadi kesalahan saat merancang alur.",
+        simulateFallbackReply:
+          'Terima kasih! Pesan Anda "{message}" telah diproses ' +
+          "asisten bot.",
       },
       manual: {
         nameLabel: "Nama Asisten / Alur",
@@ -6858,6 +6890,17 @@ export const idMessages: AppMessages = {
         connectedBadge: "Terhubung",
         availableBadge: "Tersedia",
         doneButton: "Selesai",
+        connectButton: "Hubungkan",
+        connectingButton: "Menghubungkan...",
+        disconnectButton: "Putuskan",
+        disconnectingButton: "Memproses...",
+        connectSuccess: "WhatsApp ({phone}) berhasil dihubungkan!",
+        connectError: "Gagal menghubungkan nomor WhatsApp.",
+        connectException: "Terjadi kesalahan saat menghubungkan nomor.",
+        disconnectSuccess: "Hubungan WhatsApp ({phone}) berhasil diputus.",
+        disconnectError: "Gagal memutuskan hubungan nomor.",
+        disconnectException: "Terjadi kesalahan saat memutuskan hubungan.",
+        loadDevicesError: "Gagal memuat perangkat WhatsApp.",
       },
       actionIntents: {
         tabTitle: "Action Intents & Tools",

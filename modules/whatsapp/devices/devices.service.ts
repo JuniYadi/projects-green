@@ -334,6 +334,11 @@ export const createDeviceService = (
 
         // Cleanup associated WhatsApp media records & files
         await tx.whatsappMedia.deleteMany({ where: { deviceId: id } })
+        // Cleanup AI channel bindings pointing at this device (no FK, so this
+        // would otherwise leave the bound agent permanently undeletable)
+        await tx.aiChannelBinding.deleteMany({
+          where: { channel: "WHATSAPP", targetId: id },
+        })
         await tx.whatsappDevice.delete({ where: { id } })
       })
     },

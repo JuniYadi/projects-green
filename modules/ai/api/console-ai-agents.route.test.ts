@@ -86,6 +86,7 @@ describe("Console AI Agents Route", () => {
             isActive: true,
           },
         ],
+        _count: { knowledgeDocuments: 3, actionIntents: 2 },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -106,12 +107,16 @@ describe("Console AI Agents Route", () => {
         widgetColor: string
         widgetPosition: string
         welcomeMessage: string
+        knowledgeCount: number
+        actionCount: number
       }[]
     }
     expect(json.ok).toBe(true)
     expect(json.data.length).toBe(1)
     expect(json.data[0].activeChannelsCount).toBe(1)
     expect(json.data[0].operationalStatus).toBe("ACTIVE")
+    expect(json.data[0].knowledgeCount).toBe(3)
+    expect(json.data[0].actionCount).toBe(2)
     expect(json.data[0]).not.toHaveProperty("systemPrompt")
   })
 
@@ -381,8 +386,35 @@ describe("Console AI Agents Route", () => {
 
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual(
-      expect.objectContaining({ error: "AGENT_HAS_ACTIVE_BINDINGS" })
+      expect.objectContaining({
+        error: "AGENT_HAS_ACTIVE_BINDINGS",
+        activeBindings: 1,
+      })
     )
     expect(mockPrisma.aiAgentProfile.delete).not.toHaveBeenCalled()
+  })
+
+  it("deletes an agent with active bindings when force=true", async () => {
+    mockPrisma.aiAgentProfile.findFirst.mockResolvedValue({
+      id: "agent_1",
+      organizationId: "org_1",
+      channelBindings: [{ id: "binding_1" }],
+    })
+    mockPrisma.aiAgentProfile.delete.mockResolvedValue({ id: "agent_1" })
+
+    const res = await app.handle(
+      new Request(
+        "http://localhost/console/ai/agents/agent_1?force=true",
+        { method: "DELETE" }
+      )
+    )
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual(
+      expect.objectContaining({ ok: true })
+    )
+    expect(mockPrisma.aiAgentProfile.delete).toHaveBeenCalledWith({
+      where: { id: "agent_1" },
+    })
   })
 })

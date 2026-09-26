@@ -39,6 +39,9 @@ const mockTransaction = mock<(...args: any[]) => any>(
       whatsappMedia: {
         deleteMany: mock(async () => ({ count: 0 })),
       },
+      aiChannelBinding: {
+        deleteMany: mock(async () => ({ count: 0 })),
+      },
       whatsappMetaApp: {
         findUnique: mock(async () => ({ id: "meta-1", active: true })),
       },

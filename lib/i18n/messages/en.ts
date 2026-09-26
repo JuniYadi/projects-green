@@ -6658,6 +6658,7 @@ export const enMessages: AppMessages = {
       dashboard: {
         noDescription: "No description",
         noChannel: "No channel connected",
+        activeOn: "Active on {target}",
         updated: "Updated",
         searchPlaceholder: "Search agents",
         filters: {
@@ -6701,7 +6702,14 @@ export const enMessages: AppMessages = {
           "Agent cannot be deleted. Disconnect active channels first.",
         deleteTitle: "Permanently delete this agent?",
         deleteDescription:
-          "Related knowledge, sessions, actions, and bindings may also be deleted. This action cannot be undone.",
+          "This also deletes {knowledge} knowledge document(s) and " +
+          "{actions} action(s) that belong to this agent. Chat history " +
+          "is kept. This can't be undone.",
+        deleteDescriptionEmpty: "Chat history is kept. This can't be undone.",
+        forceDeleteTitle: "Agent is still connected",
+        forceDeleteDescription:
+          "This agent is connected to {count} channel(s). Deleting it will disconnect them. This action cannot be undone.",
+        forceDeleteButton: "Disconnect & delete",
         detailError: "Agent settings could not be loaded.",
       },
       dialog: {
@@ -6717,6 +6725,14 @@ export const enMessages: AppMessages = {
         saveChangesButton: "Save Changes",
         savingButton: "Saving...",
         saveDraftButton: "Save as Draft",
+        nameRequired: "Assistant name is required.",
+        saveCanvasSuccess: "Assistant saved! Opening in AI Canvas...",
+        saveSuccess: "AI assistant saved successfully.",
+        saveError: "Failed to save the assistant profile.",
+        saveException: "An error occurred while saving the assistant.",
+        editSaveSuccess: "Assistant profile updated successfully.",
+        editSaveError: "Failed to update the assistant profile.",
+        editSaveException: "An error occurred while updating the assistant.",
       },
       tabs: {
         aiAssistant: "AI Assistance (Auto-Generate)",
@@ -6726,8 +6742,15 @@ export const enMessages: AppMessages = {
         presetsLabel: "💡 Instant Flow Recommendations (Click to try):",
         templatesButton: "View templates",
         presetTrackingLabel: "📦 Check Tracking Status",
+        presetTrackingPrompt:
+          "Create a bot to check the tracking number and package " +
+          "delivery status",
         presetRegistrationLabel: "📝 Registration Form",
+        presetRegistrationPrompt:
+          "Registration form that asks new leads about their needs",
         presetGreetingLabel: "👋 Greeting Button Menu",
+        presetGreetingPrompt:
+          "Welcome button menu with customer support contact info",
         promptLabel: "Type Your Bot Flow Requirement",
         promptPlaceholder:
           "Example: Create a bot that asks for a name then sends a price list...",
@@ -6735,6 +6758,16 @@ export const enMessages: AppMessages = {
         simulatorTitle: "WhatsApp Chat Simulator",
         livePreview: "Live Preview",
         testInputPlaceholder: "Type a reply to test the flow...",
+        generateButton: "Design Flow",
+        generatingButton: "Designing...",
+        defaultSummary: "Flow designed automatically by AI.",
+        defaultStepDetail: "Flow step",
+        generateSuccess: "Flow designed automatically!",
+        generateError: "Failed to design the flow with AI.",
+        generateException: "An error occurred while designing the flow.",
+        simulateFallbackReply:
+          'Thanks! Your message "{message}" has been processed by the ' +
+          "assistant.",
       },
       manual: {
         nameLabel: "Assistant / Flow Name",
@@ -6758,7 +6791,7 @@ export const enMessages: AppMessages = {
         previewTitle: "Interactive Reply Preview",
         previewSubtitle: "How button messages appear on WhatsApp",
         mockMessage:
-          "Hi! Thank you for contacting us. " + "Please choose a service:",
+          "Hi! Thank you for contacting us. Please choose a service:",
         buttonAskProduct: "💬 Ask Product",
         buttonCheckOrder: "📦 Check Order",
         buttonVisitWebsite: "🌐 Visit Website",
@@ -6798,6 +6831,18 @@ export const enMessages: AppMessages = {
         connectedBadge: "Connected",
         availableBadge: "Available",
         doneButton: "Done",
+        connectButton: "Connect",
+        connectingButton: "Connecting...",
+        disconnectButton: "Disconnect",
+        disconnectingButton: "Processing...",
+        connectSuccess: "WhatsApp ({phone}) connected successfully!",
+        connectError: "Failed to connect the WhatsApp number.",
+        connectException: "An error occurred while connecting the number.",
+        disconnectSuccess: "WhatsApp ({phone}) disconnected successfully.",
+        disconnectError: "Failed to disconnect the number.",
+        disconnectException:
+          "An error occurred while disconnecting the number.",
+        loadDevicesError: "Failed to load WhatsApp devices.",
       },
       actionIntents: {
         tabTitle: "Action Intents & Tools",
