@@ -231,8 +231,13 @@ describe("Billing InvoiceDetailPage", () => {
     )
 
     expect(view.getAllByText("duitku_ref_pop_123").length).toBeGreaterThan(0)
-    // Should display Payment Reference instead of Billing Period for topup invoice
-    expect(view.getAllByText("Payment Reference").length).toBe(2)
+    expect(view.getAllByText("Payment Reference").length).toBe(1)
+    expect(
+      view.getByText(/To close Duitku checkout, select ⋮ then Exit/)
+    ).toBeInTheDocument()
+    expect(
+      view.getByText(/Opening it again resumes the same payment method/)
+    ).toBeInTheDocument()
   })
 
   it("renders PARTIALLY_PAID status badge, financial breakdown, and allocation history", async () => {
